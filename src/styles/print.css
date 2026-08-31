@@ -1,0 +1,22 @@
+@page { size: A4; margin: 12mm; }
+@media print {
+  body { background: #fff !important; }
+  .rail, .topbar, .stepper-wrap, .page-head, .page-brief, .next-bar,
+  .page-actions, .phone-hint, .no-print, .progress-bar, .flash { display: none !important; }
+  .app-shell {
+    display: block !important;
+    background: #fff !important;
+    min-height: 0 !important;
+    grid-template-columns: 1fr;
+  }
+  .main { margin: 0 !important; padding: 0 !important; }
+  .content { padding: 0 !important; }
+  .report-wrap { display: block; }
+  .report-sheet {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    min-height: auto !important;
+    border: 0 !important;
+  }
+}

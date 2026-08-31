@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+*.db
+*.db-wal
+*.db-shm
+data/
+.DS_Store
+bin/cloudflared

@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>替抗蓟化 · 产品使用说明书 TI-UM-2026-001</title>
+<style>
+
+:root {
+  --ink: #12261c;
+  --ink-soft: #2c4538;
+  --muted: #5c7266;
+  --forest: #163528;
+  --forest-2: #1d4433;
+  --leaf: #2b6b4c;
+  --sage: #7d9e88;
+  --mist: #e4eee6;
+  --paper: #f6f1e6;
+  --paper-2: #efe6d3;
+  --card: #fffdf8;
+  --line: #d4c9ae;
+  --line-soft: #e6dcc6;
+  --gold: #b8893a;
+  --gold-2: #e8d5a8;
+  --thistle: #8c3d5c;
+  --ok: #1c6b45;
+  --font-ui: "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", serif;
+  --font-display: "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --font-mono: "Noto Sans Mono CJK SC", "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 11pt; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  line-height: 1.65;
+}
+@page {
+  size: A4;
+  margin: 16mm 14mm 18mm 14mm;
+}
+@page :first { margin: 0; }
+.cover {
+  background: linear-gradient(165deg, var(--forest) 0%, #0f2419 58%, #1a3a2a 100%);
+  color: #f6f1e6;
+  min-height: 100vh;
+  padding: 22mm 18mm 16mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  page-break-after: always;
+  break-after: page;
+}
+.cover-mark {
+  width: 56px; height: 56px;
+  border: 1.5px solid var(--gold);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+.cover-kicker {
+  margin-top: 28px;
+  letter-spacing: 0.28em;
+  font-size: 11px;
+  color: var(--gold-2);
+  text-transform: none;
+}
+.cover h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 42px;
+  margin: 10px 0 6px;
+  letter-spacing: 0.12em;
+}
+.cover .sub {
+  font-size: 16px;
+  color: #d7e6db;
+  margin: 0 0 8px;
+}
+.cover .kind {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 4px 12px;
+  border: 1px solid var(--gold);
+  color: var(--gold-2);
+  letter-spacing: 0.2em;
+  font-size: 12px;
+}
+.cover-meta {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 36px;
+  font-size: 12px;
+}
+.cover-meta th, .cover-meta td {
+  border-bottom: 1px solid rgba(232,213,168,.28);
+  padding: 7px 0;
+  text-align: left;
+  vertical-align: top;
+}
+.cover-meta th {
+  width: 28%;
+  color: var(--gold-2);
+  font-weight: 500;
+}
+.cover-foot {
+  font-size: 11px;
+  color: #9bb5a6;
+  letter-spacing: 0.08em;
+}
+.doc {
+  max-width: 180mm;
+  margin: 0 auto;
+  padding: 8mm 4mm 14mm;
+}
+h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--forest);
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--gold);
+  page-break-after: avoid;
+}
+h3 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--leaf);
+  margin: 16px 0 8px;
+  page-break-after: avoid;
+}
+p { margin: 0 0 8px; }
+strong { color: var(--forest); font-weight: 650; }
+a { color: var(--leaf); text-decoration: none; border-bottom: 1px dotted var(--sage); }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+  padding: 0 4px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+pre {
+  background: var(--forest);
+  color: #e8f3ec;
+  padding: 10px 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+pre code {
+  background: none; border: 0; color: inherit; padding: 0;
+  font-size: 10.5pt;
+}
+blockquote {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: var(--paper-2);
+  border-left: 4px solid var(--gold);
+  color: var(--ink-soft);
+}
+blockquote p { margin: 0; }
+hr {
+  border: 0; border-top: 1px solid var(--line);
+  margin: 16px 0;
+}
+ul, ol { margin: 0 0 10px; padding-left: 1.4em; }
+li { margin: 3px 0; }
+.tbl-wrap {
+  overflow: hidden;
+  margin: 8px 0 12px;
+  page-break-inside: avoid;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+  background: var(--card);
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--forest);
+  color: #f6f1e6;
+  font-weight: 550;
+}
+tr:nth-child(even) td { background: #faf6ee; }
+.toc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 12px 18px 16px;
+  margin: 0 0 18px;
+  page-break-after: always;
+  break-after: page;
+}
+.toc h2 { margin-top: 4px; }
+.toc ol { list-style: none; padding: 0; margin: 0; }
+.toc li { margin: 4px 0; }
+.toc li.l3 { padding-left: 1.2em; font-size: 0.95em; color: var(--ink-soft); }
+.toc a { border: 0; color: inherit; }
+.running {
+  display: none;
+}
+@media print {
+  html, body { background: #fff; }
+  .cover { min-height: 297mm; }
+  a { border: 0; color: inherit; }
+  .doc { max-width: none; padding: 0; }
+  h2 { break-after: avoid; }
+  .tbl-wrap, blockquote, pre, li { break-inside: avoid; }
+}
+@media screen {
+  body { background: #cfc4a8; }
+  .cover, .doc-wrap {
+    max-width: 210mm;
+    margin: 16px auto;
+    box-shadow: 0 18px 50px rgba(18,38,28,.18);
+  }
+  .doc-wrap {
+    background: var(--paper);
+    padding: 10mm 12mm 16mm;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div>
+    <div class="cover-mark">蓟</div>
+    <p class="cover-kicker">TIHUA TRACE · USER MANUAL</p>
+    <h1>替抗蓟化</h1>
+    <p class="sub">减抗鸡肉全链条质控与溯源平台</p>
+    <span class="kind">产品使用说明书</span>
+    <table class="cover-meta">
+      <tr><th>文档编号</th><td>TI-UM-2026-001</td></tr>
+      <tr><th>版本</th><td>V1.0</td></tr>
+      <tr><th>日期</th><td>2026-08-29</td></tr>
+      <tr><th>演示批次</th><td>蓟化-2026-0812</td></tr>
+      <tr><th>替抗药材</th><td>大蓟 / 大蓟粗提物</td></tr>
+      <tr><th>适用</th><td>现场演示 · 四个岗位 · 买家扫码 · 本地安装</td></tr>
+    </table>
+  </div>
+  <p class="cover-foot">据实编制 · 只写已做功能 · 不写未做功能</p>
+</header>
+
+<div class="doc-wrap">
+<div class="doc">
+<nav class="toc" aria-label="目录"><h2>目录</h2><ol><li class="l2"><a href="#修订记录">修订记录</a></li><li class="l2"><a href="#1 给谁看">1 给谁看</a></li><li class="l2"><a href="#2 产品是干什么的">2 产品是干什么的</a></li><li class="l3"><a href="#2.1 这批鸡能不能上桌？">2.1 这批鸡能不能上桌？</a></li><li class="l3"><a href="#2.2 从养殖到检测能不能查到？">2.2 从养殖到检测能不能查到？</a></li><li class="l3"><a href="#2.3 它不替你做什么？">2.3 它不替你做什么？</a></li><li class="l2"><a href="#3 使用前五件事">3 使用前五件事</a></li><li class="l2"><a href="#4 怎么打开">4 怎么打开</a></li><li class="l3"><a href="#4.1 工作人员（本机）">4.1 工作人员（本机）</a></li><li class="l3"><a href="#4.2 工作人员（临时公网）">4.2 工作人员（临时公网）</a></li><li class="l3"><a href="#4.3 买家（不用登录）">4.3 买家（不用登录）</a></li><li class="l3"><a href="#4.4 二维码跟哪个地址走">4.4 二维码跟哪个地址走</a></li><li class="l2"><a href="#5 登录和退出">5 登录和退出</a></li><li class="l3"><a href="#5.1 怎么登录">5.1 怎么登录</a></li><li class="l3"><a href="#5.2 怎么退出">5.2 怎么退出</a></li><li class="l3"><a href="#5.3 演示账号表">5.3 演示账号表</a></li><li class="l3"><a href="#5.4 登录失败时">5.4 登录失败时</a></li><li class="l2"><a href="#6 屏幕各块">6 屏幕各块</a></li><li class="l3"><a href="#6.1 左边（侧栏）">6.1 左边（侧栏）</a></li><li class="l3"><a href="#6.2 上面（顶栏和故事线）">6.2 上面（顶栏和故事线）</a></li><li class="l3"><a href="#6.3 中间（每一页的固定三件套）">6.3 中间（每一页的固定三件套）</a></li><li class="l3"><a href="#6.4 顶上的黄条提示">6.4 顶上的黄条提示</a></li><li class="l2"><a href="#7 第一次怎么走">7 第一次怎么走</a></li><li class="l3"><a href="#7.1 完整路径（推荐，大约五到八分钟）">7.1 完整路径（推荐，大约五到八分钟）</a></li><li class="l3"><a href="#7.2 两分钟路径（赶时间）">7.2 两分钟路径（赶时间）</a></li><li class="l3"><a href="#7.3 四人分岗路径（展示现场怎么分工）">7.3 四人分岗路径（展示现场怎么分工）</a></li><li class="l2"><a href="#8 每一页怎么用">8 每一页怎么用</a></li><li class="l3"><a href="#8.1 这批鸡">8.1 这批鸡</a></li><li class="l3"><a href="#8.2 养殖过程">8.2 养殖过程</a></li><li class="l3"><a href="#8.3 现场快检">8.3 现场快检</a></li><li class="l3"><a href="#8.4 健康评价">8.4 健康评价</a></li><li class="l3"><a href="#8.5 检测报告">8.5 检测报告</a></li><li class="l3"><a href="#8.6 追溯码">8.6 追溯码</a></li><li class="l3"><a href="#8.7 买家看到的">8.7 买家看到的</a></li><li class="l2"><a href="#9 改数据之后">9 改数据之后</a></li><li class="l2"><a href="#10 恢复演示数据">10 恢复演示数据</a></li><li class="l3"><a href="#10.1 谁能恢复">10.1 谁能恢复</a></li><li class="l3"><a href="#10.2 怎么恢复">10.2 怎么恢复</a></li><li class="l3"><a href="#10.3 恢复失败">10.3 恢复失败</a></li><li class="l2"><a href="#11 常见提示对照表">11 常见提示对照表</a></li><li class="l2"><a href="#12 注意事项">12 注意事项</a></li><li class="l2"><a href="#13 给评委的六句讲解词">13 给评委的六句讲解词</a></li><li class="l2"><a href="#附录 A 安装">附录 A 安装</a></li><li class="l2"><a href="#附录 B 页面地址对照">附录 B 页面地址对照</a></li><li class="l2"><a href="#编制说明">编制说明</a></li></ol></nav>
+<p><strong>减抗鸡肉全链条质控与溯源平台</strong></p>
+<hr>
+<div class="tbl-wrap"><table>
+<thead><tr><th>项目</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>文档名称</td><td>替抗蓟化 产品使用说明书</td></tr>
+<tr><td>文档编号</td><td>TI-UM-2026-001</td></tr>
+<tr><td>版本</td><td>V1.0</td></tr>
+<tr><td>发布日期</td><td>2026-08-29</td></tr>
+<tr><td>演示批次</td><td>蓟化-2026-0812</td></tr>
+<tr><td>替抗药材</td><td>大蓟 / 大蓟粗提物</td></tr>
+<tr><td>产品全称</td><td>替抗蓟化 · 减抗鸡肉全链条质控与溯源平台</td></tr>
+<tr><td>适用对象</td><td>现场演示的人、四个岗位、买家、本地安装的人</td></tr>
+<tr><td>编制原则</td><td>据实。只写已经做成的功能。不写未做功能。</td></tr>
+</tbody></table></div>
+<blockquote><p>药材只写大蓟、大蓟粗提物。批次只写蓟化-2026-0812。不要写成别的字。</p></blockquote>
+<hr>
+<h2 id="修订记录">修订记录</h2>
+<div class="tbl-wrap"><table>
+<thead><tr><th>版本</th><th>日期</th><th>修订说明</th><th>编制</th></tr></thead>
+<tbody>
+<tr><td>V1.0</td><td>2026-08-29</td><td>据实成稿。覆盖登录、七个页面、出报告、出码、扫码页、恢复演示数据、安装与地址对照。不写新建批次、不管账号。</td><td>产品文档</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="1 给谁看">1 给谁看</h2>
+<p>这本说明书按人分。你先对号入座。不必整本读完。</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>你是谁</th><th>你要做什么</th><th>先看哪几章</th><th>要不要登录</th></tr></thead>
+<tbody>
+<tr><td>演示的人（评委、参观、讲解）</td><td>两分钟讲清楚：这批鸡能不能上桌、买家扫到什么</td><td>第 2、4、7、13 章</td><td>要。用 <code>suyuan</code> 或 <code>guanli</code></td></tr>
+<tr><td>智慧养殖（yangzhi）</td><td>记这批鸡怎么养、喂了什么、用药本</td><td>第 5、6、8.2 章</td><td>要</td></tr>
+<tr><td>快速检测（kuaijian）</td><td>把现场筛查结果记下来</td><td>第 5、6、8.3 章</td><td>要</td></tr>
+<tr><td>质量评价（pingjia）</td><td>把实验室数字和鸡健不健康记下来</td><td>第 5、6、8.4 章</td><td>要</td></tr>
+<tr><td>数据溯源（suyuan）</td><td>出报告、出追溯码、恢复演示数据</td><td>第 5、7、8.5、8.6、10 章</td><td>要</td></tr>
+<tr><td>管理员（guanli）</td><td>上面都能做</td><td>全书。演示时当总账号用</td><td>要</td></tr>
+<tr><td>买家</td><td>扫码看这批鸡从哪来、检没检出药</td><td>第 4、8.7 章</td><td>不要</td></tr>
+<tr><td>安装的人</td><td>本机把系统跑起来</td><td>附录 A、第 3、4 章</td><td>装完再登录</td></tr>
+</tbody></table></div>
+<p>四个岗位是现场分工。侧栏折叠「现场怎么分工」只是说明和跳转，不是换账号。换岗位请退出，再用对应账号登录。</p>
+<hr>
+<h2 id="2 产品是干什么的">2 产品是干什么的</h2>
+<p>第一次打开，先记住三个问题。后面都围着它们转。</p>
+<h3 id="2.1 这批鸡能不能上桌？">2.1 这批鸡能不能上桌？</h3>
+<p>打开后先看「这批鸡」。大字会告诉你：<strong>可以上桌</strong>，或 <strong>还不能出证</strong>。</p>
+<p>下面三条约定：</p>
+<ul>
+<li>喂了没有加大蓟</li>
+<li>有没有用饲用抗生素</li>
+<li>兽药有没有检出来</li>
+</ul>
+<p>演示批次「蓟化-2026-0812」默认是：喂了大蓟粗提物，没用饲用抗生素，氟苯尼考未检出。结论是可以上桌。</p>
+<h3 id="2.2 从养殖到检测能不能查到？">2.2 从养殖到检测能不能查到？</h3>
+<p>工作人员登录后，顺着左边菜单走：</p>
+<p><strong>这批鸡 → 养殖过程 → 现场快检 → 健康评价 → 检测报告 → 追溯码 → 买家看到的</strong></p>
+<p>上面还有一条更短的故事线：</p>
+<p><strong>这批鸡 → 怎么养的 → 检没检出药 → 出证明 → 买家扫到什么</strong></p>
+<p>每一页开头都有三行：「这一页看什么 / 和你有什么关系 / 下一步做什么」。下面有一个金色主按钮，带着你往下走。</p>
+<p>系统做三件事：把结果记下来，生成一页 A4 报告，生成追溯码并打开买家页。</p>
+<h3 id="2.3 它不替你做什么？">2.3 它不替你做什么？</h3>
+<p>说清楚边界，避免现场问到做不到的事。</p>
+<ul>
+<li>仪器在现场做。软件不驱动仪器，不连设备，不自动出化验数字。</li>
+<li>界面里不能新建批次，不能删批次，不能管用户、不能改别人的密码。</li>
+<li>买家页不用登录。工作人员页必须登录。</li>
+<li>本系统只服务「替抗蓟化」这一条产品线。药材只写大蓟、大蓟粗提物。</li>
+</ul>
+<hr>
+<h2 id="3 使用前五件事">3 使用前五件事</h2>
+<p>动手之前，先做这五件。做完再打开浏览器。</p>
+<p><strong>第一件：分清你是工作人员还是买家。</strong></p>
+<p>工作人员要登录，改自己负责的那一段。买家只扫码，不登录。</p>
+<p><strong>第二件：准备对的账号。</strong></p>
+<p>演示密码全是 <code>Demo#2026</code>。正式上线必须改。评委演示请用 <code>suyuan</code> 或 <code>guanli</code>，否则点不出报告。</p>
+<p><strong>第三件：记住这一批。</strong></p>
+<p>演示批次是 <strong>蓟化-2026-0812</strong>。鸡在河南省郑州市荥阳市康店镇，双汇·郑州农发共建养殖基地，8000 羽。日粮加了大蓟粗提物。</p>
+<p><strong>第四件：手机要扫码，就用公网地址出码。</strong></p>
+<p>二维码按当前网页地址生成。你在本机 <code>127.0.0.1</code> 出的码，手机扫不开。要扫，先打开公网临时地址，再出码。见第 4 章。</p>
+<p><strong>第五件：改完不用点「保存」。</strong></p>
+<p>登录后改表格，大约 400 毫秒会自动写入本机数据库。刷新还在。没有权限的栏位会顶上弹出一句话，并退回原来的数。</p>
+<hr>
+<h2 id="4 怎么打开">4 怎么打开</h2>
+<h3 id="4.1 工作人员（本机）">4.1 工作人员（本机）</h3>
+<p>浏览器打开：</p>
+<p><code>http://127.0.0.1:4173/</code></p>
+<p>没登录会落到登录页。登录后落到「这批鸡」。</p>
+<p>服务没起来时，先看附录 A。</p>
+<h3 id="4.2 工作人员（临时公网）">4.2 工作人员（临时公网）</h3>
+<p>现场投大屏、或让手机扫码，可用当前临时隧道：</p>
+<p><code>https://granny-rain-midnight-lang.trycloudflare.com/</code></p>
+<p>注意：隧道挂了会换新地址。换了以后，旧码扫不开。请用新地址重新登录、重新出码。</p>
+<h3 id="4.3 买家（不用登录）">4.3 买家（不用登录）</h3>
+<p>买家打开：</p>
+<p><code>{当前网站地址}/#/trace/蓟化-2026-0812</code></p>
+<p>两个现成例子：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>场景</th><th>地址</th></tr></thead>
+<tbody>
+<tr><td>本机预览</td><td><code>http://127.0.0.1:4173/#/trace/蓟化-2026-0812</code></td></tr>
+<tr><td>手机扫码（当前隧道）</td><td><code>https://granny-rain-midnight-lang.trycloudflare.com/#/trace/蓟化-2026-0812</code></td></tr>
+</tbody></table></div>
+<p>本机地址只给同一台电脑看。手机请用公网那一行。</p>
+<p>工作人员登录后，左边点「买家看到的」，也能看到同一页的手机样子。那是预览。真正给买家的是上面的公开地址。</p>
+<h3 id="4.4 二维码跟哪个地址走">4.4 二维码跟哪个地址走</h3>
+<p>追溯码按 <code>当前网页的地址 + #/trace/批次号</code> 生成。</p>
+<ul>
+<li>你在 <code>http://127.0.0.1:4173/</code> 点「生成追溯码」，码里就是本机地址。</li>
+<li>你在 <code>https://granny-rain-midnight-lang.trycloudflare.com/</code> 登录后再出码，手机才能扫开。</li>
+</ul>
+<p>投大屏演示：先打开公网地址，再出码，再让评委扫。</p>
+<hr>
+<h2 id="5 登录和退出">5 登录和退出</h2>
+<h3 id="5.1 怎么登录">5.1 怎么登录</h3>
+<ol>
+<li>打开第 4 章里的工作人员地址。</li>
+<li>看到卡片：左边是标志，标题「替抗蓟化」，副题「减抗鸡肉 · 能不能追溯」。</li>
+<li>填写用户名、密码。</li>
+<li>点金色按钮「进入」。</li>
+</ol>
+<p>登录成功，会进入「这批鸡」。</p>
+<p>登录页有一句提示：买家扫码不用登录。演示账号在说明书里，默认密码必须改。</p>
+<h3 id="5.2 怎么退出">5.2 怎么退出</h3>
+<p>左侧栏最下面，能看见你的显示名、用户名和岗位。点「退出」。退出后回到登录页。</p>
+<p>换岗位不要只点「现场怎么分工」。那只会跳到对应页面，账号还是原来的。请先退出，再用另一个账号登录。</p>
+<h3 id="5.3 演示账号表">5.3 演示账号表</h3>
+<p>密码一律 <code>Demo#2026</code>。正式上线必须改。界面里没有改密入口。五个账号是灌演示数据时写好的。</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>用户名</th><th>岗位</th><th>你能改什么</th><th>你不能做什么</th></tr></thead>
+<tbody>
+<tr><td><code>yangzhi</code></td><td>智慧养殖</td><td>养殖档案、用药本、批次号等档案信息</td><td>不能改快检、不能改评价、不能出报告、不能出码、不能恢复演示数据</td></tr>
+<tr><td><code>kuaijian</code></td><td>快速检测</td><td>只改现场快检结果</td><td>不能改养殖档案、不能改评价、不能出报告、不能出码</td></tr>
+<tr><td><code>pingjia</code></td><td>质量评价</td><td>只改健康评价数字</td><td>不能改养殖、不能改快检、不能出报告、不能出码</td></tr>
+<tr><td><code>suyuan</code></td><td>数据溯源</td><td>生成检测报告、出追溯码、恢复演示数据</td><td>不能改养殖、快检、评价里的数字</td></tr>
+<tr><td><code>guanli</code></td><td>管理员</td><td>上面全部能写</td><td>无（仍不能新建批次、不能在界面里管用户）</td></tr>
+</tbody></table></div>
+<p>越权时，页面上方会用一句话挡住。例如：</p>
+<blockquote><p>当前账号（智慧养殖）不能生成检测报告。</p></blockquote>
+<p>数字会被退回。不必惊慌。换对账号再做即可。</p>
+<h3 id="5.4 登录失败时">5.4 登录失败时</h3>
+<div class="tbl-wrap"><table>
+<thead><tr><th>你看到的话</th><th>原因</th><th>你怎么做</th></tr></thead>
+<tbody>
+<tr><td>请填写用户名和密码。</td><td>有一栏空着</td><td>两栏都填</td></tr>
+<tr><td>用户名或密码不对。</td><td>拼错了，或密码不是 <code>Demo#2026</code></td><td>对照第 5.3 表重填。注意大小写和 <code>#</code></td></tr>
+<tr><td>请先登录。</td><td>登录过期，或还没登录就去了工作人员页</td><td>重新登录</td></tr>
+</tbody></table></div>
+<p>会话记在浏览器 cookie 里，名字叫 <code>tihua_session</code>。关标签一般还在。点「退出」才会清掉。</p>
+<hr>
+<h2 id="6 屏幕各块">6 屏幕各块</h2>
+<p>登录之后，屏幕分成左边一条、上面一条、中间一大块。</p>
+<h3 id="6.1 左边（侧栏）">6.1 左边（侧栏）</h3>
+<p>从上到下：</p>
+<ol>
+<li><strong>标志和名称</strong>：替抗蓟化 · 减抗鸡肉 · 能不能追溯。</li>
+<li><strong>七个菜单</strong>：这批鸡 / 养殖过程 / 现场快检 / 健康评价 / 检测报告 / 追溯码 / 买家看到的。当前页会高亮。</li>
+<li><strong>你是谁</strong>：显示名、用户名、岗位。这里有「退出」。</li>
+<li><strong>现场怎么分工</strong>（折叠起来的）：点开能看到四个岗位说明。点某一个，只是跳到那一页，不是换账号。</li>
+<li><strong>一句说明</strong>：现场真做检测。这里只录入、出报告、出追溯码。改动能写进服务器。</li>
+<li><strong>恢复演示数据</strong>：只有 <code>suyuan</code> 和 <code>guanli</code> 看得到这个按钮。别人登录时没有。</li>
+</ol>
+<h3 id="6.2 上面（顶栏和故事线）">6.2 上面（顶栏和故事线）</h3>
+<ul>
+<li>左边写着：替抗蓟化 · 你在看：<strong>当前页标题</strong>。</li>
+<li>右边有一颗批次胶囊，默认是 <strong>蓟化-2026-0812</strong>。</li>
+<li>再下面是五步故事线：这批鸡 → 怎么养的 → 检没检出药 → 出证明 → 买家扫到什么。当前步会标出来。</li>
+</ul>
+<p>「检没检出药」包含现场快检和健康评价两页。「出证明」包含检测报告和追溯码两页。</p>
+<h3 id="6.3 中间（每一页的固定三件套）">6.3 中间（每一页的固定三件套）</h3>
+<p>不管进哪一页，先看这三件：</p>
+<ol>
+<li><strong>三行说明</strong>：这一页看什么；和你有什么关系；下一步做什么。</li>
+<li><strong>一个金色主按钮</strong>：带你到下一页，或当场生成报告 / 生成码。</li>
+<li><strong>本页内容</strong>：结论、表格、报告或手机样子。</li>
+</ol>
+<p>有的页还有次要操作，例如「两分钟演示：直接出报告」「打印 / 另存 PDF」「重出」。它们不是主路径，可按需点。</p>
+<h3 id="6.4 顶上的黄条提示">6.4 顶上的黄条提示</h3>
+<p>保存失败、没权限、恢复成功，都会在故事线下面出一条提示。看那一行就够。常见原文见第 11 章。</p>
+<p>顶部偶尔有一条很细的进度条。那是在和服务器说话。不用等它消失再点，也不用刷新。</p>
+<hr>
+<h2 id="7 第一次怎么走">7 第一次怎么走</h2>
+<p>三种走法。评委在场用前两种。四人分岗演示用第三种。</p>
+<h3 id="7.1 完整路径（推荐，大约五到八分钟）">7.1 完整路径（推荐，大约五到八分钟）</h3>
+<p>请用 <code>suyuan</code> 或 <code>guanli</code> 登录。用别的账号，走到「出报告」会被拦住。</p>
+<ol>
+<li>登录，停在「这批鸡」。读大字结论和三条事实。</li>
+<li>点「下一步：看这批鸡怎么养的」。</li>
+<li>看日粮是不是大蓟粗提物，用药本是不是写着饲用抗生素未使用。</li>
+<li>点「下一步：看现场有没有检出兽药」。</li>
+<li>看定性是不是阴性、结果是不是未检出。</li>
+<li>点「下一步：看实验室复核和鸡健不健康」。</li>
+<li>看实验室数字，看深色条是不是比浅色条短。</li>
+<li>点「下一步：生成检测报告」。若还没出过报告，会先生成，再打开 A4 证明。</li>
+<li>点「下一步：出追溯码」。还没出过码就生成。没有报告时，出码会顺手把报告补上。</li>
+<li>点「下一步：看买家扫开是什么」。或退出后打开公开地址。</li>
+</ol>
+<p>故事就是：这批鸡 → 怎么养的 → 检没检出药 → 出证明 → 买家扫到什么。</p>
+<h3 id="7.2 两分钟路径（赶时间）">7.2 两分钟路径（赶时间）</h3>
+<p>同样需要 <code>suyuan</code> 或 <code>guanli</code>。</p>
+<ol>
+<li>登录，停在「这批鸡」。</li>
+<li>不要顺着走。点次要按钮 <strong>「两分钟演示：直接出报告」</strong>。</li>
+<li>系统按当前批次生成 A4 报告，并跳到「检测报告」。</li>
+<li>再点「下一步：出追溯码」。</li>
+<li>再点「下一步：看买家扫开是什么」。</li>
+</ol>
+<p>演示批次已经预填了养殖、快检、评价。两分钟路径不再一页页打开，直接出证明。</p>
+<p>若你用的是 <code>yangzhi</code>，点这个按钮会顶上提示：当前账号（智慧养殖）不能生成检测报告。请退出，换 <code>suyuan</code> 或 <code>guanli</code>。</p>
+<h3 id="7.3 四人分岗路径（展示现场怎么分工）">7.3 四人分岗路径（展示现场怎么分工）</h3>
+<p>四个人各登各的号。不要共用一个管理员号假装分工。</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>顺序</th><th>谁登</th><th>进哪一页</th><th>做什么</th><th>交给谁</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>yangzhi</code></td><td>养殖过程</td><td>核日粮、用药本。可改数字。改完等大约半秒</td><td>告诉快检：这批可以抽检</td></tr>
+<tr><td>2</td><td><code>kuaijian</code></td><td>现场快检</td><td>仪器做完后，把阴性和未检出记进去</td><td>告诉评价：筛查过了</td></tr>
+<tr><td>3</td><td><code>pingjia</code></td><td>健康评价</td><td>把实验室定量和炎症数字记进去</td><td>告诉溯源：可以出证</td></tr>
+<tr><td>4</td><td><code>suyuan</code></td><td>检测报告 → 追溯码</td><td>生成报告，出码，打开买家页</td><td>评委扫码</td></tr>
+</tbody></table></div>
+<p>管理员 <code>guanli</code> 一个人也能走完全程。四人演示时建议不用它，以免看不出岗位边界。</p>
+<p>每一岗改完，下一个人刷新或重新进入即可。数据在服务器里，不是只存在你这一台浏览器。</p>
+<hr>
+<h2 id="8 每一页怎么用">8 每一页怎么用</h2>
+<p>下面按左边七个菜单写。每节先说人话，再列你能点的东西。</p>
+<h3 id="8.1 这批鸡">8.1 这批鸡</h3>
+<p><strong>这一页看什么</strong>：这批减抗鸡肉能不能吃、从哪来、检没检出药。</p>
+<p>打开先看大字：</p>
+<ul>
+<li><strong>可以上桌</strong>：喂了大蓟、没用饲用抗生素、药也没检出来。</li>
+<li><strong>还不能出证</strong>：上面三条里有没过关的。下面会用人话写原因。</li>
+</ul>
+<p>三条事实各占一块：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>你看到</th><th>意思</th></tr></thead>
+<tbody>
+<tr><td>是 · 喂了大蓟</td><td>日粮添加物里写了「蓟」</td></tr>
+<tr><td>还不是 · 日粮里还没写大蓟</td><td>添加物被改没了，或写成了不含「蓟」的字</td></tr>
+<tr><td>是 · 没喂饲用抗生素</td><td>用药本里抗生素那一行是未使用，或根本没有抗生素行</td></tr>
+<tr><td>还不是 · 饲用抗生素未清零</td><td>用药本里还有抗生素，且结果不是未使用</td></tr>
+<tr><td>是 · 氟苯尼考未检出</td><td>快检阴性或实验室未检出</td></tr>
+<tr><td>还不是 · 氟苯尼考需复核</td><td>筛查或定量没过关</td></tr>
+</tbody></table></div>
+<p>页脚有一行小字：批次号 · 基地名 · 羽数 · 出栏日。演示默认是蓟化-2026-0812 · 双汇·郑州农发共建养殖基地 · 8000 羽 · 2026-08-12 出栏。</p>
+<p><strong>主按钮</strong>：下一步：看这批鸡怎么养的。</p>
+<p><strong>次要按钮</strong>：两分钟演示：直接出报告（只要溯源员或管理员）。</p>
+<p>这一页没有表格可改。它是总览。</p>
+<h3 id="8.2 养殖过程">8.2 养殖过程</h3>
+<p><strong>这一页看什么</strong>：这批鸡喂了什么，有没有用饲用抗生素。</p>
+<p>开头一段人话。演示默认是：这批鸡吃的是加了<strong>大蓟</strong>的日粮（大蓟粗提物 800 mg/kg 饲料）。用药本上写着：<strong>饲用抗生素未使用</strong>。疫苗按规程做，那不是饲用抗生素。</p>
+<p>三个卡片：</p>
+<p><strong>批次与基地</strong>：批次号、鸡群编号、养殖基地、共建单位、地址、鸡舍、品种、入孵、进苗、计划出栏、本群羽数、密度。</p>
+<p>演示预填（可改，改完会自动保存）：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>栏位</th><th>演示值</th></tr></thead>
+<tbody>
+<tr><td>批次号</td><td>蓟化-2026-0812</td></tr>
+<tr><td>鸡群编号</td><td>FL-2026-0812-A</td></tr>
+<tr><td>养殖基地</td><td>双汇·郑州农发共建养殖基地</td></tr>
+<tr><td>共建单位</td><td>双汇集团、郑州市农村发展中心</td></tr>
+<tr><td>地址</td><td>河南省郑州市荥阳市康店镇</td></tr>
+<tr><td>鸡舍</td><td>3 号密闭鸡舍</td></tr>
+<tr><td>品种</td><td>白羽肉鸡（AA+）</td></tr>
+<tr><td>本群羽数</td><td>8000</td></tr>
+<tr><td>计划出栏</td><td>2026-08-12</td></tr>
+</tbody></table></div>
+<p><strong>喂了什么</strong>：日粮、添加物、添加量、起始日龄、料肉比、死淘率、备注。添加物请保持「大蓟粗提物」。系统认「蓟」这个字。写成别的，首页会变成「日粮里还没写大蓟」。</p>
+<p><strong>用药与添加记录</strong>：日期、项目、剂量、目的、结果。演示有四行：大蓟粗提物、新城疫 / 法氏囊疫苗、球虫疫苗、饲用抗生素（结果为未使用）。点「增一行」会在表末加空行。</p>
+<p>只有 <code>yangzhi</code> 和 <code>guanli</code> 能改这一页。别人改，顶上会说：当前账号（××）不能改养殖档案。</p>
+<p><strong>主按钮</strong>：下一步：看现场有没有检出兽药。</p>
+<h3 id="8.3 现场快检">8.3 现场快检</h3>
+<p><strong>这一页看什么</strong>：出栏前抽检，这批肉有没有筛出常见兽药。</p>
+<p>标题旁边有一颗状态：没检出 / 阳性 / 无效。</p>
+<p>开头人话会带上分钟数。演示默认大约 45 分钟筛完：没检出兽药。</p>
+<p>软件不启动仪器。仪器在现场做完，你只把结果填进来。</p>
+<p>两个卡片：</p>
+<p><strong>样品与方法</strong>：样品编号、采样时间、取样部位、方法、前处理分钟、出结果分钟、查的哪种药、操作人。</p>
+<p>演示预填：样品 QC-0812-03，胸肌 / 肝脏混样，查氟苯尼考，前处理 40 分钟，出结果 5 分钟。操作人是 2 号 快速检测工程师。</p>
+<p><strong>筛查结果</strong>：</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>栏位</th><th>怎么填</th></tr></thead>
+<tbody>
+<tr><td>定性</td><td>三选一：阴性 / 阳性 / 无效</td></tr>
+<tr><td>结果表述</td><td>演示是「未检出」</td></tr>
+<tr><td>质控线</td><td>质控线显色是否正常</td></tr>
+<tr><td>检出限说明</td><td>演示写着与 50 μg/kg 对齐</td></tr>
+<tr><td>备注</td><td>可空</td></tr>
+</tbody></table></div>
+<p>定性选「阳性」或「无效」，首页会变成还不能出证。选「无效」时，人话是：试纸不能用，先重做。</p>
+<p>只有 <code>kuaijian</code> 和 <code>guanli</code> 能改这一页。</p>
+<p><strong>主按钮</strong>：下一步：看实验室复核和鸡健不健康。</p>
+<h3 id="8.4 健康评价">8.4 健康评价</h3>
+<p><strong>这一页看什么</strong>：实验室把药再测一遍，再看鸡的炎症高不高。</p>
+<p>开头人话。演示默认：实验室也没测出药。炎症比常规养法低，肉更好。</p>
+<p><strong>实验室定量</strong>：检测日期、仪器、标准曲线 R、检出限、结果表述、定量值（未检出则留空）、操作人。演示仪器写 HPLC，结果表述「未检出（&lt;50）」，操作人是 3 号 分析测试工程师。</p>
+<p><strong>炎症对照</strong>：四条横条。浅色是常规喂了抗生素的鸡，深色是这批。深色更短 = 炎症更低 = 肉更好。下面可以改本批次和对照的数字。</p>
+<p>四个名字是 IL-1β、IL-6、TNF-α、CRP。演示里深色都明显短于浅色。若你把本批次数字改高，过了「比对照低三成」这条线，结论会变成还不能出证，原因是炎症还偏高。</p>
+<p><strong>肠道菌群</strong>：可选。Shannon、乳酸菌变化、大肠杆菌变化。不是出证的硬门槛，会出现在报告里。</p>
+<p>只有 <code>pingjia</code> 和 <code>guanli</code> 能改这一页。</p>
+<p><strong>主按钮</strong>：下一步：生成检测报告。</p>
+<p>有权限就会生成并跳到报告页。没权限会顶上提示不能生成检测报告。</p>
+<h3 id="8.5 检测报告">8.5 检测报告</h3>
+<p><strong>这一页看什么</strong>：给监管和企业看的正式证明。版式是 A4。</p>
+<p>两种样子：</p>
+<p><strong>还没出过</strong>：中间一张空白卡：「还没有正式报告。点上面即可按当前批次生成 A4 证明。」主按钮是「生成检测报告」。</p>
+<p><strong>已经出过</strong>：看到完整一页。标题是「双指标质量检测报告」，副题「氟苯尼考残留 + 血清炎症因子评价」。右上角有编号、批次、签发时间。演示编号形如 <code>THJH-20260812-001</code>。右上角印章是「合格」或「待复核」。</p>
+<p>报告四块：样品信息；快速筛查；实验室定量与炎症评价；综合结论。数字来自前面几页当前值，不是一张死图。前面改过、已经保存，再点「按当前数据重出」，报告会按新数字重写。</p>
+<p><strong>主按钮</strong>：下一步：出追溯码。</p>
+<p><strong>次要按钮</strong>：按当前数据重出；打印 / 另存 PDF。</p>
+<p>打印走浏览器自己的打印。纸张选 A4。侧栏、顶栏、三行说明、按钮都不会打出来，只打这一页报告。另存 PDF 也在浏览器打印框里选「另存为 PDF」。</p>
+<p>只有 <code>suyuan</code> 和 <code>guanli</code> 能生成或重出。别人进得来看，但点生成会被拦住：</p>
+<blockquote><p>当前账号（智慧养殖）不能生成检测报告。</p></blockquote>
+<p>（岗位名随当前账号变。）</p>
+<h3 id="8.6 追溯码">8.6 追溯码</h3>
+<p><strong>这一页看什么</strong>：这批鸡的追溯码。扫开就是买家手机里的页面。</p>
+<p>两种样子：</p>
+<p><strong>还没出过</strong>：「还没出码。点上面即可生成。建议先有报告，没有也会一并补上。」主按钮是「生成追溯码」。</p>
+<p><strong>已经出过</strong>：左边是二维码，右边是批次号、核验号、判定、报告编号、扫码地址。演示核验号形如 <code>TR-8F2C-0812</code>。</p>
+<p><strong>主按钮</strong>：下一步：看买家扫开是什么。</p>
+<p><strong>次要按钮</strong>：复制批次号；下载二维码（PNG，文件名是 <code>蓟化-2026-0812-追溯码.png</code>）；重出。</p>
+<p>再次提醒：码里的地址是你出码时浏览器地址栏的网站根。要给真手机扫，请先用第 4.2 节的公网地址登录，再点生成或重出。</p>
+<p>只有 <code>suyuan</code> 和 <code>guanli</code> 能出码。别人会看到：当前账号（××）不能出追溯码。</p>
+<h3 id="8.7 买家看到的">8.7 买家看到的</h3>
+<p><strong>这一页看什么</strong>：买家用手机扫码之后看到的内容。</p>
+<p>工作人员登录后，这里套着一个手机外框，方便投大屏对照。买家走公开地址时，没有侧栏、没有按钮，只有扫码页本身。</p>
+<p>手机里几块：</p>
+<ol>
+<li><strong>顶上结论</strong>：可以上桌 / 还不能出证。下面一句人话。再下面是批次号。</li>
+<li><strong>这批鸡</strong>：三条事实（大蓟、饲用抗生素、兽药）。基地地址和名称。</li>
+<li><strong>从养殖到上桌</strong>：饲料 → 养殖 → 检测 → 上桌。四步短句。</li>
+<li><strong>核验</strong>：批次、核验号、报告编号。详细数字在检测报告里，买家页不铺表格。</li>
+</ol>
+<p>买家不用登录。公开地址见第 4.3 节。</p>
+<p><strong>主按钮</strong>（仅工作人员预览时有）：回到这批鸡。</p>
+<p>演示到此结束。可回到「这批鸡」，或由溯源员 / 管理员恢复演示数据。</p>
+<hr>
+<h2 id="9 改数据之后">9 改数据之后</h2>
+<p>改表格不用找保存按钮。没有这个按钮。</p>
+<ol>
+<li>你改完一栏，离开这一栏，或改完下拉框。</li>
+<li>系统在大约 400 毫秒后，把改动写进本机数据库。</li>
+<li>有权限：顶上进度条闪一下，数字留下。刷新还在。别人换账号进来也能看见。</li>
+<li>没权限：数字退回，顶上出现第 11 章里的那句人话。</li>
+</ol>
+<p>报告和码不会因为你改数字而自动重出。你改完养殖、快检或评价，若已经出过报告，请到「检测报告」点「按当前数据重出」。需要新码就到「追溯码」点「重出」。</p>
+<p>首页「可以上桌 / 还不能出证」会跟着当前数字即时变。你不必重出报告，也能先看到结论变了。</p>
+<p>建议演示时：先让评委看默认的「可以上桌」，再把快检改成阳性，让大字变成「还不能出证」，再恢复演示数据。一次就能看懂系统不是死页面。</p>
+<hr>
+<h2 id="10 恢复演示数据">10 恢复演示数据</h2>
+<p>演示改乱了，用这一节。不要关浏览器指望它自己回来。数据在服务器里。</p>
+<h3 id="10.1 谁能恢复">10.1 谁能恢复</h3>
+<p>只有 <code>suyuan</code> 和 <code>guanli</code>。侧栏最下面才有按钮「恢复演示数据」。</p>
+<p><code>yangzhi</code>、<code>kuaijian</code>、<code>pingjia</code> 登录时看不到这个按钮。</p>
+<h3 id="10.2 怎么恢复">10.2 怎么恢复</h3>
+<ol>
+<li>用 <code>suyuan</code> 或 <code>guanli</code> 登录。</li>
+<li>点左侧「恢复演示数据」。</li>
+<li>按确认框里的句子确认。确认后回到预填批次蓟化-2026-0812。</li>
+<li>顶上提示：已恢复演示批次。</li>
+</ol>
+<p>确认框原文是：恢复为竞赛预填批次「蓟化-2026-0812」？当前改动会清除。</p>
+<p>恢复之后，档案、快检、评价回到预填。报告和追溯码回到未生成。五个账号仍按第 5.3 表。</p>
+<h3 id="10.3 恢复失败">10.3 恢复失败</h3>
+<p>看到「只有管理员和溯源员可以恢复演示数据。」就是账号不对。退出换人。</p>
+<p>看到「恢复失败。」就检查服务是否还在，再按附录 A 启动。</p>
+<hr>
+<h2 id="11 常见提示对照表">11 常见提示对照表</h2>
+<p>页面上方那一行，按原文对照。</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>你看到的原文</th><th>什么时候出现</th><th>你怎么做</th></tr></thead>
+<tbody>
+<tr><td>用户名或密码不对。</td><td>登录填错</td><td>对照第 5.3 表。口令是 <code>Demo#2026</code>，注意井号</td></tr>
+<tr><td>请填写用户名和密码。</td><td>登录有空栏</td><td>两栏都填</td></tr>
+<tr><td>请先登录。</td><td>工作人员页没有有效登录</td><td>打开首页重新登录</td></tr>
+<tr><td>当前账号（智慧养殖）不能生成检测报告。</td><td><code>yangzhi</code> 点了出报告或两分钟演示</td><td>退出，换 <code>suyuan</code> 或 <code>guanli</code></td></tr>
+<tr><td>当前账号（快速检测）不能生成检测报告。</td><td><code>kuaijian</code> 点了出报告</td><td>换溯源或管理员</td></tr>
+<tr><td>当前账号（质量评价）不能生成检测报告。</td><td><code>pingjia</code> 点了出报告</td><td>换溯源或管理员</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>当前账号（智慧养殖）不能出追溯码。</th><th>养殖账号点了出码</th><th>换 <code>suyuan</code> 或 <code>guanli</code></th></tr></thead>
+<tbody>
+<tr><td>当前账号（快速检测）不能改养殖档案。</td><td>快检账号改了养殖页</td><td>退出，换 <code>yangzhi</code> 或 <code>guanli</code></td></tr>
+<tr><td>当前账号（××）不能改快检结果。</td><td>别的岗改了快检</td><td>换 <code>kuaijian</code> 或 <code>guanli</code></td></tr>
+<tr><td>当前账号（××）不能改质量评价。</td><td>别的岗改了评价</td><td>换 <code>pingjia</code> 或 <code>guanli</code></td></tr>
+<tr><td>当前账号（××）不能改批次信息。</td><td>没有档案权限的人改了批次号等</td><td>换 <code>yangzhi</code> 或 <code>guanli</code></td></tr>
+<tr><td>只有管理员和溯源员可以恢复演示数据。</td><td>没有恢复权限的人触发了恢复</td><td>换 <code>suyuan</code> 或 <code>guanli</code></td></tr>
+<tr><td>已恢复演示批次。</td><td>恢复成功</td><td>从「这批鸡」重新走一遍</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>没有这个批次。</th><th>地址里的批次号对不上</th><th>回到蓟化-2026-0812。不要改地址里的批次</th></tr></thead>
+<tbody>
+<tr><td>没有这批鸡的公开溯源。</td><td>买家地址批次不对</td><td>核对 <code>#/trace/蓟化-2026-0812</code></td></tr>
+<tr><td>还没有正式报告。点上面即可按当前批次生成 A4 证明。</td><td>报告还没出</td><td>用溯源或管理员点「生成检测报告」</td></tr>
+<tr><td>还没出码。点上面即可生成。建议先有报告，没有也会一并补上。</td><td>码还没出</td><td>用溯源或管理员点「生成追溯码」</td></tr>
+<tr><td>不能生成报告。 / 不能出追溯码。</td><td>生成时出错</td><td>看是不是没权限；或看服务是否还在</td></tr>
+</tbody></table></div>
+<p>岗位名会按当前账号替换。看见「当前账号（智慧养殖）」就是养殖岗被拦住了。这是正常的，不是故障。</p>
+<hr>
+<h2 id="12 注意事项">12 注意事项</h2>
+<ol>
+<li><strong>口令。</strong> 五个演示账号共用 <code>Demo#2026</code>。这是演示口令。正式上线必须改。不要把这个口令用到真实养殖场。</li>
+<li><strong>药材和批次用字。</strong> 只写大蓟、大蓟粗提物。批次只写蓟化-2026-0812。讲解、报告、投影都不要写成别的药材名。</li>
+<li><strong>仪器和软件分开。</strong> 快检和实验室的仪器是现场真设备。软件只记录、出证明、出码。不要对评委说「软件在跑仪器」。</li>
+<li><strong>出码地址。</strong> 二维码跟当前网站地址走。本机出的码，手机扫不开。公网隧道挂了会换域名，旧码作废，要重出。</li>
+</ol>
+<ol>
+<li><strong>一个演示批次。</strong> 界面不能新建批次，不能切换一堆批次。恢复演示数据只会回到蓟化-2026-0812。</li>
+<li><strong>没有用户管理界面。</strong> 不能在网页里加号、删号、改别人的岗。五个账号是灌演示数据时写好的。</li>
+<li><strong>打印用浏览器。</strong> 检测报告页点「打印 / 另存 PDF」，纸张选 A4。不要对这一页用系统截图去充当正式件。</li>
+<li><strong>改完会落库。</strong> 刷新、换电脑、换账号，都能看见上次有权限的人写下的数。演示结束请恢复演示数据，避免下一场接着看你改乱的数。</li>
+<li><strong>会话。</strong> 点「退出」再把电脑给下一位。不要只关标签。</li>
+<li><strong>本说明书不覆盖未做功能。</strong> 若有人问「在哪新建第二批鸡」「在哪给新同事开账号」，答案是：这个版本没有这两块界面。</li>
+</ol>
+<hr>
+<h2 id="13 给评委的六句讲解词">13 给评委的六句讲解词</h2>
+<p>按这个顺序说。每句都能指到屏幕上的一块。不要临场加实验室黑话。</p>
+<ol>
+<li><strong>「这是一批减抗鸡肉，从养殖到上桌，能不能吃、能不能查到。」</strong></li>
+</ol>
+<p>   停在「这批鸡」。指大字「可以上桌」。</p>
+<ol>
+<li><strong>「这批鸡吃的是加大蓟粗提物的日粮，用药本上饲用抗生素未使用。」</strong></li>
+</ol>
+<p>   点到「养殖过程」。指开头那两句和用药表最后一行。</p>
+<ol>
+<li><strong>「出栏前现场筛查，大约四十五分钟。仪器在现场做，这里只把结果记下来。这批没检出兽药。」</strong></li>
+</ol>
+<p>   停在「现场快检」。指「没检出」。</p>
+<ol>
+<li><strong>「实验室再核一遍，药还是没测出来。炎症比常规养法低，肉更好。」</strong></li>
+</ol>
+<p>   停在「健康评价」。指深色条比浅色条短。</p>
+<ol>
+<li><strong>「这些数字收成一页 A4 证明。编号跟着批次走。不是一张事先画好的图。」</strong></li>
+</ol>
+<p>   生成并打开「检测报告」。可顺手打开浏览器打印框，让人看见是 A4。</p>
+<ol>
+<li><strong>「出追溯码。买家扫开不用登录，看见的是人话：可以上桌、喂了大蓟、没喂饲用抗生素、药没检出来。」</strong></li>
+</ol>
+<p>   出码后打开「买家看到的」，或让评委扫公网地址上的码。</p>
+<p>两分钟版本：第 1 句说完，直接点「两分钟演示：直接出报告」，再接第 5、第 6 句。中间三句用报告上的四块标题带过即可。</p>
+<hr>
+<h2 id="附录 A 安装">附录 A 安装</h2>
+<p>给要把系统在本机跑起来的人。短步骤。先装好 Node.js。</p>
+<p>在项目目录执行下面四条命令，按顺序：</p>
+<pre><code>npm install
+npm run seed
+npm run build
+npm start</code></pre>
+<p>浏览器打开 http://127.0.0.1:4173/</p>
+<p>说明：</p>
+<ul>
+<li>npm run seed 会把五个账号和演示批次蓟化-2026-0812 重置回默认。口令回到 Demo#2026。</li>
+<li>npm start 一个进程同时提供页面和接口。必须先 npm run build。</li>
+<li>复制 env 示例文件为本地环境文件。正式使用至少改会话密钥。不要把密钥文件和数据库文件提交进版本库。</li>
+<li>空库第一次启动会自动灌种子。已经改乱时，再跑一次 npm run seed，或在页面里用溯源 / 管理员点「恢复演示数据」。</li>
+</ul>
+<p>装完回到第 3 章、第 5 章。不要在附录里继续改功能。</p>
+<hr>
+<h2 id="附录 B 页面地址对照">附录 B 页面地址对照</h2>
+<p>地址里井号后面的部分是页面。把它们接在网站根后面。</p>
+<div class="tbl-wrap"><table>
+<thead><tr><th>页面</th><th>地址</th><th>要登录吗</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>登录（未登录打开工作人员页时）</td><td><code>/</code> 或 <code>/#/dashboard</code></td><td>打开后要登</td><td>未登录会先看到登录卡</td></tr>
+<tr><td>这批鸡</td><td><code>/#/dashboard</code></td><td>要</td><td>登录后的第一页</td></tr>
+<tr><td>养殖过程</td><td><code>/#/farm</code></td><td>要</td><td>档案和用药本</td></tr>
+<tr><td>现场快检</td><td><code>/#/screen</code></td><td>要</td><td>记筛查结果</td></tr>
+<tr><td>健康评价</td><td><code>/#/eval</code></td><td>要</td><td>实验室和炎症</td></tr>
+<tr><td>检测报告</td><td><code>/#/report</code></td><td>要</td><td>A4 证明</td></tr>
+<tr><td>追溯码</td><td><code>/#/qr</code></td><td>要</td><td>出码、下载码</td></tr>
+<tr><td>买家预览（工作人员）</td><td><code>/#/consumer</code></td><td>要</td><td>带手机外框的预览</td></tr>
+<tr><td>买家正式页</td><td><code>/#/trace/蓟化-2026-0812</code></td><td>不要</td><td>扫码落地。批次写在地址里</td></tr>
+</tbody></table></div>
+<p>本机完整例子：</p>
+<p><code>http://127.0.0.1:4173/#/dashboard</code></p>
+<p>当前临时公网例子：</p>
+<p><code>https://granny-rain-midnight-lang.trycloudflare.com/#/trace/蓟化-2026-0812</code></p>
+<p>隧道地址会变。变了以当时浏览器地址栏为准，按同一规则拼接 <code>/#/trace/蓟化-2026-0812</code>。</p>
+<p>旧地址 <code>#/batch</code>、<code>#/home</code>、<code>#/overview</code> 仍会落到「这批鸡」。新讲解请用上面这张表。</p>
+<hr>
+<h2 id="编制说明">编制说明</h2>
+<ol>
+<li>本文据 2026-08-29 已上线的「替抗蓟化」演示系统写成。页面名称、按钮原文、提示原文均按界面抄录。</li>
+<li>不写未做功能。本文没有「新建批次」「用户管理」「仪器控制」「审批流」「多场切换」的操作步骤，因为界面里没有这些入口。</li>
+<li>药材用字只允许大蓟、大蓟粗提物。批次只用蓟化-2026-0812。</li>
+<li>文档编号 TI-UM-2026-001，版本 V1.0。再改界面，请另开修订行，不要在本版上改写未发生的功能。</li>
+<li>正式上线前必须改演示口令，并更换会话密钥。不要把本说明书里的口令当成生产口令。</li>
+</ol>
+<p>—— 完 ——</p>
+</div>
+</div>
+</body>
+</html>

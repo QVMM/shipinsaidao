@@ -1,0 +1,51 @@
+:root {
+  --ink: #12261c;
+  --ink-soft: #2c4538;
+  --muted: #5c7266;
+  --forest: #163528;
+  --forest-2: #1d4433;
+  --leaf: #2b6b4c;
+  --sage: #7d9e88;
+  --mist: #e4eee6;
+  --paper: #f6f1e6;
+  --paper-2: #efe6d3;
+  --card: #fffdf8;
+  --line: #d4c9ae;
+  --line-soft: #e6dcc6;
+  --gold: #b8893a;
+  --gold-2: #e8d5a8;
+  --thistle: #8c3d5c;
+  --thistle-2: #f4e4eb;
+  --ok: #1c6b45;
+  --ok-bg: #d7eee2;
+  --warn: #8a5a12;
+  --warn-bg: #f4e6c6;
+  --bad: #9b2c2c;
+  --bad-bg: #f6dcdc;
+  --rail: 248px;
+  --top: 60px;
+  --btn-h: 38px;
+  --shadow: 0 1px 0 rgba(255,253,248,.82) inset, 0 10px 28px rgba(18, 38, 28, 0.07);
+  --shadow-lift: 0 1px 0 rgba(255,253,248,.9) inset, 0 16px 40px rgba(18, 38, 28, 0.12);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-press: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-page: 280ms;
+  --dur-leave: 120ms;
+  --dur-hover: 180ms;
+  --dur-press: 100ms;
+  --font-ui: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", "PMingLiU", serif;
+  --font-mono: "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); font-family: var(--font-ui); }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+img { max-width: 100%; }
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}

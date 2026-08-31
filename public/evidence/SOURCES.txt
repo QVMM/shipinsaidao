@@ -1,0 +1,14 @@
+# 演示图来源（库存静物，不是双汇现场实拍）
+
+- house.jpg  Unsplash · Yuben Chen · https://unsplash.com/photos/SSDZNh9aLa8
+  https://images.unsplash.com/photo-1668470861900-fd24c1237963
+- flock.jpg  Pexels · photo 2255459
+  https://images.pexels.com/photos/2255459/pexels-photo-2255459.jpeg
+- thistle.jpg  Unsplash · Cirsium / thistle bloom · https://unsplash.com/photos/X20yKXJIZJw
+  https://images.unsplash.com/photo-1748436679899-17715242570d
+- lab.jpg  Pexels · pipette / flask · photo 3735709
+  https://images.pexels.com/photos/3735709/pexels-photo-3735709.jpeg
+- meat.jpg  Unsplash · raw poultry
+  https://images.unsplash.com/photo-1604503468506-a8da13d82791
+- map.png  Esri World Street Map tiles (ArcGIS REST), pin/labels added locally.
+  Coverage: Zhengzhou / Xingyang / Kangdian. Caption on page: 示意图，非现场实拍.

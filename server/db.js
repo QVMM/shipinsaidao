@@ -412,7 +412,8 @@ function migrateDemoCopy(d) {
     WHERE username = 'kuaijian' AND display_name = '快速检测'
   `).run()
   const row = d.prepare('SELECT reviewed, reviewer FROM reviews WHERE batch_id = ?').get(id)
-  if (!row || !row.reviewed) {
+  const batchOk = d.prepare('SELECT 1 FROM batches WHERE batch_id = ?').get(id)
+  if (batchOk && (!row || !row.reviewed)) {
     const r = DEMO_SEED.review || {}
     upsertReview(d, id, r)
   }

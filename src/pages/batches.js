@@ -1,5 +1,6 @@
-import { listBatches, loadBatch, chosenBatchId } from '../store.js'
+import { listBatches, loadBatch, chosenBatchId, createBatch } from '../store.js'
 import { val } from '../bind-fields.js'
+import { canWrite } from '../auth.js'
 
 export const meta = { id: 'batches', title: '选择批次' }
 
@@ -10,6 +11,7 @@ export function render() {
   return `
     <div class="page-head">
       <h2>选择批次</h2>
+      ${canWrite('create') ? '<button type="button" class="btn gold" data-action="new-batch">新建批次</button>' : ''}
     </div>
     <div class="card story-lead">登录完成后先选定批次，再进入产品信息。可点列表或手工输入批次号。</div>
     <div class="card">
@@ -92,6 +94,28 @@ export async function bind(root) {
       e.preventDefault()
       const fd = new FormData(form)
       openBatch(String(fd.get('batchId') || ''))
+    })
+  }
+
+  const createBtn = root.querySelector('[data-action="new-batch"]')
+  if (createBtn && canWrite('create')) {
+    createBtn.addEventListener('click', async () => {
+      if (err) err.hidden = true
+      createBtn.classList.add('is-busy')
+      createBtn.disabled = true
+      try {
+        const data = await createBatch()
+        await loadBatch(data.batchId)
+        location.hash = '#/dashboard'
+      } catch (ex) {
+        if (err) {
+          err.textContent = ex.message || '不能新建批次。'
+          err.hidden = false
+        }
+      } finally {
+        createBtn.classList.remove('is-busy')
+        createBtn.disabled = false
+      }
     })
   }
 }

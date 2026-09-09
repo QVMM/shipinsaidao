@@ -17,6 +17,7 @@ import {
   patchBatch,
   resetBatch,
   saveReview,
+  createBatch,
 } from './db.js'
 import { getPublicCommand } from './command.js'
 import {
@@ -32,6 +33,7 @@ import {
   verifyPassword,
 } from './auth.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
+import { getSeal, demoTamper, demoRestore } from './seal.js'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
@@ -39,6 +41,7 @@ export async function buildApp() {
   ensureSeeded()
 
   const app = Fastify({
+    trustProxy: true,
     logger: {
       serializers: {
         req(req) {
@@ -91,8 +94,22 @@ export async function buildApp() {
     return getPublicCommand()
   })
 
+  app.get('/api/public/seal/:batchId', async (req, reply) => {
+    const batchId = decodeParam(req.params.batchId)
+    const data = getSeal(batchId)
+    if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次的封存。' })
+    return data
+  })
+
   app.get('/api/batches', { preHandler: requireStaff }, async () => {
     return { items: listBatches() }
+  })
+
+  app.post('/api/batches', { preHandler: requireStaff }, async (req, reply) => {
+    if (!canWrite(req.user.role, 'create')) {
+      return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'create') })
+    }
+    return createBatch(req.user)
   })
 
   app.get('/api/batches/:batchId', { preHandler: requireStaff }, async (req, reply) => {
@@ -152,6 +169,26 @@ export async function buildApp() {
   app.get('/api/audit', { preHandler: requireStaff }, async (req) => {
     const batchId = typeof req.query.batchId === 'string' ? req.query.batchId : ''
     return { items: listAudit(batchId || undefined) }
+  })
+
+  app.post('/api/batches/:batchId/seal/tamper', { preHandler: requireStaff }, async (req, reply) => {
+    if (!canWrite(req.user.role, 'trace')) {
+      return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'trace') })
+    }
+    const batchId = decodeParam(req.params.batchId)
+    const data = demoTamper(batchId, req.user)
+    if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
+    return { ok: data.ok, seal: data.seal, batch: getBatch(batchId) }
+  })
+
+  app.post('/api/batches/:batchId/seal/restore', { preHandler: requireStaff }, async (req, reply) => {
+    if (!canWrite(req.user.role, 'trace')) {
+      return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'trace') })
+    }
+    const batchId = decodeParam(req.params.batchId)
+    const data = demoRestore(batchId, req.user)
+    if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
+    return { ok: data.ok, seal: data.seal, batch: getBatch(batchId) }
   })
 
   app.get('/api/health', async () => ({ ok: true, defaultBatchId: DEFAULT_BATCH_ID }))

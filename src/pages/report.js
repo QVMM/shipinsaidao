@@ -1,5 +1,5 @@
 import { getVerdict } from '../store.js'
-import { residueClear, lowInflammation, humanHeadline, humanWhy } from '../lib/verdict.js'
+import { residueClear, lowInflammation, humanHeadline, humanWhy, hplcOf } from '../lib/verdict.js'
 import { val } from '../bind-fields.js'
 import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { ensureReport } from '../lib/actions.js'
@@ -25,6 +25,7 @@ export function render(state) {
   const f = state.farm
   const s = state.screen
   const e = state.eval
+  const hplc = hplcOf(state)
   const residueLine = residueClear(state) ? '未检出 / 低于方法检出限' : '见定量结果'
   const inflamLine = lowInflammation(state)
     ? '血清促炎因子低于常规有抗对照，肠道菌群多样性优于对照。'
@@ -42,7 +43,7 @@ export function render(state) {
     `)}
     <div class="report-wrap">
       <article class="report-sheet">
-        <div class="report-seal ${v.pass ? '' : 'hold'}"><span>${v.pass ? '检验检测<br>专用章' : '待复核'}</span></div>
+        <div class="report-seal ${v.stamp === '检验检测专用章' ? '' : 'hold'}"><span>${v.stamp === '检验检测专用章' ? '检验检测<br>专用章' : v.stamp}</span></div>
         <header class="report-head">
           <div>
             <div class="report-org">「替抗蓟化」食品安全创新团队</div>
@@ -77,9 +78,9 @@ export function render(state) {
         <div class="report-block">
           <h3>三、HPLC定量氟苯尼考残留</h3>
           <table class="report-table">
-            <tr><th>仪器</th><td>${val(e.instrument)}</td><th>标准曲线</th><td>R² = ${val(e.curveR)}（要求 ≥0.998）</td></tr>
-            <tr><th>检出限</th><td>${val(e.lod)} μg/kg</td><th>定量结果</th><td>${val(e.valueText)}${e.valueNum !== '' ? `（${e.valueNum} ${e.unit}）` : ''}</td></tr>
-            <tr><th>操作</th><td colspan="3">${val(e.operator)} ${val(e.testDate)}</td></tr>
+            <tr><th>仪器</th><td>${val(hplc.instrument)}</td><th>标准曲线</th><td>R² = ${val(hplc.curveR)}（要求 ≥0.998）</td></tr>
+            <tr><th>检出限</th><td>${val(hplc.lod)} μg/kg</td><th>定量结果</th><td>${val(hplc.valueText)}${hplc.valueNum !== '' && hplc.valueNum != null ? `（${hplc.valueNum} ${hplc.unit}）` : ''}</td></tr>
+            <tr><th>操作</th><td colspan="3">${val(hplc.hplcOperator)} ${val(hplc.hplcDate)}</td></tr>
           </table>
         </div>
         <div class="report-block">
@@ -96,7 +97,7 @@ export function render(state) {
           <p class="report-conclusion">
             ${humanWhy(state, v)}
             本批次鸡肉氟苯尼考${residueLine}；${inflamLine}
-            综合判定：<strong>${humanHeadline(v)}</strong>（${v.label}）。
+            综合判定：<strong>${humanHeadline(v, state)}</strong>（${v.label}）。
             ${close}
           </p>
         </div>

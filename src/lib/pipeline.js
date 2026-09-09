@@ -48,7 +48,7 @@ export function hasScreenStarted(batch) {
  */
 export function hasEvalData(batch) {
   const e = batch.eval || {}
-  return filled(e.testDate) || filled(e.IL6) || filled(e.valueText)
+  return filled(e.IL6) || filled(e.IL1b) || filled(e.TNFa) || filled(e.CRP)
 }
 
 /**
@@ -57,6 +57,7 @@ export function hasEvalData(batch) {
  * @returns {boolean}
  */
 export function isAlert(batch) {
+  if (batch.screen?.qualitative === '无效') return true
   if (hasScreenResult(batch) && !residueClear(batch)) return true
   if (hasEvalData(batch) && filled(batch.eval?.IL6) && filled(batch.eval?.IL6Ctrl) && !lowInflammation(batch)) {
     return true
@@ -113,6 +114,7 @@ export function stageLabel(stage) {
  */
 export function resultOf(batch, stage) {
   if (stage === 'alert') {
+    if (batch.screen?.qualitative === '无效') return '筛查无效'
     if (hasScreenResult(batch) && !residueClear(batch)) return '氟苯尼考阳性'
     return '炎症偏高'
   }

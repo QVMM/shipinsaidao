@@ -3,10 +3,21 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 import bcrypt from 'bcryptjs'
-import { DEMO_SEED, makeReportNo, makeVerifyId } from '../src/data.js'
+import { DEMO_SEED, makeReportNo, makeVerifyId, blankBatchFromSpotlight } from '../src/data.js'
+import { makeDemoHouseEnv, shanghaiYmd, resolveHouseEnv, looksLikeOldHouseEnv } from '../src/lib/house-env.js'
 import { FLEET_SEEDS, SEED_BATCH_IDS } from '../src/data-fleet.js'
 import { buildStageView } from '../src/lib/stage-view.js'
 import { ACCOUNTS, DEFAULT_PASSWORD } from './roles.js'
+import {
+  appendSeal,
+  rebuildSeal,
+  ensureSeals,
+  snapshotOf,
+  canonicalJson,
+  getSeal,
+  compactSeal,
+  kindForPost,
+} from './seal.js'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
@@ -136,11 +147,40 @@ function migrate(d) {
       reviewer TEXT,
       reviewed_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS seal_events (
+      id INTEGER PRIMARY KEY,
+      batch_id TEXT NOT NULL,
+      at TEXT NOT NULL,
+      post TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      prev_hash TEXT NOT NULL,
+      event_hash TEXT NOT NULL,
+      hmac TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_seal_batch ON seal_events(batch_id, id);
   `)
   ensureColumn(d, 'screen_records', 'extra_json', 'TEXT')
+  ensureColumn(d, 'screen_records', 'instrument', 'TEXT')
+  ensureColumn(d, 'screen_records', 'curve_r', 'REAL')
+  ensureColumn(d, 'screen_records', 'lod', 'REAL')
+  ensureColumn(d, 'screen_records', 'value_text', 'TEXT')
+  ensureColumn(d, 'screen_records', 'value_num', 'TEXT')
+  ensureColumn(d, 'screen_records', 'unit', 'TEXT')
+  ensureColumn(d, 'screen_records', 'hplc_date', 'TEXT')
+  ensureColumn(d, 'screen_records', 'hplc_operator', 'TEXT')
+  ensureColumn(d, 'farm_records', 'house_env_json', 'TEXT')
   migrateDose(d)
   seedSpotlightScreenExtra(d)
   migrateDemoCopy(d)
+  migrateHplcToScreen(d)
+  migrateHouseEnv(d)
+  migrateSmoothHouseEnv(d)
+  migrateSpotlightIssued(d)
+  restoreSpotlightFarm(d)
+  migrateLiveBlankBatch(d)
+  rebuildUnissuedFleetSeals(d)
 }
 
 function ensureColumn(d, table, name, spec) {
@@ -189,6 +229,155 @@ function seedSpotlightScreenExtra(d) {
     id,
   )
 }
+
+
+function migrateHplcToScreen(d) {
+  const rows = d.prepare(`
+    SELECT e.batch_id, e.test_date, e.instrument, e.curve_r, e.lod, e.value_text, e.value_num, e.unit, e.operator,
+           s.instrument AS s_instrument, s.value_text AS s_value
+    FROM eval_records e
+    JOIN screen_records s ON s.batch_id = e.batch_id
+  `).all()
+  const upd = d.prepare(`
+    UPDATE screen_records
+    SET instrument=?, curve_r=?, lod=?, value_text=?, value_num=?, unit=?, hplc_date=?, hplc_operator=?
+    WHERE batch_id=?
+  `)
+  for (const r of rows) {
+    if (r.s_instrument || r.s_value) continue
+    if (!r.instrument && !r.value_text && r.curve_r == null) continue
+    upd.run(
+      r.instrument || '', r.curve_r, r.lod, r.value_text || '', r.value_num || '',
+      r.unit || 'μg/kg', r.test_date || '', r.operator || '', r.batch_id,
+    )
+  }
+}
+
+function migrateHouseEnv(d) {
+  const rows = d.prepare('SELECT batch_id, stock_date, house_env_json FROM farm_records').all()
+  const upd = d.prepare('UPDATE farm_records SET house_env_json = ? WHERE batch_id = ?')
+  for (const r of rows) {
+    if (r.house_env_json) continue
+    const day = String(r.stock_date || '').slice(0, 10) || '2026-08-11'
+    upd.run(JSON.stringify(makeDemoHouseEnv(day, r.batch_id)), r.batch_id)
+  }
+}
+
+function smoothHouseEnvDay(batchId, stockDate, env) {
+  if (batchId === DEMO_SEED.batchId || batchId === '蓟化-2026-0812') return '2026-08-11'
+  const fromAt = String(env?.series?.[0]?.at || '').slice(0, 10)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromAt)) return fromAt
+  const stock = String(stockDate || '').slice(0, 10)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stock)) return stock
+  return '2026-08-11'
+}
+
+function migrateSmoothHouseEnv(d) {
+  const rows = d.prepare('SELECT batch_id, stock_date, house_env_json FROM farm_records').all()
+  const upd = d.prepare('UPDATE farm_records SET house_env_json = ? WHERE batch_id = ?')
+  for (const r of rows) {
+    if (!r.house_env_json) continue
+    try {
+      const env = JSON.parse(r.house_env_json)
+      if (!looksLikeOldHouseEnv(env)) continue
+      const day = smoothHouseEnvDay(r.batch_id, r.stock_date, env)
+      upd.run(JSON.stringify(makeDemoHouseEnv(day, r.batch_id)), r.batch_id)
+    } catch {
+      continue
+    }
+  }
+}
+
+
+function migrateSpotlightIssued(d) {
+  const id = DEMO_SEED.batchId
+  const row = d.prepare('SELECT generated, no FROM reports WHERE batch_id = ?').get(id)
+  if (!row) return
+  const emptyNo = !String(row.no || '').trim()
+  if (row.generated && !emptyNo) return
+  d.prepare(`
+    UPDATE reports SET generated = 1, no = ?, generated_at = ?
+    WHERE batch_id = ?
+  `).run(DEMO_SEED.report.no, DEMO_SEED.report.generatedAt, id)
+  d.prepare(`
+    UPDATE traces SET generated = 1, verify_id = ?, generated_at = ?
+    WHERE batch_id = ?
+  `).run(DEMO_SEED.trace.verifyId, DEMO_SEED.trace.generatedAt, id)
+  rebuildSeal(id)
+}
+
+/**
+ * 焦点批养殖档案被改空后，从 DEMO_SEED.farm 拉回。不碰检测/评价/报告/追溯。
+ * 恢复后补一条养殖岗封存，使 live 与链对得上。不 rebuildSeal。
+ * @param {import('better-sqlite3').Database} d
+ */
+function restoreSpotlightFarm(d) {
+  const id = DEMO_SEED.batchId
+  const exists = d.prepare('SELECT batch_id FROM batches WHERE batch_id = ?').get(id)
+  if (!exists) return
+  const farm = d.prepare('SELECT name, additive, "count" AS count FROM farm_records WHERE batch_id = ?').get(id)
+  if (!farm) return
+  const emptyCount = farm.count == null || Number(farm.count) === 0
+  const emptyAdd = !String(farm.additive || '').trim()
+  const wrongName = farm.name === '郑州职业技术学院'
+  if (!emptyCount && !emptyAdd && !wrongName) return
+  upsertFarm(d, id, DEMO_SEED.farm)
+  appendSeal(id, {
+    post: '养殖',
+    kind: kindForPost(id, '养殖'),
+    summary: '已恢复日粮与存栏',
+  })
+}
+
+/**
+ * 现场新建批 蓟化-2026-0901：进苗/入孵用当天，出栏 +50 天，用药本只留「饲用抗生素 未使用」。
+ * 保留基地名与大蓟日粮。不出证、不出码。
+ * @param {import('better-sqlite3').Database} d
+ */
+function migrateLiveBlankBatch(d) {
+  const id = '蓟化-2026-0901'
+  const row = d.prepare(
+    'SELECT stock_date, hatch_date, planned_slaughter FROM farm_records WHERE batch_id = ?',
+  ).get(id)
+  if (!row) return
+  const stock = String(row.stock_date || '').slice(0, 10)
+  const planned = String(row.planned_slaughter || '').slice(0, 10)
+  const copied = stock === '2026-06-22' || planned === '2026-08-12' || stock === '2026-08-12'
+  if (!copied) return
+  d.prepare(`
+    UPDATE farm_records
+    SET hatch_date = ?, stock_date = ?, planned_slaughter = ?
+    WHERE batch_id = ?
+  `).run('2026-09-01', '2026-09-01', '2026-10-21', id)
+  d.prepare('DELETE FROM med_logs WHERE batch_id = ?').run(id)
+  d.prepare(`
+    INSERT INTO med_logs (batch_id, sort_order, date, item, dose, purpose, result)
+    VALUES (?, 0, ?, '饲用抗生素', '—', '—', '未使用')
+  `).run(id, '2026-09-01')
+}
+
+/**
+ * 未出证体系批若链尾仍是「准予上市」，按新 historyPlan 重铺。不碰焦点 0812，不碰 0901。
+ * @param {import('better-sqlite3').Database} d
+ */
+function rebuildUnissuedFleetSeals(d) {
+  const rows = d.prepare(`
+    SELECT b.batch_id AS batchId
+    FROM batches b
+    LEFT JOIN reports r ON r.batch_id = b.batch_id
+    WHERE (r.generated IS NULL OR r.generated = 0)
+      AND b.batch_id != ?
+      AND b.batch_id != '蓟化-2026-0901'
+  `).all(DEMO_SEED.batchId)
+  for (const r of rows) {
+    const last = d.prepare(
+      'SELECT summary FROM seal_events WHERE batch_id = ? ORDER BY id DESC LIMIT 1',
+    ).get(r.batchId)
+    if (last?.summary !== '准予上市') continue
+    rebuildSeal(r.batchId)
+  }
+}
+
 
 function migrateDemoCopy(d) {
   const id = DEMO_SEED.batchId
@@ -261,6 +450,7 @@ export function seed(opts = {}) {
 export function ensureSeeded() {
   const n = getDb().prepare('SELECT COUNT(*) AS n FROM users').get().n
   if (n === 0) seed()
+  ensureSeals()
 }
 
 export function audit(user, action, entity, entityId, before, after) {
@@ -313,6 +503,43 @@ export function listBatches() {
   `).all()
 }
 
+/**
+ * 蓟化-YYYY-MMDD，上海日历。撞号则 -2、-3…
+ * @returns {string}
+ */
+export function nextBatchId() {
+  const { year, month, day } = shanghaiYmd()
+  const base = `蓟化-${year}-${month}${day}`
+  const d = getDb()
+  const exists = (id) => d.prepare('SELECT 1 AS n FROM batches WHERE batch_id = ?').get(id)
+  if (!exists(base)) return base
+  let n = 2
+  while (exists(`${base}-${n}`)) n += 1
+  return `${base}-${n}`
+}
+
+/**
+ * @param {object} user
+ * @returns {object}
+ */
+export function createBatch(user) {
+  const d = getDb()
+  const batchId = nextBatchId()
+  const seed = blankBatchFromSpotlight(batchId)
+  const at = nowIso()
+  d.transaction(() => {
+    writeFullBatch(batchId, seed, user?.id, { createdAt: at })
+  })()
+  const after = getBatch(batchId)
+  appendSeal(batchId, {
+    post: '系统',
+    kind: 'freeze',
+    summary: '批次建档',
+  }, snapshotOf(after))
+  audit(user, 'create', 'batch', batchId, null, after)
+  return getBatch(batchId)
+}
+
 export function getBatch(batchId) {
   const d = getDb()
   const b = d.prepare('SELECT * FROM batches WHERE batch_id = ?').get(batchId)
@@ -324,7 +551,9 @@ export function getBatch(batchId) {
   const report = d.prepare('SELECT * FROM reports WHERE batch_id = ?').get(batchId)
   const trace = d.prepare('SELECT * FROM traces WHERE batch_id = ?').get(batchId)
   const review = d.prepare('SELECT * FROM reviews WHERE batch_id = ?').get(batchId)
-  return assemble(b, farm, med, screen, ev, report, trace, review)
+  const assembled = assemble(b, farm, med, screen, ev, report, trace, review)
+  assembled.seal = compactSeal(getSeal(batchId))
+  return assembled
 }
 
 export function getPublicTrace(batchId) {
@@ -357,6 +586,17 @@ export function getPublicTrace(batchId) {
       target: full.screen.target,
       mdspeMin: full.screen.mdspeMin,
       goldMin: full.screen.goldMin,
+      instrument: full.screen.instrument,
+      curveR: full.screen.curveR,
+      lod: full.screen.lod,
+      valueText: full.screen.valueText,
+      valueNum: full.screen.valueNum,
+      unit: full.screen.unit,
+      hplcDate: full.screen.hplcDate,
+      hplcOperator: full.screen.hplcOperator,
+      samples: (full.screen.samples || []).map((s) => ({
+        id: s.id, group: s.group, tLine: s.tLine, qualitative: s.qualitative, result: s.result,
+      })),
     },
     eval: {
       valueText: full.eval.valueText,
@@ -374,6 +614,7 @@ export function getPublicTrace(batchId) {
     },
     report: { generated: full.report.generated, no: full.report.no, generatedAt: full.report.generatedAt },
     trace: { generated: full.trace.generated, verifyId: full.trace.verifyId, generatedAt: full.trace.generatedAt },
+    seal: compactSeal(getSeal(batchId)),
   }
 }
 
@@ -403,6 +644,9 @@ export function getPublicStage(batchId) {
       stockDate: farm.stockDate || '',
       plannedSlaughter: farm.plannedSlaughter || '',
       feedAntibiotic: view.feedAntibiotic,
+      houseEnv: resolveHouseEnv(farm.houseEnv, new Date(), {
+        listed: !!(full.report?.generated && full.trace?.generated),
+      }),
       medLog: (farm.medLog || []).slice(-4).map((r) => ({
         date: r.date, item: r.item, dose: r.dose, purpose: r.purpose, result: r.result,
       })),
@@ -413,6 +657,18 @@ export function getPublicStage(batchId) {
       target: screen.target || '',
       lodNote: screen.lodNote || '',
       sampleDate: screen.sampleDate || '',
+      sampleId: screen.sampleId || '',
+      operator: screen.operator || '',
+      qcLine: screen.qcLine || '',
+      samples: Array.isArray(screen.samples) ? screen.samples : [],
+      instrument: screen.instrument || '',
+      curveR: screen.curveR ?? '',
+      lod: screen.lod ?? '',
+      valueText: screen.valueText || '',
+      valueNum: screen.valueNum ?? '',
+      unit: screen.unit || '',
+      hplcDate: screen.hplcDate || '',
+      hplcOperator: screen.hplcOperator || '',
     },
     eval: {
       valueText: ev.valueText || '',
@@ -464,6 +720,7 @@ export function getPublicStage(batchId) {
     active: view.active,
     activeIndex: view.activeIndex,
     pathT: view.pathT,
+    seal: compactSeal(getSeal(batchId)),
   }
 }
 
@@ -504,7 +761,29 @@ export function patchBatch(batchId, patch, user) {
   const id = tx()
   const after = getBatch(id)
   audit(user, 'update', 'batch', id, before, after)
+  if (canonicalJson(snapshotOf(before)) !== canonicalJson(snapshotOf(after))) {
+    const meta = sealMetaForPatch(patch)
+    appendSeal(id, {
+      post: meta.post,
+      kind: kindForPost(id, meta.post),
+      summary: meta.summary,
+    }, snapshotOf(after))
+    refreshSeal(after)
+  }
   return after
+}
+
+function refreshSeal(batch) {
+  if (batch?.batchId) batch.seal = compactSeal(getSeal(batch.batchId))
+  return batch
+}
+
+function sealMetaForPatch(patch) {
+  if (patch?.screen) return { post: '检测', summary: '检测岗改了筛查结果' }
+  if (patch?.eval) return { post: '评价', summary: '评价岗改了炎症数据' }
+  if (patch?.farm) return { post: '养殖', summary: '养殖岗改了投喂记录' }
+  if (patch?.review) return { post: '溯源', summary: '审核岗改了复核记录' }
+  return { post: '系统', summary: '档案有改动' }
 }
 
 export function generateReport(batchId, user, force = false) {
@@ -521,9 +800,22 @@ export function generateReport(batchId, user, force = false) {
       generated=1, no=excluded.no, generated_at=excluded.generated_at, generated_by=excluded.generated_by
   `).run(batchId, no, at, user.id)
   d.prepare('UPDATE batches SET updated_at = ? WHERE batch_id = ?').run(nowIso(), batchId)
+  upsertReview(d, batchId, {
+    sampleAccept: true,
+    dataReview: true,
+    reportIssue: true,
+    reviewed: true,
+    reviewer: user?.displayName || user?.username || '',
+    reviewedAt: at,
+  })
   const after = getBatch(batchId)
   audit(user, force ? 'regenerate_report' : 'generate_report', 'report', batchId, before.report, after.report)
-  return after
+  appendSeal(batchId, {
+    post: '溯源',
+    kind: 'issue_report',
+    summary: `已出检测报告 ${after.report.no || ''}`.trim(),
+  }, snapshotOf(after))
+  return refreshSeal(after)
 }
 
 export function generateTrace(batchId, user, force = false) {
@@ -546,7 +838,12 @@ export function generateTrace(batchId, user, force = false) {
   d.prepare('UPDATE batches SET updated_at = ? WHERE batch_id = ?').run(nowIso(), batchId)
   const after = getBatch(batchId)
   audit(user, force ? 'regenerate_trace' : 'generate_trace', 'trace', batchId, current.trace, after.trace)
-  return after
+  appendSeal(batchId, {
+    post: '溯源',
+    kind: 'issue_code',
+    summary: '已出追溯码',
+  }, snapshotOf(after))
+  return refreshSeal(after)
 }
 
 export function saveReview(batchId, review, user) {
@@ -557,7 +854,12 @@ export function saveReview(batchId, review, user) {
   d.prepare('UPDATE batches SET updated_at = ? WHERE batch_id = ?').run(nowIso(), batchId)
   const after = getBatch(batchId)
   audit(user, 'review', 'review', batchId, before.review, after.review)
-  return after
+  appendSeal(batchId, {
+    post: '溯源',
+    kind: 'review',
+    summary: after.review?.reviewed ? '准予上市' : '审核记录已更新',
+  }, snapshotOf(after))
+  return refreshSeal(after)
 }
 
 export function resetBatch(batchId, user) {
@@ -569,19 +871,15 @@ export function resetBatch(batchId, user) {
 }
 
 function writeSeedBatches(userId, at) {
-  const d = getDb()
   writeFullBatch(DEFAULT_BATCH_ID, DEMO_SEED, userId, { createdAt: at })
   for (const item of FLEET_SEEDS) {
     writeFullBatch(item.batchId, item, userId, { createdAt: item.program?.seedAt || at })
   }
-  const keep = new Set(SEED_BATCH_IDS)
-  const rows = d.prepare('SELECT batch_id FROM batches').all()
-  for (const r of rows) {
-    if (!keep.has(r.batch_id)) deleteBatchCascade(d, r.batch_id)
-  }
+  for (const id of SEED_BATCH_IDS) rebuildSeal(id)
 }
 
-function deleteBatchCascade(d, batchId) {
+export function deleteBatchCascade(d, batchId) {
+  d.prepare('DELETE FROM seal_events WHERE batch_id = ?').run(batchId)
   d.prepare('DELETE FROM med_logs WHERE batch_id = ?').run(batchId)
   d.prepare('DELETE FROM farm_records WHERE batch_id = ?').run(batchId)
   d.prepare('DELETE FROM screen_records WHERE batch_id = ?').run(batchId)
@@ -644,13 +942,19 @@ function evalFromRow(d, batchId) {
   return rowToEval(d.prepare('SELECT * FROM eval_records WHERE batch_id = ?').get(batchId))
 }
 
+function houseEnvJsonOf(farm, batchId) {
+  if (farm?.houseEnv && typeof farm.houseEnv === 'object') return JSON.stringify(farm.houseEnv)
+  const day = String(farm?.stockDate || '').slice(0, 10) || undefined
+  return JSON.stringify(makeDemoHouseEnv(day, batchId))
+}
+
 function upsertFarm(d, batchId, farm) {
   d.prepare(`
     INSERT INTO farm_records (
       batch_id, name, partners, location, house, flock_id, breed, hatch_date, stock_date,
       planned_slaughter, count, density, feed_brand, additive, dose, dose_start_day, feed_note,
-      fcr, fcr_control, mortality, mortality_control
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      fcr, fcr_control, mortality, mortality_control, house_env_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(batch_id) DO UPDATE SET
       name=excluded.name, partners=excluded.partners, location=excluded.location, house=excluded.house,
       flock_id=excluded.flock_id, breed=excluded.breed, hatch_date=excluded.hatch_date,
@@ -658,14 +962,14 @@ function upsertFarm(d, batchId, farm) {
       density=excluded.density, feed_brand=excluded.feed_brand, additive=excluded.additive,
       dose=excluded.dose, dose_start_day=excluded.dose_start_day, feed_note=excluded.feed_note,
       fcr=excluded.fcr, fcr_control=excluded.fcr_control, mortality=excluded.mortality,
-      mortality_control=excluded.mortality_control
+      mortality_control=excluded.mortality_control, house_env_json=excluded.house_env_json
   `).run(
     batchId, farm.name ?? '', farm.partners ?? '', farm.location ?? '', farm.house ?? '',
     farm.flockId ?? '', farm.breed ?? '', farm.hatchDate ?? '', farm.stockDate ?? '',
     farm.plannedSlaughter ?? '', numOrNull(farm.count), farm.density ?? '',
     farm.feedBrand ?? '', farm.additive ?? '', farm.dose ?? '', numOrNull(farm.doseStartDay),
     farm.feedNote ?? '', numOrNull(farm.fcr), numOrNull(farm.fcrControl),
-    numOrNull(farm.mortality), numOrNull(farm.mortalityControl),
+    numOrNull(farm.mortality), numOrNull(farm.mortalityControl), houseEnvJsonOf(farm, batchId),
   )
   if (Array.isArray(farm.medLog)) {
     d.prepare('DELETE FROM med_logs WHERE batch_id = ?').run(batchId)
@@ -690,19 +994,26 @@ function upsertScreen(d, batchId, s) {
   d.prepare(`
     INSERT INTO screen_records (
       batch_id, sample_id, sample_date, sample_part, method, mdspe_min, gold_min,
-      target, qualitative, result, lod_note, operator, qc_line, notes, extra_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      target, qualitative, result, lod_note, operator, qc_line, notes, extra_json,
+      instrument, curve_r, lod, value_text, value_num, unit, hplc_date, hplc_operator
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(batch_id) DO UPDATE SET
       sample_id=excluded.sample_id, sample_date=excluded.sample_date, sample_part=excluded.sample_part,
       method=excluded.method, mdspe_min=excluded.mdspe_min, gold_min=excluded.gold_min,
       target=excluded.target, qualitative=excluded.qualitative, result=excluded.result,
       lod_note=excluded.lod_note, operator=excluded.operator, qc_line=excluded.qc_line,
-      notes=excluded.notes, extra_json=excluded.extra_json
+      notes=excluded.notes, extra_json=excluded.extra_json,
+      instrument=excluded.instrument, curve_r=excluded.curve_r, lod=excluded.lod,
+      value_text=excluded.value_text, value_num=excluded.value_num, unit=excluded.unit,
+      hplc_date=excluded.hplc_date, hplc_operator=excluded.hplc_operator
   `).run(
     batchId, s.sampleId ?? '', s.sampleDate ?? '', s.samplePart ?? '', s.method ?? '',
     numOrNull(s.mdspeMin), numOrNull(s.goldMin), s.target ?? '', s.qualitative ?? '',
     s.result ?? '', s.lodNote ?? '', s.operator ?? '', s.qcLine ?? '', s.notes ?? '',
     extraJsonOf(s),
+    s.instrument ?? '', numOrNull(s.curveR), numOrNull(s.lod),
+    s.valueText ?? '', s.valueNum === '' || s.valueNum == null ? '' : String(s.valueNum),
+    s.unit ?? 'μg/kg', s.hplcDate ?? '', s.hplcOperator ?? '',
   )
 }
 
@@ -783,7 +1094,17 @@ function rowToFarm(row, med) {
       date: r.date ?? '', item: r.item ?? '', dose: r.dose ?? '',
       purpose: r.purpose ?? '', result: r.result ?? '',
     })),
+    houseEnv: parseHouseEnv(row.house_env_json),
   }
+}
+
+function parseHouseEnv(raw) {
+  if (!raw) return makeDemoHouseEnv()
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch { /* fallback */ }
+  return makeDemoHouseEnv()
 }
 
 function parseExtra(raw) {
@@ -818,6 +1139,14 @@ function rowToScreen(row) {
     notes: row.notes ?? '',
     samples: extra.samples,
     extra: extra.extra,
+    instrument: row.instrument ?? '',
+    curveR: numOrEmpty(row.curve_r),
+    lod: numOrEmpty(row.lod),
+    valueText: row.value_text ?? '',
+    valueNum: row.value_num === '' || row.value_num == null ? '' : coerceMaybeNumber(row.value_num),
+    unit: row.unit ?? 'μg/kg',
+    hplcDate: row.hplc_date ?? '',
+    hplcOperator: row.hplc_operator ?? '',
   }
 }
 

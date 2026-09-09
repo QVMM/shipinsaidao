@@ -2,6 +2,7 @@
  * 公开指挥舱：体系 KPI + 漏斗 + 队列 + 焦点档案。不需登录。
  */
 import { DEFAULT_BATCH_ID, getBatch, getPublicStage, listBatches, nowIso } from './db.js'
+import { compactSeal, getSeal } from './seal.js'
 import {
   ALERT_META,
   PIPELINE,
@@ -15,6 +16,7 @@ import {
   stationOf,
 } from '../src/lib/pipeline.js'
 import { residueClear } from '../src/lib/verdict.js'
+import { resolveHouseEnv, shanghaiYmd } from '../src/lib/house-env.js'
 
 function birdsOf(batch) {
   const n = asNum(batch.farm?.count)
@@ -47,11 +49,12 @@ function eventsOf(batch, stage) {
       out.push({ at: eventAt(batch.screen.sampleDate), line: `${id} 进入安全检测` })
     }
   }
-  if (batch.eval?.testDate) {
+  const evalAt = batch.eval?.testDate || batch.screen?.hplcDate
+  if (evalAt) {
     if (stage === 'alert' && residueClear(batch)) {
-      out.push({ at: eventAt(batch.eval.testDate, '15:00'), line: `${id} 炎症预警` })
+      out.push({ at: eventAt(evalAt, '15:00'), line: `${id} 炎症预警` })
     } else {
-      out.push({ at: eventAt(batch.eval.testDate, '15:00'), line: `${id} 炎症评价完成` })
+      out.push({ at: eventAt(evalAt, '15:00'), line: `${id} 炎症评价完成` })
     }
   }
   if (batch.report?.generated) {
@@ -73,38 +76,53 @@ function eventsOf(batch, stage) {
   return out.filter((e) => e.at && e.line)
 }
 
-function trendFrom(rows) {
-  const days = [
-    '2026-08-06',
-    '2026-08-08',
-    '2026-08-10',
-    '2026-08-12',
-    '2026-08-16',
-    '2026-08-18',
-    '2026-08-20',
+function dayOf(batch) {
+  const candidates = [
+    batch.screen?.sampleDate,
+    batch.screen?.hplcDate,
+    batch.eval?.testDate,
+    batch.updatedAt,
+    batch.report?.generatedAt,
+    batch.trace?.generatedAt,
   ]
+  for (const c of candidates) {
+    const d = String(c || '').slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+  }
+  return ''
+}
+
+function shiftIso(iso, delta) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + delta)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`
+}
+
+function trendFrom(rows) {
+  const today = shanghaiYmd().iso
+  const dates = new Set([today])
+  for (const row of rows) {
+    const d = dayOf(row.batch)
+    if (d) dates.add(d)
+  }
+  let days = [...dates].sort()
+  while (days.length < 7) days.unshift(shiftIso(days[0] || today, -1))
+  days = days.slice(-7)
   const map = new Map(days.map((d) => [d, { date: d.slice(5), screens: 0, clears: 0, alerts: 0 }]))
   for (const row of rows) {
-    const raw = String(row.batch.screen?.sampleDate || '').slice(0, 10)
+    const raw = dayOf(row.batch)
     const bucket = map.get(raw)
     if (!bucket) continue
-    if (!row.batch.screen?.sampleDate) continue
-    bucket.screens += 1
+    if (hasScreenResult(row.batch) || row.batch.screen?.sampleDate) bucket.screens += 1
     if (hasScreenResult(row.batch) && residueClear(row.batch)) bucket.clears += 1
     if (row.stage === 'alert') bucket.alerts += 1
-  }
-  // 0812 安全检测在 08-11，并进 08-12 种子节点，避免近 7 点缺焦点。
-  const spot = rows.find((r) => r.batch.batchId === SPOTLIGHT_ID)
-  const spotDay = String(spot?.batch.screen?.sampleDate || '').slice(0, 10)
-  if (spotDay === '2026-08-11' && map.has('2026-08-12')) {
-    const b = map.get('2026-08-12')
-    b.screens += 1
-    if (hasScreenResult(spot.batch) && residueClear(spot.batch)) b.clears += 1
   }
   return {
     demo: false,
     label: '近七日筛查',
-    note: '近 7 个种子节点，与入库批次一致',
+    note: '按入库批次日期滚动',
     days: days.map((d) => map.get(d)),
   }
 }
@@ -169,7 +187,7 @@ export function getPublicCommand() {
     inFarm: by.farming?.count || 0,
     inLab: inLabRows.length,
     inLabBirds,
-    certified: by.tracing?.count || 0,
+    certified: (by.reporting?.count || 0) + (by.tracing?.count || 0),
     onMarket: by.market?.count || 0,
     alerts: by.alert?.count || 0,
     alertNote,
@@ -227,6 +245,7 @@ export function getPublicCommand() {
     if (!Number.isFinite(compare[key].spotlight)) compare[key].spotlight = null
   }
 
+  const spotlightSeal = spotlightId ? compactSeal(getSeal(spotlightId)) : null
   return {
     generatedAt: nowIso(),
     spotlightId,
@@ -235,13 +254,41 @@ export function getPublicCommand() {
     batches,
     events,
     spotlight: spotlightId ? getPublicStage(spotlightId) : null,
+    seal: spotlightSeal,
     compare,
     detect: {
       rate: detectRate,
       screened: screened.length,
       cleared: cleared.length,
       positive: screened.length - cleared.length,
+      ...detectOf(spotlightFull),
     },
+    listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated),
+    houseEnv: resolveHouseEnv(spotlightFull?.farm?.houseEnv, new Date(), {
+      listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated),
+    }),
     trend: trendFrom(rows),
   }
 }
+
+/**
+ * @param {object} [batch]
+ */
+function detectOf(batch) {
+  const s = batch?.screen || {}
+  const samples = Array.isArray(s.samples) ? s.samples : []
+  const thistle = [...samples].reverse().find((row) => /大蓟/.test(row.group || '') || /^DJ-/i.test(row.id || ''))
+  return {
+    sampleId: thistle?.id || s.sampleId || '',
+    qualitative: thistle?.qualitative || s.qualitative || '',
+    result: thistle?.result || s.result || '',
+    operator: s.operator || '',
+    group: thistle?.group || '大蓟组',
+    qcLine: s.qcLine || '',
+    reportGenerated: !!batch?.report?.generated,
+    traceGenerated: !!batch?.trace?.generated,
+    evalDone: batch?.eval?.IL6 !== '' && batch?.eval?.IL6 != null,
+    showFix: batch?.batchId === SPOTLIGHT_ID,
+  }
+}
+

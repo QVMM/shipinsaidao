@@ -12,6 +12,7 @@ let queued = false
 let staffReady = false
 let mode = ''
 let lastRouteId = ''
+let lastStaffPage = null
 
 function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -46,7 +47,13 @@ async function swapPage(html, animate) {
   }
 }
 
+function releaseStaffPage() {
+  lastStaffPage?.unbind?.()
+  lastStaffPage = null
+}
+
 function onLogout() {
+  releaseStaffPage()
   staffReady = false
   mode = ''
   lastRouteId = ''
@@ -56,6 +63,8 @@ function onLogout() {
 }
 
 async function paintStaff(route, animate) {
+  lastStaffPage?.unbind?.()
+  lastStaffPage = route.page
   const state = getState()
   const inner = route.page.render(state, { publicView: false })
   if (mode !== 'staff') {
@@ -99,6 +108,7 @@ async function draw() {
       }
 
       if (isStage) {
+        releaseStaffPage()
         if (mode !== 'stage') {
           root.innerHTML = stage.render()
           await stage.bind(root, route)
@@ -111,6 +121,7 @@ async function draw() {
       }
 
       if (!user && !publicRoute) {
+        releaseStaffPage()
         staffReady = false
         if (mode !== 'login') {
           root.innerHTML = loginPage.render()
@@ -125,6 +136,7 @@ async function draw() {
       }
 
       if (!user && publicRoute) {
+        releaseStaffPage()
         const batchId = route.batchFromUrl || getState().batchId
         try {
           await loadPublic(batchId)

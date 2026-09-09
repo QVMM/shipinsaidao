@@ -6,16 +6,17 @@ import {
   fedThistle,
   humanHeadline,
   humanWhy,
+  inflamStatus,
   lowInflammation,
   noFeedAntibiotic,
   residueClear,
 } from './verdict.js'
 
 export const STAGE_SCENES = [
-  { id: 'feed', label: '饲料+大蓟' },
+  { id: 'feed', label: '加了大蓟' },
   { id: 'farm', label: '养殖' },
   { id: 'screen', label: '安全检测' },
-  { id: 'eval', label: 'HPLC/健康评价' },
+  { id: 'eval', label: '健康评价' },
   { id: 'report', label: '检测报告' },
   { id: 'trace', label: '追溯码' },
   { id: 'market', label: '上市' },
@@ -41,22 +42,28 @@ export function screenSceneDone(state) {
 export function nodeMetric(id, data) {
   const farm = data.farm || {}
   const screen = data.screen || {}
-  const ev = data.eval || {}
+  const dose = String(farm.dose || farm.additive || '')
   switch (id) {
     case 'feed':
-      return farm.dose || '—'
+      if (/0\.5%|5000/.test(dose)) return '0.5% 大蓟'
+      if (/1%|10000/.test(dose) && !/0\.5%/.test(dose)) return '1% 大蓟'
+      return dose || '—'
     case 'farm':
       return farm.count !== '' && farm.count != null ? `${farm.count} 羽` : '—'
     case 'screen':
-      return screen.result || screen.qualitative || '—'
-    case 'eval':
-      return ev.curveR !== '' && ev.curveR != null ? `R²=${ev.curveR}` : '—'
+      return screenSceneDone(data) ? '未检出' : (screen.qualitative || screen.result || '检测中')
+    case 'eval': {
+      const st = inflamStatus(data)
+      if (st === 'clear') return '炎症低于对照'
+      if (st === 'pending') return '待评价'
+      return '评价中'
+    }
     case 'report':
-      return data.report?.no || '未出证'
+      return data.report?.generated ? (data.report.no || '已出证') : '未出证'
     case 'trace':
-      return data.trace?.verifyId || '未出码'
+      return data.trace?.generated ? '可扫码' : '未出码'
     case 'market':
-      return data.report?.generated && data.trace?.generated ? '已放行' : '待放行'
+      return data.report?.generated && data.trace?.generated ? '准予上市' : '待放行'
     default:
       return '—'
   }
@@ -79,7 +86,7 @@ export function buildTicker(data, verdict) {
     data.farm?.name || '',
     data.farm?.count != null && data.farm?.count !== '' ? `${data.farm.count}羽` : '',
     `氟苯尼考 ${data.screen?.result || '—'}`,
-    `判定 ${humanHeadline(verdict)}`,
+    `判定 ${humanHeadline(verdict, data)}`,
   ]
   return bits.filter(Boolean).join('   ·   ')
 }
@@ -116,7 +123,7 @@ export function buildRings(data, verdict) {
     ? clampScore(70
       + (data.screen?.qualitative === '阴性' ? 10 : 0)
       + (String(data.screen?.result || '').includes('未检出') ? 8 : 0)
-      + (String(data.eval?.valueText || '').includes('未检出') ? 8 : 0))
+      + (String(data.screen?.valueText || data.eval?.valueText || '').includes('未检出') ? 8 : 0))
     : 34
   const inflamParts = [
     [ev.IL1b, ev.IL1bCtrl],
@@ -177,7 +184,7 @@ export function buildStageView(data) {
     ...data,
     verdict: {
       pass: verdict.pass,
-      headline: humanHeadline(verdict),
+      headline: humanHeadline(verdict, data),
       why: humanWhy(data, verdict),
       stamp: verdict.stamp,
     },

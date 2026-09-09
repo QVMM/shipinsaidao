@@ -2,6 +2,7 @@ import { STEPS, getPageMeta } from '../lib/journey.js'
 import { ensureReport, ensureTrace, jumpReport } from '../lib/actions.js'
 import { iconChevron } from '../icons.js'
 import { armButton } from '../lib/busy.js'
+import { canWrite } from '../auth.js'
 
 /**
  * 始终可见的故事步进：你在哪、下一步是哪。
@@ -37,13 +38,27 @@ export function renderBrief(_metaKey) {
  * @param {string} [extra]
  * @returns {string}
  */
+const REPORT_ACTIONS = new Set(['jump-report', 'gen-report', 'next-report'])
+
+function gateReportLink(link) {
+  if (!link) return link
+  if (!link.action || !REPORT_ACTIONS.has(link.action)) return link
+  if (canWrite('report')) return link
+  if (link.href) {
+    return { href: link.href, label: String(link.label || '').replace('生成检测报告', '查看检测报告') }
+  }
+  return null
+}
+
 export function renderNextBar(metaKey, extra = '') {
   const meta = getPageMeta(metaKey)
-  const n = meta.next
-  const s = meta.secondary
-  const primary = n.action
-    ? `<button type="button" class="btn gold" data-action="${n.action}">${n.label}${iconChevron}</button>`
-    : `<a class="btn gold" href="${n.href}">${n.label}${iconChevron}</a>`
+  const n = gateReportLink(meta.next)
+  const s = gateReportLink(meta.secondary)
+  const primary = n
+    ? (n.action
+      ? `<button type="button" class="btn gold" data-action="${n.action}">${n.label}${iconChevron}</button>`
+      : `<a class="btn gold" href="${n.href}">${n.label}${iconChevron}</a>`)
+    : ''
   const secondary = s
     ? (s.action
       ? `<button type="button" class="text-link" data-action="${s.action}">${s.label}</button>`

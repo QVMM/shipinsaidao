@@ -7,7 +7,6 @@ import * as qr from './qr.js'
 import * as consumer from './consumer.js'
 import * as stage from './stage.js'
 import * as batches from './batches.js'
-import * as audit from './audit.js'
 
 /** 旧地址继续能跳：#/dashboard #/trace/批次 以及 batch/home/overview。 */
 export const pages = {
@@ -22,7 +21,6 @@ export const pages = {
   stage,
   wall: stage,
   batches,
-  audit,
   batch: dashboard,
   overview: dashboard,
   home: dashboard,
@@ -43,7 +41,6 @@ const ROLE_BY_PAGE = {
   report: 'trace',
   qr: 'trace',
   consumer: 'trace',
-  audit: 'trace',
 }
 
 /**

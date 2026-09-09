@@ -1,12 +1,12 @@
-/** 人机料法环测：安全检测页与指挥舱共用。 */
+/** 检测岗条件：指挥舱用短名，安全检测页用完整句。 */
 
 export const LAB_STATUS = [
-  { key: 'person', label: '人员考核合格', short: '人', ok: true },
-  { key: 'machine', label: '设备在线', short: '机', ok: true, pulse: true },
-  { key: 'material', label: '试剂有库', short: '料', ok: true },
-  { key: 'method', label: '方法 MDSPE+胶体金', short: '法', ok: true },
-  { key: 'env', label: '环境在控', short: '环', ok: true },
-  { key: 'qc', label: '质控线正常', short: '测', ok: true, pulse: true },
+  { key: 'person', label: '检测员已考核', short: '检测员', ok: true },
+  { key: 'machine', label: '仪器在线', short: '仪器', ok: true, pulse: true },
+  { key: 'material', label: '试剂齐备', short: '试剂', ok: true },
+  { key: 'method', label: '方法 MDSPE+胶体金', short: '方法', ok: true },
+  { key: 'env', label: '环境达标', short: '环境', ok: true },
+  { key: 'qc', label: '读数有效，T深于C', short: '读数', ok: true, pulse: true },
 ]
 
 /**
@@ -34,18 +34,31 @@ export const LAB_PROCESS = {
   },
   trigger: {
     title: '触发检测',
-    body: '出栏前抽检 · MDSPE 前处理 40 分钟 + 胶体金 5 分钟。',
+    body: '出栏前抽检。',
   },
   fix: {
     title: '失误整改',
-    body: '质控线未显色 → 已整改',
+    body: '质控线未显色，已换试纸',
     status: '已整改',
   },
   now: {
     post: '安全检测',
     sample: 'DJ-0812-02',
     sampleState: '读数中',
+    group: '大蓟组',
   },
+  assay: [
+    { id: 'draw', label: '抽检', hint: '出栏前抽样', state: 'done' },
+    { id: 'prep', label: '前处理', hint: '把肉样处理好', state: 'done' },
+    { id: 'read', label: '读卡', hint: '仪器正在读这张卡', state: 'on' },
+    { id: 'call', label: '判定', hint: '出未检出或阳性', state: 'wait' },
+  ],
+  handoff: [
+    { post: '养殖', line: '鸡已送来', state: 'done' },
+    { post: '检测', line: '正在读卡', state: 'on' },
+    { post: '评价', line: '炎症已出', state: 'done' },
+    { post: '溯源', line: '可扫码', state: 'done' },
+  ],
   log: [
     { at: '08:40', post: '养殖岗', line: '提交出栏计划 8000 羽' },
     { at: '09:05', post: '检测岗', line: '质控线未显色，已更换试纸' },
@@ -55,21 +68,127 @@ export const LAB_PROCESS = {
   ],
 }
 
+function condIcon(key) {
+  const a = 'class="lab-ci" viewBox="0 0 24 24" fill="none" aria-hidden="true"'
+  if (key === 'person') {
+    return `<svg ${a}><circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M6 19c.8-3.2 2.8-5 6-5s5.2 1.8 6 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+  }
+  if (key === 'machine') {
+    return `<svg ${a}><rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+  }
+  if (key === 'material') {
+    return `<svg ${a}><path d="M9 4h6M10 4v3l-3.5 9.5A2.4 2.4 0 0 0 8.8 20h6.4a2.4 2.4 0 0 0 2.3-3.5L14 7V4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`
+  }
+  if (key === 'method') {
+    return `<svg ${a}><path d="M7 4h8l3 3v13H7V4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 4v3h3M9 12h6M9 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+  }
+  if (key === 'env') {
+    return `<svg ${a}><path d="M10 13.5V7.2a2 2 0 1 1 4 0v6.3a3.2 3.2 0 1 1-4 0z" stroke="currentColor" stroke-width="1.6"/><path d="M12 8.5v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+  }
+  return `<svg ${a}><path d="M5 16l3.2-3.2 2.4 2.2L15 9l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+}
+
 /**
- * 指挥舱检测过程：一条 LIVE 状态条，五件事压成芯片。
+ * 从焦点批次推导检测舱。样本号 / 定性随档案走。
+ * @param {object} [live]
+ * @returns {{ sample: string, group: string, sampleState: string, callLabel: string, callValue: string, callNote: string, assay: object[], handoff: object[], reading: boolean }}
+ */
+export function labDockFromLive(live = {}) {
+  const sample = String(live.sampleId || '').trim() || '待抽检'
+  const qualitative = String(live.qualitative || '').trim()
+  const result = String(live.result || '').trim()
+  const called = qualitative === '阴性' || qualitative === '阳性' || qualitative === '无效' || !!result
+  const reading = !called && sample !== '待抽检'
+  const assay = [
+    { id: 'draw', label: '抽检', hint: '出栏前抽样', state: sample !== '待抽检' || called ? 'done' : 'wait' },
+    { id: 'prep', label: '前处理', hint: '把肉样处理好', state: called || reading ? 'done' : 'wait' },
+    { id: 'read', label: '读卡', hint: '仪器正在读这张卡', state: called ? 'done' : (reading ? 'on' : 'wait') },
+    { id: 'call', label: '判定', hint: '出未检出或阳性', state: called ? 'done' : 'wait' },
+  ]
+  const evalDone = !!live.evalDone
+  const report = !!live.reportGenerated
+  const trace = !!live.traceGenerated
+  const handoff = [
+    { post: '养殖', line: '鸡已送来', state: 'done' },
+    { post: '检测', line: called ? (result || qualitative) : (reading ? '正在读卡' : '待检'), state: called ? 'done' : (reading ? 'on' : 'wait') },
+    { post: '评价', line: evalDone ? '炎症已出' : '待评价', state: evalDone ? 'done' : 'wait' },
+    { post: '溯源', line: trace ? '可扫码' : (report ? '已出证' : '待出证'), state: trace || report ? 'done' : 'wait' },
+  ]
+  let callValue = '待读'
+  let callNote = ''
+  if (qualitative === '阴性' || String(result).includes('未检出')) {
+    callValue = qualitative || '阴性'
+    callNote = result || '未检出'
+  } else if (qualitative === '阳性' || qualitative === '无效' || result) {
+    callValue = qualitative || '阳性'
+    callNote = result
+  } else if (reading) {
+    callValue = '读数中'
+    callNote = live.qcLine ? String(live.qcLine).slice(0, 12) : 'T深于C'
+  }
+  return {
+    sample,
+    group: live.group || '大蓟组',
+    sampleState: called ? (result || qualitative) : (reading ? '读数中' : '待抽检'),
+    callLabel: called ? '判定' : '读数',
+    callValue,
+    callNote,
+    assay,
+    handoff,
+    reading,
+    headline: called ? '本张卡已判定' : (reading ? '正在读这张卡' : '等待抽检'),
+  }
+}
+
+/**
+ * 指挥舱检测过程：样本舱 + 四步过检 + 岗上条件 + 三岗交接。
+ * @param {object} [live]
  * @returns {string}
  */
-export function renderLabDock() {
-  const last = LAB_PROCESS.log[LAB_PROCESS.log.length - 1]
-  const now = LAB_PROCESS.now
+export function renderLabDock(live = {}) {
+  const now = labDockFromLive(live)
+  const assay = now.assay.map((s) => `
+    <li class="lab-step is-${s.state}" title="${s.hint || ''}">
+      <i></i>
+      <span>${s.label}</span>
+    </li>
+  `).join('')
+  const conds = LAB_STATUS.map((s) => `
+    <li class="${s.ok ? 'ok' : 'bad'}${s.pulse ? ' is-pulse' : ''}" title="${s.label}">
+      ${condIcon(s.key)}
+      <span>${s.short}</span>
+    </li>
+  `).join('')
+  const hand = now.handoff.map((h) => `
+    <li class="is-${h.state}">
+      <b>${h.post}</b>
+      <span>${h.line}</span>
+    </li>
+  `).join('')
+  const fix = live.showFix ? LAB_PROCESS.fix.body : LAB_PROCESS.risk.title
   return `
     <div class="lab-dock" data-lab-dock>
-      <span class="lab-now-tag">NOW</span>
-      <span class="lab-chip" data-lab-post title="${LAB_PROCESS.trigger.body}">当前岗 ${now.post}</span>
-      <span class="lab-chip is-live" data-lab-sample>当前样 ${now.sample} ${now.sampleState}</span>
-      ${renderLabStatus('lab-5m-dock')}
-      <span class="lab-chip lab-fix" title="${LAB_PROCESS.risk.body}">失误 ${LAB_PROCESS.fix.body}</span>
-      <span class="lab-chip lab-log-one"><time>${last.at}</time> ${last.post} ${last.line}</span>
+      <div class="lab-bay">
+        <div class="lab-specimen">
+          <span class="lab-well" aria-hidden="true"><i></i></span>
+          <div class="lab-spec-copy">
+            <em>${now.headline}</em>
+            <b class="dig">${now.sample}</b>
+            <span>${now.group} · ${now.sampleState}</span>
+          </div>
+        </div>
+        <ol class="lab-assay">${assay}</ol>
+        <div class="lab-call">
+          <em>${now.callLabel}</em>
+          <b>${now.callValue}</b>
+          <span>${now.callNote}</span>
+        </div>
+      </div>
+      <div class="lab-bay-2">
+        <ul class="lab-conds">${conds}</ul>
+        <ol class="lab-handoff">${hand}</ol>
+        <span class="lab-fix-pill" title="${LAB_PROCESS.risk.body}">${fix}</span>
+      </div>
     </div>
   `
 }

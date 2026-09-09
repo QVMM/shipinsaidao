@@ -1,5 +1,9 @@
 @page { size: A4; margin: 12mm; }
 @media print {
+  html, body, #app, .app-shell, .main, .public-shell, .login-page {
+    overflow: visible !important;
+    height: auto !important;
+  }
   body { background: #fff !important; }
   .rail, .topbar, .stepper-wrap, .page-head, .page-brief, .next-bar,
   .page-actions, .phone-hint, .no-print, .progress-bar, .flash { display: none !important; }

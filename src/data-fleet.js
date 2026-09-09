@@ -3,6 +3,7 @@
  * 批次号只许 蓟化-YYYY-MMDD。药材只写大蓟。
  */
 import { DEMO_SEED } from './data.js'
+import { makeDemoHouseEnv } from './lib/house-env.js'
 
 const EMPTY_SCREEN = {
   sampleId: '',
@@ -18,17 +19,17 @@ const EMPTY_SCREEN = {
   operator: '',
   qcLine: '',
   notes: '',
-}
-
-const EMPTY_EVAL = {
-  testDate: '',
   instrument: '',
   curveR: '',
   lod: '',
   valueText: '',
   valueNum: '',
   unit: 'μg/kg',
-  operator: '',
+  hplcDate: '',
+  hplcOperator: '',
+}
+
+const EMPTY_EVAL = {
   IL1b: '',
   IL1bCtrl: '',
   IL6: '',
@@ -97,6 +98,14 @@ function clearScreen(sampleDate, sampleId) {
     operator: '2 号 安全检测工程师',
     qcLine: '质控线显色正常，检测线深于质控线（T深于C）',
     notes: 'MDSPE 甲醇-水交替活化磁珠，提取液澄清，基质干扰低。',
+    instrument: 'HPLC',
+    curveR: 0.999,
+    lod: 50,
+    valueText: '未检出（<50）',
+    valueNum: '',
+    unit: 'μg/kg',
+    hplcDate: String(sampleDate || '').slice(0, 10) + ' 14:40',
+    hplcOperator: '3 号 分析测试工程师',
   }
 }
 
@@ -106,14 +115,6 @@ function clearScreen(sampleDate, sampleId) {
  */
 function goodEval(testDate, tweak = {}) {
   return {
-    testDate,
-    instrument: 'HPLC',
-    curveR: 0.999,
-    lod: 50,
-    valueText: '未检出（<50）',
-    valueNum: '',
-    unit: 'μg/kg',
-    operator: '3 号 分析测试工程师',
     IL1b: 19.2,
     IL1bCtrl: 46.2,
     IL6: 24,
@@ -172,6 +173,7 @@ function batch(spec) {
     mortality: '',
     mortalityControl: 4.4,
     medLog: medLog(stock),
+    houseEnv: makeDemoHouseEnv(stock, id),
     ...(spec.farm || {}),
   }
   if (!Array.isArray(farm.medLog)) farm.medLog = medLog(stock)
@@ -360,8 +362,6 @@ export const FLEET_SEEDS = [
     },
     screen: clearScreen('2026-08-10 09:05', 'QC-0810-03'),
     eval: goodEval('2026-08-10 15:30', {
-      curveR: 0.9984,
-      valueText: '未检出（<50）',
       IL1b: 38.6,
       IL1bCtrl: 46.2,
       IL6: 49.2,

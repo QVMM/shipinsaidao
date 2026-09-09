@@ -8,7 +8,6 @@ export const NAV = [
   { href: '#/report', id: 'report', label: '检测报告' },
   { href: '#/qr', id: 'qr', label: '追溯码' },
   { href: '#/consumer', id: 'consumer', label: '客户端显示' },
-  { href: '#/audit', id: 'audit', label: '质量审核' },
 ]
 
 /** 顶栏故事步进：产品路径，避免和侧栏抢注意力。 */
@@ -45,17 +44,17 @@ export const PAGE_META = {
   screen: {
     title: '安全检测',
     brief: {
-      what: '出栏前抽检：本批次是否筛出常见兽药。',
+      what: '出栏前抽检：胶体金快筛 + HPLC 定量确认有没有药。',
       why: '未检出可继续。筛到或试纸无效，暂不出证。',
-      next: '查看实验室复核与炎症评价。',
+      next: '查看健康评价（炎症）。',
     },
     next: { href: '#/eval', label: '下一步：查看健康评价' },
   },
   eval: {
     title: '健康评价',
     brief: {
-      what: '实验室定量复核残留，并评价血清炎症因子。',
-      why: '残留未检出且炎症低于对照，方可出证。',
+      what: '血清炎症因子对照。',
+      why: '炎症低于对照才可出证。',
       next: '汇总为检测报告。',
     },
     next: { action: 'next-report', href: '#/report', label: '下一步：生成检测报告' },
@@ -104,15 +103,6 @@ export const PAGE_META = {
       next: '可返回产品信息，或恢复预填数据。',
     },
     next: { href: '#/dashboard', label: '返回产品信息' },
-  },
-  audit: {
-    title: '质量审核',
-    brief: {
-      what: '样品受理、检测数据与报告签发的复核。',
-      why: '溯源岗与管理员可签署复核意见。',
-      next: '查看底部操作日志。',
-    },
-    next: { href: '#/report', label: '查看检测报告' },
   },
   batches: {
     title: '选择批次',

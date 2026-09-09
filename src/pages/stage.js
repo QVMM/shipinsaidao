@@ -4,6 +4,8 @@ import { STAGE_SCENES } from '../lib/stage-view.js'
 import { threeFacts } from '../lib/verdict.js'
 import { get } from '../api.js'
 import { renderLabDock } from '../lib/lab-status.js'
+import { envMetrics } from '../lib/house-env.js'
+import { SEAL_HINT, SEAL_OK, SEAL_TAMPER } from '../lib/seal-copy.js'
 
 export const meta = { id: 'stage', title: '指挥舱' }
 
@@ -21,13 +23,15 @@ const SPLIT = 'rgba(39, 224, 208, 0.08)'
 const KPI_CHIPS = [
   { key: 'inFarm', label: '在养', funnel: 'farming' },
   { key: 'inLab', label: '在检', funnel: ['screening', 'evaluating'] },
-  { key: 'certified', label: '已出证', funnel: 'tracing' },
+  { key: 'certified', label: '已出证', funnel: ['reporting', 'tracing'] },
   { key: 'onMarket', label: '已上市', funnel: 'market' },
   { key: 'alerts', label: '预警', funnel: 'alert', danger: true },
 ]
 
 let pollTimer = 0
 let clockTimer = 0
+let queueTimer = 0
+let queueIndex = 0
 let rootEl = null
 let lastSig = ''
 let echartsMod = null
@@ -93,6 +97,22 @@ function glyph(stage) {
     return `<svg ${common}><path d="M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5z" stroke="currentColor" stroke-width="1.5"/><path d="M14 14h2v2h-2zM18 14h1v1h-1zM14 18h1v1h-1zM17 17h2v2h-2z" fill="currentColor"/></svg>`
   }
   return `<svg ${common}><path d="M4 8h16l-1.2 11H5.2z" stroke="currentColor" stroke-width="1.6"/><path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" stroke-width="1.6"/><path d="M9 13.5 11 16l4-4" stroke="currentColor" stroke-width="1.6"/></svg>`
+}
+
+function pathGlyph(id) {
+  const map = {
+    farm: 'farming',
+    screen: 'screening',
+    eval: 'evaluating',
+    report: 'reporting',
+    trace: 'tracing',
+    market: 'market',
+  }
+  if (id === 'feed') {
+    const common = 'class="st-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"'
+    return `<svg ${common}><path d="M12 21V11" stroke="currentColor" stroke-width="1.6"/><path d="M12 12C8 12 5 8.8 5 5c4 0 7 3.2 7 7z" stroke="currentColor" stroke-width="1.6"/><path d="M12 12c4 0 7-3.2 7-7-4 0-7 3.2-7 7z" stroke="currentColor" stroke-width="1.6"/></svg>`
+  }
+  return glyph(map[id] || 'market')
 }
 
 function commonAxis() {
@@ -262,10 +282,11 @@ export function render() {
       <div class="st-pills" data-pills="${p.stage}"></div>
     </li>`).join('')
 
-  const path = STAGE_SCENES.map((s, i) => `
+  const path = STAGE_SCENES.map((s) => `
     <li class="path-node" data-scene="${s.id}">
-      <b>${String(i + 1).padStart(2, '0')}</b>
+      <i class="path-ico">${pathGlyph(s.id)}</i>
       <span>${s.label}</span>
+      <b class="path-metric dig" data-path-metric>—</b>
       <em data-path-st>待执行</em>
     </li>`).join('')
 
@@ -297,18 +318,40 @@ export function render() {
           <div class="dv-box queue-box">
             ${corners()}
             <div class="dv-hd"><i></i><h2>批次队列</h2><span>FLEET</span></div>
-            <ol class="queue" data-queue></ol>
+            <div class="queue-view">
+              <ol class="queue" data-queue></ol>
+            </div>
+          </div>
+          <div class="dv-box env-strip">
+            ${corners()}
+            <div class="dv-hd"><i></i><h2>鸡舍实况</h2><span>HOUSE</span></div>
+            <ol class="env-nums" data-house-env></ol>
+            <div class="cam-bay" aria-label="鸡舍监控，演示画面">
+              <article class="cam">
+                <div class="cam-view">
+                  <img src="./evidence/house.jpg" alt="鸡舍监控">
+                  <i class="cam-scan" aria-hidden="true"></i>
+                  <span class="cam-rec"><i></i>REC</span>
+                  <span class="cam-id">CAM-01 · 鸡舍</span>
+                  <time class="cam-ts dig" data-cam-ts></time>
+                </div>
+              </article>
+              <article class="cam">
+                <div class="cam-view">
+                  <img src="./evidence/flock.jpg" alt="鸡群监控">
+                  <i class="cam-scan" aria-hidden="true"></i>
+                  <span class="cam-rec"><i></i>REC</span>
+                  <span class="cam-id">CAM-02 · 鸡群</span>
+                  <time class="cam-ts dig" data-cam-ts></time>
+                </div>
+              </article>
+            </div>
+            <p class="cam-note">演示画面，待接摄像头</p>
           </div>
           <div class="dv-box spot-box">
             ${corners()}
             <div class="dv-hd"><i></i><h2>焦点档案</h2><span>SPOT</span></div>
             <div class="spot-card" data-spot-card></div>
-          </div>
-          <div class="dv-box chart-box">
-            ${corners()}
-            <div class="dv-hd"><i></i><h2>焦点 vs 体系</h2><span>COMPARE</span></div>
-            <p class="chart-cap">料肉比 / 死淘率</p>
-            <div class="chart chart-compare" data-chart="compare"></div>
           </div>
         </aside>
 
@@ -331,14 +374,16 @@ export function render() {
           </div>
           <div class="dv-box process-box" data-lab-layer>
             ${corners()}
-            <div class="dv-hd"><i></i><h2>检测过程</h2><span>LIVE</span></div>
+            <div class="dv-hd"><i></i><h2>检测过程</h2><span>正在过检</span></div>
             ${renderLabDock()}
           </div>
           <div class="dv-box path-box">
             ${corners()}
-            <div class="dv-hd"><i></i><h2>焦点路径</h2><span data-path-tag>7 STEP</span></div>
-            <div class="path-rail" aria-hidden="true"><i data-rail></i></div>
-            <ol class="path-nodes">${path}</ol>
+            <div class="dv-hd"><i></i><h2>焦点路径</h2><span data-path-tag>从饲料到上市</span></div>
+            <div class="path-flow">
+              <div class="path-rail" aria-hidden="true"><i data-rail></i></div>
+              <ol class="path-nodes">${path}</ol>
+            </div>
           </div>
         </section>
 
@@ -351,7 +396,13 @@ export function render() {
               <dl class="kv kv-rate" data-rate-kv></dl>
             </div>
           </div>
-          <div class="dv-box">
+          <div class="dv-box chart-box">
+            ${corners()}
+            <div class="dv-hd"><i></i><h2>焦点 vs 体系</h2><span>COMPARE</span></div>
+            <p class="chart-cap">料肉比 / 死淘率</p>
+            <div class="chart chart-compare" data-chart="compare"></div>
+          </div>
+          <div class="dv-box inflam-box">
             ${corners()}
             <div class="dv-hd"><i></i><h2>炎症对照</h2><span>SPOT vs CTRL</span></div>
             <div class="chart chart-inflam" data-chart="inflam"></div>
@@ -370,10 +421,6 @@ export function render() {
           </div>
         </aside>
 
-        <footer class="wall-ft">
-          <div class="ft-fade"></div>
-          <div class="ft-track" data-ticker></div>
-        </footer>
       </div>
     </div>
   `
@@ -416,6 +463,7 @@ function teardown() {
     clearInterval(clockTimer)
     clockTimer = 0
   }
+  stopQueueRoll()
   window.removeEventListener('resize', onResize)
   Object.keys(charts).forEach((k) => {
     charts[k]?.dispose()
@@ -445,9 +493,58 @@ function toggleFs() {
   else document.exitFullscreen?.()
 }
 
+function stopQueueRoll() {
+  if (queueTimer) {
+    clearInterval(queueTimer)
+    queueTimer = 0
+  }
+  queueIndex = 0
+}
+
+/**
+ * 队列一次滚一整行，2 秒一条，顶边对齐，不切字。
+ * @param {HTMLElement} queue
+ * @param {number} count
+ */
+function startQueueRoll(queue, count) {
+  stopQueueRoll()
+  queue.style.transition = 'none'
+  queue.style.transform = 'translate3d(0, 0, 0)'
+  if (reducedMotion() || count < 2) return
+  const row = queue.querySelector('.q-row')
+  const view = queue.parentElement
+  if (!row || !view) return
+  const rowH = row.offsetHeight
+  if (!rowH) return
+  if (count * rowH <= view.clientHeight + 1) return
+  queueTimer = window.setInterval(() => {
+    if (!queue.isConnected) {
+      stopQueueRoll()
+      return
+    }
+    const h = queue.querySelector('.q-row')?.offsetHeight || rowH
+    queueIndex += 1
+    queue.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
+    queue.style.transform = `translate3d(0, ${-queueIndex * h}px, 0)`
+    if (queueIndex >= count) {
+      window.setTimeout(() => {
+        if (!queue.isConnected) return
+        queue.style.transition = 'none'
+        queue.style.transform = 'translate3d(0, 0, 0)'
+        queueIndex = 0
+      }, 440)
+    }
+  }, 2000)
+}
+
 function tickClock() {
+  const clock = formatClock()
   const el = rootEl?.querySelector('[data-clock]')
-  if (el) el.textContent = formatClock()
+  if (el) el.textContent = clock
+  const short = clock.slice(-8)
+  rootEl?.querySelectorAll('[data-cam-ts]').forEach((n) => {
+    n.textContent = short
+  })
 }
 
 function initCharts() {
@@ -457,6 +554,9 @@ function initCharts() {
     if (!el) return
     charts[name]?.dispose()
     charts[name] = echartsMod.init(el, null, { renderer: 'canvas' })
+  })
+  requestAnimationFrame(() => {
+    Object.values(charts).forEach((c) => c?.resize())
   })
   charts.compare?.setOption(barOption({
     categories: ['料肉比', '死淘率'], a: [0, 0], b: [0, 0], aName: '焦点', bName: '体系均值',
@@ -555,6 +655,17 @@ function apply(root, data) {
     data.spotlight?.verdict?.headline,
     data.spotlight?.report?.no,
     data.spotlight?.trace?.verifyId,
+    data.spotlight?.seal?.status,
+    data.spotlight?.seal?.fingerprint,
+    data.seal?.status,
+    data.seal?.fingerprint,
+    data.detect?.sampleId,
+    data.detect?.qualitative,
+    data.detect?.result,
+    data.houseEnv?.temp,
+    data.houseEnv?.humidity,
+    data.houseEnv?.nh3,
+    data.houseEnv?.co2,
   ].join('~')
   if (sig === lastSig) return
   lastSig = sig
@@ -586,6 +697,25 @@ function apply(root, data) {
     sub.textContent = birds ? `${birds} 羽` : ''
   })
 
+  const envEl = el.querySelector('[data-house-env]')
+  if (envEl) {
+    const metrics = envMetrics(data.houseEnv || data.spotlight?.farm?.houseEnv, new Date(), { listed: !!data.listed || !!(data.spotlight?.report?.generated && data.spotlight?.trace?.generated) })
+    envEl.innerHTML = metrics.map((m) => `
+      <li class="${m.ok ? 'ok' : 'warn'}">
+        <span>${esc(m.label)}</span>
+        <b class="dig">${esc(dash(m.value))}</b>
+        <em>${esc(m.unit)}</em>
+      </li>`).join('')
+  }
+
+  const dock = el.querySelector('[data-lab-dock]')
+  if (dock) {
+    const wrap = document.createElement('div')
+    wrap.innerHTML = renderLabDock(data.detect || {}).trim()
+    const next = wrap.firstElementChild
+    if (next) dock.replaceWith(next)
+  }
+
   const order = [...PIPELINE.map((p) => p.stage), 'alert']
   const batches = [...(data.batches || [])].sort((a, b) => {
     if (a.spotlight !== b.spotlight) return a.spotlight ? -1 : 1
@@ -597,7 +727,7 @@ function apply(root, data) {
 
   const queue = el.querySelector('[data-queue]')
   if (queue) {
-    queue.innerHTML = batches.map((b) => `
+    const rows = batches.map((b) => `
       <li class="q-row is-${esc(b.stage)} ${b.spotlight ? 'is-spot' : ''} ${b.alert ? 'is-alert' : ''}">
         <i class="q-dot"></i>
         <div class="q-main">
@@ -606,6 +736,11 @@ function apply(root, data) {
         </div>
         <em>${esc(stageLabel(b.stage))}</em>
       </li>`).join('')
+    const next = batches.length > 1 ? rows + rows : rows
+    if (queue.innerHTML !== next) {
+      queue.innerHTML = next
+      startQueueRoll(queue, batches.length)
+    }
   }
 
   PIPELINE.forEach((p) => {
@@ -637,7 +772,7 @@ function apply(root, data) {
       <p class="co-kicker">焦点批次判定 · ${esc(spot.batchId || data.spotlightId || '')}</p>
       <h3>${esc(spot.verdict?.headline || '—')}</h3>
       <p class="co-why">${esc(spot.verdict?.why || '')}</p>
-      <ul class="co-facts">${facts.map((f) => `<li class="${f.ok ? 'ok' : 'bad'}">${esc(f.text)}</li>`).join('')}</ul>`
+      <ul class="co-facts">${facts.map((f) => `<li class="${f.wait ? 'wait' : f.ok ? 'ok' : 'bad'}">${esc(f.text)}</li>`).join('')}</ul>`
   }
 
   const card = el.querySelector('[data-spot-card]')
@@ -652,8 +787,16 @@ function apply(root, data) {
       ['料肉比', farm.fcr],
       ['死淘 %', farm.mortality],
     ]
+    const seal = spot.seal || data.seal || {}
+    const sealBad = seal.status === '对不上' || seal.status === '链断裂' || seal.okLive === false
+    const sealHead = seal.headline || (sealBad ? SEAL_TAMPER : SEAL_OK)
+    const sealFp = seal.fingerprint || ''
     card.innerHTML = `
       ${pass ? '<i class="spot-seal" aria-hidden="true">合格<br>准予上市</i>' : ''}
+      <span class="seal-chip ${sealBad ? 'is-bad' : 'is-ok'}" title="${esc(SEAL_HINT)}">
+        <b>${esc(sealHead)}</b>
+        ${sealFp ? `<span>指纹 ${esc(sealFp)}</span>` : ''}
+      </span>
       <p class="spot-head ${pass ? 'is-ok' : 'is-hold'}">${esc(spot.verdict?.headline || '')}</p>
       <dl class="kv">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="dig">${esc(dash(v))}</dd></div>`).join('')}</dl>`
   }
@@ -668,6 +811,8 @@ function apply(root, data) {
     node.classList.toggle('is-on', active)
     const st = node.querySelector('[data-path-st]')
     if (st) st.textContent = info?.status || (done ? '已完成' : (active ? '进行中' : '待执行'))
+    const metric = node.querySelector('[data-path-metric]')
+    if (metric) metric.textContent = info?.metric || '—' 
   })
   syncPathRail(el)
   requestAnimationFrame(() => syncPathRail(el))
@@ -681,30 +826,14 @@ function apply(root, data) {
       ['阳性', d.positive],
       ['在栏羽', kpis.birdsLive],
     ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="dig">${esc(dash(v))}</dd></div>`).join('') +
-      '<p class="kv-note">在养羽 + 在检羽（含预警工位）</p>'
+      '<p class="kv-note">还在场上的鸡（在养+在检）</p>'
   }
 
   const pathTag = el.querySelector('[data-path-tag]')
-  if (pathTag) pathTag.textContent = `${spot.batchId || data.spotlightId || ''} · 7 STEP`
+  if (pathTag) pathTag.textContent = `${spot.batchId || data.spotlightId || ''} · 从饲料到上市`
 
   const tag = el.querySelector('[data-trend-tag]')
   if (tag) tag.textContent = data.trend?.label || '近七日筛查'
-
-  const ticker = el.querySelector('[data-ticker]')
-  if (ticker) {
-    const ev = (data.events || []).map((e) => e.line || e).filter(Boolean)
-    const prog = spot.program || {}
-    const bits = [
-      ...ev,
-      `累计出栏 ${prog.birds || '≥10万羽'}`,
-      `公益快检 ${prog.charityTests || '3000+'}`,
-      `料肉比下降 ${prog.fcrDrop || '≥0.05'}`,
-      `死淘下降 ${prog.mortDrop || '≥2个百分点'}`,
-      `覆盖市场 ${prog.markets ?? 12}`,
-    ]
-    const line = bits.filter(Boolean).join('   ·   ')
-    ticker.textContent = line ? `${line}     ${line}` : ''
-  }
 
   const cmp = data.compare || {}
   charts.compare?.setOption(barOption({
@@ -725,4 +854,7 @@ function apply(root, data) {
   }))
   charts.radar?.setOption(radarOption(spot.rings || []))
   charts.trend?.setOption(trendOption(data.trend))
+  requestAnimationFrame(() => {
+    Object.values(charts).forEach((c) => c?.resize())
+  })
 }

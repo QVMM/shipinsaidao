@@ -1,7 +1,8 @@
 import '../styles/dashboard.css'
 import QRCode from 'qrcode'
 import { getVerdict } from '../store.js'
-import { humanHeadline, humanWhy, threeFacts, residueClear, lowInflammation } from '../lib/verdict.js'
+import { humanWhy, threeFacts, residueClear, lowInflammation, hplcOf, inflamStatus, screenStatus, factClass } from '../lib/verdict.js'
+import { renderVerdictStrip } from '../components/verdict-strip.js'
 import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { openStage } from '../lib/open-stage.js'
 import { val } from '../bind-fields.js'
@@ -41,8 +42,10 @@ function galleryItems(state) {
  * @param {boolean} pass
  * @returns {string}
  */
-function stampHtml(pass) {
-  return `<div class="dash-stamp ${pass ? '' : 'hold'}" aria-hidden="true"><span>${pass ? '检验检测<br>专用章' : '待复核'}</span></div>`
+function stampHtml(stamp) {
+  const official = stamp === '检验检测专用章'
+  const label = official ? '检验检测<br>专用章' : (stamp || '待复核')
+  return `<div class="dash-stamp ${official ? '' : 'hold'}" aria-hidden="true"><span>${label}</span></div>`
 }
 
 /**
@@ -52,7 +55,6 @@ function stampHtml(pass) {
 export function render(state) {
   const v = getVerdict()
   const facts = threeFacts(state)
-  const headline = humanHeadline(v)
   const why = humanWhy(state, v)
   const photos = galleryItems(state)
   const first = photos[0]
@@ -75,8 +77,12 @@ export function render(state) {
     ['CRP', e.CRP, e.CRPCtrl],
   ]
 
+  const hplc = hplcOf(state)
+  const lodText = val(hplc.lod) || val(e.lod)
+
   return `
     <div class="dash-page">
+      ${renderVerdictStrip(state)}
       <section class="dash-hero" aria-label="现场与合规证明">
         <div class="dash-gallery">
           <figure class="dash-gallery-main">
@@ -93,11 +99,11 @@ export function render(state) {
           </div>
         </div>
         <article class="dash-cert ${v.pass ? 'pass' : 'hold'}">
-          <p class="dash-cert-kicker">食用农产品合规证明</p>
-          <h2 class="dash-cert-headline">${headline}</h2>
+          <p class="dash-cert-kicker">${val(state.productName)}</p>
+          <h2 class="dash-cert-headline">食用农产品合规证明</h2>
           <p class="dash-cert-why">${why}</p>
           <ul class="dash-pledges">
-            ${facts.map((item) => `<li class="${item.ok ? 'ok' : 'bad'}">${item.text}</li>`).join('')}
+            ${facts.map((item) => `<li class="${factClass(item)}">${item.text}</li>`).join('')}
           </ul>
           <dl class="dash-cert-fields">
             <div><dt>产品名称</dt><dd>${val(state.productName)}</dd></div>
@@ -107,14 +113,14 @@ export function render(state) {
             <div><dt>质检结果</dt><dd>${residue}</dd></div>
             <div><dt>出栏数量</dt><dd>${val(f.count)} 羽</dd></div>
           </dl>
-          ${stampHtml(v.pass)}
+          ${stampHtml(v.stamp)}
         </article>
       </section>
 
       <section class="dash-cols" aria-label="从哪来、安不安全、健康、合规验证依据">
         <article class="dash-card">
           <h3>从哪来</h3>
-          <p class="dash-card-lead">产地为河南省郑州市荥阳市康店镇密闭鸡舍。</p>
+          <p class="dash-card-lead">产地为${val(f.location)} ${val(f.house)}。</p>
           <div class="dash-map">
             <img src="./evidence/map.png" alt="荥阳、郑州一带示意地图，针位在康店镇" width="880" height="520">
           </div>
@@ -122,25 +128,26 @@ export function render(state) {
         </article>
         <article class="dash-card">
           <h3>安不安全</h3>
-          <p class="dash-card-lead">${residueOk ? '现场与实验室均未检出氟苯尼考。' : '残留筛查或定量未过关，暂不出证。'}</p>
+          <p class="dash-card-lead">${screenStatus(state) === 'pending' ? '安全检测尚未完成。' : residueOk ? '现场与实验室均未检出氟苯尼考。' : '残留筛查或定量未过关，暂不出证。'}</p>
           <div class="dash-lab-photo">
             <img src="./evidence/lab.jpg" alt="现场安全检测" width="640" height="360">
           </div>
           <div class="dash-result ${residueOk ? 'ok' : 'bad'}">
             <b>${residue}</b>
-            <span>检出限 ${val(e.lod)} μg/kg · 样品 ${val(s.sampleId)}</span>
+            <span>检出限 ${lodText} μg/kg · 样品 ${val(s.sampleId)}</span>
           </div>
           <a class="text-link" href="#/screen">查看安全检测</a>
         </article>
         <article class="dash-card">
           <h3>健康</h3>
-          <p class="dash-card-lead">${inflamOk ? '血清炎症因子优于同期常规对照。' : '炎症因子尚未达标，须复核。'}</p>
+          <p class="dash-card-lead">${inflamStatus(state) === 'pending' ? '尚未评价' : inflamOk ? '血清炎症因子优于同期常规对照。' : '炎症因子尚未达标，须复核。'}</p>
+          ${inflamStatus(state) === 'pending' ? '<p class="dash-bar-hint">炎症评价尚未录入。</p>' : `
           <div class="bars dash-mini-bars">
             ${markers.map(([name, vn, cn]) => `
               <div class="bar-row"><span>${name}</span>${barPair(vn, cn)}<span>${val(vn)}</span></div>
             `).join('')}
           </div>
-          <p class="dash-bar-hint">浅色为队内对照测定（同期常规日粮组），深色为本批次。深色更短表示炎症更低。</p>
+          <p class="dash-bar-hint">浅色为队内对照测定（同期常规日粮组），深色为本批次。深色更短表示炎症更低。</p>`}
           <a class="text-link" href="#/eval">查看健康评价</a>
         </article>
         <article class="dash-card">

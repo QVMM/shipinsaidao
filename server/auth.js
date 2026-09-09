@@ -64,11 +64,12 @@ export function readToken(req) {
 }
 
 export function setSessionCookie(reply, token) {
+  const secure = process.env.COOKIE_SECURE === '1' || process.env.NODE_ENV === 'production'
   reply.setCookie(COOKIE, token, {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure,
     signed: true,
     maxAge: DAYS * 24 * 60 * 60,
   })

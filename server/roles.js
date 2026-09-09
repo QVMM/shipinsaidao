@@ -22,8 +22,8 @@ const WRITE = {
   farm: new Set(['farm', 'meta']),
   screen: new Set(['screen']),
   eval: new Set(['eval']),
-  trace: new Set(['report', 'trace', 'reset', 'audit']),
-  admin: new Set(['farm', 'meta', 'screen', 'eval', 'report', 'trace', 'reset', 'audit']),
+  trace: new Set(['farm', 'meta', 'screen', 'eval', 'report', 'trace', 'reset', 'audit', 'create']),
+  admin: new Set(['farm', 'meta', 'screen', 'eval', 'report', 'trace', 'reset', 'audit', 'create']),
 }
 
 /**
@@ -49,7 +49,8 @@ export function denyMessage(role, action) {
     report: `当前账号（${who}）不能生成检测报告。`,
     trace: `当前账号（${who}）不能出追溯码。`,
     reset: '只有管理员和溯源员可以恢复预填数据。',
-    audit: `当前账号（${who}）不能做质量审核。`,
+    audit: `当前账号（${who}）不能做封存验真。`,
+    create: `当前账号（${who}）不能新建批次。`,
   }
   return map[action] || `当前账号（${who}）没有这项权限。`
 }

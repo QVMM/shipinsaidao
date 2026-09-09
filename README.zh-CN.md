@@ -47,14 +47,14 @@ npm run build
 | yangzhi | farm / 智慧养殖 | 养殖档案 + 用药本 |
 | kuaijian | screen / 安全检测 | 安全检测结果 |
 | pingjia | eval / 质量评价 | 实验室评价 |
-| suyuan | trace / 数据溯源 | 出报告、出码、恢复预填数据、质量审核 |
+| suyuan | trace / 数据溯源 | 与管理员相同：养殖、检测、评价、出报告、出码、新建批次、恢复预填数据 |
 | guanli | admin / 管理员 | 全部写入 |
 
 越权写入返回 403，正文是人话，例如：「当前账号（安全检测）不能改养殖档案。」
 
 ## 数据流
 
-浏览器不再把 localStorage 当真相。登录后 `GET /api/batches/:batchId` 拉批次；改表单先改内存，约 400ms 后 `PATCH` 落库。出报告 / 出码 / 恢复预填数据 / 审核走 POST。刷新后还能看见，因为在 SQLite。
+浏览器不再把 localStorage 当真相。登录后 `GET /api/batches/:batchId` 拉批次；改表单先改内存，约 400ms 后 `PATCH` 落库。出报告 / 出码 / 新建批次 / 恢复预填数据走 POST。刷新后还能看见，因为在 SQLite。
 
 买家页 `#/consumer`、`#/trace/蓟化-2026-0812` 走 `GET /api/public/trace/:batchId`，不用 cookie。
 
@@ -122,7 +122,6 @@ data/tihua.db       本地库（git 忽略）
 
 - `#/dashboard` 产品信息（登录后，须先选批次）
 - `#/batches` 选择批次
-- `#/audit` 质量审核
 - `#/farm` `#/screen`（安全检测） `#/eval` `#/report` `#/qr` `#/consumer`（客户端显示）
 - `#/trace/蓟化-2026-0812` 扫码，公开
 - `#/stage/蓟化-2026-0812` 指挥舱，公开（`#/wall/...` 同义）

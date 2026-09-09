@@ -1,4 +1,6 @@
 /** 预填批次默认数据。现场可改，恢复预填数据会回到这里。 */
+import { makeDemoHouseEnv, shanghaiYmd } from './lib/house-env.js'
+
 export const DEMO_SEED = {
   batchId: '蓟化-2026-0812',
   productName: '替抗蓟化 减抗鸡肉',
@@ -32,6 +34,7 @@ export const DEMO_SEED = {
       { date: '2026-07-05', item: '球虫疫苗', dose: '按规程', purpose: '球虫防控（非抗菌药）', result: '已执行' },
       { date: '2026-07-18', item: '饲用抗生素', dose: '—', purpose: '—', result: '未使用' },
     ],
+    houseEnv: makeDemoHouseEnv('2026-08-11', '蓟化-2026-0812'),
   },
   screen: {
     sampleId: 'DJ-0812',
@@ -62,16 +65,16 @@ export const DEMO_SEED = {
       aminoAcids: '必需氨基酸组成正常',
       sensory: '色泽正常，无异味，组织致密',
     },
-  },
-  eval: {
-    testDate: '2026-08-11 14:40',
     instrument: 'HPLC',
     curveR: 0.9992,
     lod: 50,
     valueText: '未检出（<50）',
     valueNum: '',
     unit: 'μg/kg',
-    operator: '3 号 分析测试工程师',
+    hplcDate: '2026-08-11 14:40',
+    hplcOperator: '3 号 分析测试工程师',
+  },
+  eval: {
     IL1b: 18.4,
     IL1bCtrl: 46.2,
     IL6: 22.1,
@@ -86,14 +89,14 @@ export const DEMO_SEED = {
     ecoliChange: -41,
   },
   report: {
-    generated: false,
-    generatedAt: '',
-    no: '',
+    generated: true,
+    generatedAt: '2026-08-11 16:00',
+    no: 'THJH-20260812-001',
   },
   trace: {
-    generated: false,
-    generatedAt: '',
-    verifyId: '',
+    generated: true,
+    generatedAt: '2026-08-11 16:20',
+    verifyId: 'TR-8F2C-0812',
   },
   review: {
     sampleAccept: true,
@@ -146,10 +149,120 @@ export function makeVerifyId(batchId) {
   return `TR-8F2C-${tail}`
 }
 
+
+/**
+ * @param {string} iso
+ * @param {number} days
+ * @returns {string}
+ */
+function addDaysIso(iso, days) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + days)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`
+}
+
+/**
+ * 新建批次：沿用焦点批的基地 / 日粮结构，检测与评价留空。
+ * 进苗/入孵用上海当天，出栏 +50 天；用药本只留饲用抗生素未使用。
+ * @param {string} batchId
+ * @returns {typeof DEMO_SEED}
+ */
+export function blankBatchFromSpotlight(batchId) {
+  const seed = cloneSeed()
+  const day = shanghaiYmd().iso
+  const samples = (seed.screen.samples || []).map((row) => ({
+    id: '',
+    group: row.group,
+    tLine: '',
+    qualitative: '',
+    result: '',
+    note: '',
+  }))
+  return {
+    ...seed,
+    batchId,
+    farm: {
+      ...seed.farm,
+      flockId: `FL-${String(batchId).replace(/^蓟化-/, '')}`,
+      hatchDate: day,
+      stockDate: day,
+      plannedSlaughter: addDaysIso(day, 50),
+      fcr: '',
+      mortality: '',
+      houseEnv: makeDemoHouseEnv(day, batchId),
+      medLog: [
+        { date: day, item: '饲用抗生素', dose: '—', purpose: '—', result: '未使用' },
+      ],
+    },
+    screen: {
+      sampleId: '',
+      sampleDate: '',
+      samplePart: seed.screen.samplePart,
+      method: seed.screen.method,
+      mdspeMin: seed.screen.mdspeMin,
+      goldMin: seed.screen.goldMin,
+      target: seed.screen.target,
+      qualitative: '',
+      result: '',
+      lodNote: seed.screen.lodNote,
+      operator: '',
+      qcLine: '',
+      notes: '',
+      samples,
+      extra: {
+        otherResidues: '',
+        heavyMetals: '',
+        protein: '',
+        aminoAcids: '',
+        sensory: '',
+      },
+      instrument: '',
+      curveR: '',
+      lod: seed.screen.lod || 50,
+      valueText: '',
+      valueNum: '',
+      unit: 'μg/kg',
+      hplcDate: '',
+      hplcOperator: '',
+    },
+    eval: {
+      IL1b: '',
+      IL1bCtrl: '',
+      IL6: '',
+      IL6Ctrl: '',
+      TNFa: '',
+      TNFaCtrl: '',
+      CRP: '',
+      CRPCtrl: '',
+      shannon: '',
+      shannonCtrl: '',
+      lactoChange: '',
+      ecoliChange: '',
+    },
+    report: { generated: false, generatedAt: '', no: '' },
+    trace: { generated: false, generatedAt: '', verifyId: '' },
+    review: {
+      sampleAccept: false,
+      dataReview: false,
+      reportIssue: false,
+      reviewed: false,
+      reviewer: '',
+      reviewedAt: '',
+    },
+    program: {
+      ...seed.program,
+      pipelineStage: '',
+      listed: false,
+    },
+  }
+}
+
 /** 现场四人分工，只放在侧栏折叠里，不是入口。 */
 export const ROLES = [
   { id: 'farm', label: '智慧养殖', who: '1 号 智慧养殖专员', hash: '#/farm', hint: '档案 · 大蓟添加 · 用药' },
-  { id: 'screen', label: '安全检测', who: '2 号 安全检测工程师', hash: '#/screen', hint: 'MDSPE · 胶体金' },
-  { id: 'eval', label: '质量评价', who: '3 号 分析测试工程师', hash: '#/eval', hint: 'HPLC · 炎症因子' },
+  { id: 'screen', label: '安全检测', who: '2 号 安全检测工程师', hash: '#/screen', hint: '胶体金 · HPLC' },
+  { id: 'eval', label: '质量评价', who: '3 号 分析测试工程师', hash: '#/eval', hint: '炎症因子对照' },
   { id: 'trace', label: '数据溯源', who: '4 号 数据溯源工程师', hash: '#/qr', hint: '报告 · 出码 · 客户端' },
 ]

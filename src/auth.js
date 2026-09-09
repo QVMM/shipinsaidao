@@ -1,5 +1,6 @@
 import { get, post } from './api.js'
 import { busy } from './lib/busy.js'
+import { canWrite as roleCanWrite } from '../server/roles.js'
 
 let user = null
 
@@ -41,16 +42,7 @@ export async function logout() {
 }
 
 export function canWrite(action) {
-  const role = user?.role
-  if (!role) return false
-  if (role === 'admin') return true
-  if (action === 'farm' || action === 'meta') return role === 'farm'
-  if (action === 'screen') return role === 'screen'
-  if (action === 'eval') return role === 'eval'
-  if (action === 'report' || action === 'trace' || action === 'reset' || action === 'audit') {
-    return role === 'trace'
-  }
-  return false
+  return roleCanWrite(user?.role, action)
 }
 
 export function roleLabel(role) {

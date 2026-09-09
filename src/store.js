@@ -162,6 +162,20 @@ export async function listBatches() {
   })
 }
 
+/**
+ * @returns {Promise<object>}
+ */
+export async function createBatch() {
+  return busy(async () => {
+    const data = await post('/api/batches', {})
+    adopt(data)
+    setChosenBatchId(state.batchId)
+    loaded = true
+    emit()
+    return state
+  })
+}
+
 export async function loadPublic(batchId = DEFAULT_BATCH_ID) {
   return busy(async () => {
   const data = await get(`/api/public/trace/${enc(batchId)}`)
@@ -227,6 +241,38 @@ export async function loadAudit(batchId) {
   const q = batchId ? `?batchId=${enc(batchId)}` : ''
   const data = await get(`/api/audit${q}`)
   return data.items || []
+}
+
+/**
+ * @param {string} [batchId]
+ */
+export async function loadSeal(batchId) {
+  const id = batchId || currentBatchId()
+  return get(`/api/public/seal/${enc(id)}`)
+}
+
+/**
+ * @returns {Promise<object>}
+ */
+export async function demoTamper() {
+  return busy(async () => {
+    const data = await post(`/api/batches/${enc(currentBatchId())}/seal/tamper`, {})
+    if (data.batch) adopt(data.batch)
+    emit()
+    return data
+  })
+}
+
+/**
+ * @returns {Promise<object>}
+ */
+export async function demoRestore() {
+  return busy(async () => {
+    const data = await post(`/api/batches/${enc(currentBatchId())}/seal/restore`, {})
+    if (data.batch) adopt(data.batch)
+    emit()
+    return data
+  })
 }
 
 export function subscribe(fn) {

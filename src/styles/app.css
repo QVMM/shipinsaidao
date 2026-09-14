@@ -156,6 +156,31 @@ html.is-busy .progress-bar i {
   text-underline-offset: 2px;
 }
 .monitor-assist .ma-source:hover { color: var(--forest); }
+.monitor-assist .ma-actions.is-staff-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: center;
+}
+.monitor-assist .ma-link-out.is-staff-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  color: var(--forest);
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+  background: #fff;
+}
+.monitor-assist .ma-link-out.is-staff-link:hover {
+  border-color: var(--forest);
+  background: rgba(45, 90, 61, 0.06);
+}
 .page-head + .monitor-assist { margin-bottom: 12px; }
 @media (max-width: 780px) {
   .monitor-assist { grid-template-columns: auto 1fr; }

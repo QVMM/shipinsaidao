@@ -191,25 +191,108 @@ body:has(.wall) {
   padding-top: 6px;
 }
 
-/* 浮层：不占 wall-hd 行高，避免把 HUD / 墙板挤矮 */
+/* 浮层：默认收起在右上角空位，不挡标题、不占墙板高度 */
 .monitor-assist.is-stage {
   position: absolute;
   top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(980px, calc(100% - 48px));
+  right: 14px;
+  left: auto;
+  transform: none;
+  width: auto;
+  max-width: min(420px, calc(100% - 28px));
   z-index: 12;
   margin: 0;
-  padding: 7px 12px;
-  border-radius: 2px;
+  padding: 0;
+  display: block;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+}
+.monitor-assist.is-stage .ma-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  height: 34px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(228, 197, 106, 0.5);
+  background: rgba(4, 16, 20, 0.92);
+  color: #f2ece0;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+.monitor-assist.is-stage .ma-chip:hover {
+  border-color: #e4c56a;
+  color: #fff8e6;
+}
+.monitor-assist.is-stage .ma-chip-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #e85a5a;
+  box-shadow: 0 0 8px rgba(232, 90, 90, 0.7);
+  flex: 0 0 auto;
+}
+.monitor-assist.is-stage .ma-chip-label {
+  color: #e85a5a;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.monitor-assist.is-stage .ma-chip-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #d7ece8;
+}
+.monitor-assist.is-stage .ma-chip-hint {
+  color: #e4c56a;
+  letter-spacing: 0.12em;
+  flex: 0 0 auto;
+}
+.monitor-assist.is-stage:not(.is-collapsed) .ma-chip { display: none; }
+.monitor-assist.is-stage .ma-panel {
+  width: min(420px, calc(100vw - 48px));
+  padding: 10px 12px 12px;
+  border-radius: 4px;
   border: 1px solid rgba(228, 197, 106, 0.42);
   background:
-    linear-gradient(90deg, rgba(232, 90, 90, 0.22), rgba(4, 16, 20, 0.92) 22%, rgba(4, 16, 20, 0.88));
+    linear-gradient(180deg, rgba(232, 90, 90, 0.18), rgba(4, 16, 20, 0.96) 28%);
   box-shadow:
     inset 0 0 0 1px rgba(39, 224, 208, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.45);
-  gap: 12px;
-  pointer-events: auto;
+    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+.monitor-assist.is-stage .ma-panel-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.monitor-assist.is-stage .ma-collapse {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(122, 154, 150, 0.45);
+  background: transparent;
+  color: #9bb8b4;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.monitor-assist.is-stage .ma-collapse:hover {
+  color: #e4c56a;
+  border-color: rgba(228, 197, 106, 0.55);
+}
+.monitor-assist.is-stage .ma-panel-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
 }
 .monitor-assist.is-stage .ma-source {
   color: #e4c56a;
@@ -229,22 +312,50 @@ body:has(.wall) {
   color: #f2ece0;
   font-size: 14px;
   letter-spacing: 0.08em;
+  margin: 0;
 }
 .monitor-assist.is-stage .ma-kicker {
   color: #e4c56a;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   font-size: 11px;
+  margin: 0;
 }
 .monitor-assist.is-stage .ma-body {
   color: #d7ece8;
   font-size: 13px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 .monitor-assist.is-stage .ma-next {
   color: #7a9a96;
   font-size: 11px;
+  margin-top: 4px;
+}
+.monitor-assist.is-stage .ma-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+.monitor-assist.is-stage .ma-link-out {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(39, 224, 208, 0.45);
+  color: var(--c, #27e0d0);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.monitor-assist.is-stage .ma-link-out:hover {
+  background: rgba(39, 224, 208, 0.1);
+  color: #fff;
 }
 .monitor-assist.is-stage .ma-cta {
+  display: inline-flex;
+  align-items: center;
   height: 30px;
   padding: 0 12px;
   border-radius: 2px;
@@ -252,6 +363,8 @@ body:has(.wall) {
   border: 1px solid rgba(228, 197, 106, 0.55);
   color: #e4c56a;
   letter-spacing: 0.12em;
+  text-decoration: none;
+  font-size: 12px;
 }
 .monitor-assist.is-stage .ma-cta:hover {
   color: #fff8e6;

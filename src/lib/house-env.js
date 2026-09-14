@@ -238,6 +238,23 @@ function lastPointAtOrBefore(series, hour, minute) {
 }
 
 /**
+ * 只保留当前时刻及以前的实测点。后面的点不画、不进提示。
+ * @param {object[]} series
+ * @param {object} [current]
+ * @returns {object[]}
+ */
+export function clipHouseEnvSeries(series, current) {
+  if (!Array.isArray(series) || !series.length) return []
+  const t = parseClock(current?.at)
+  if (!t) return series
+  const limit = t.hour * 60 + t.minute
+  return series.filter((p) => {
+    const c = parseClock(p.at)
+    return c && c.hour * 60 + c.minute <= limit
+  })
+}
+
+/**
  * 已出证出码的批次钉在 12:00，在养批次跟上海时辰（半小时格）。
  * @param {object[]} series
  * @param {{ listed?: boolean }} [opts]

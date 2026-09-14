@@ -7,6 +7,7 @@ import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { openStage } from '../lib/open-stage.js'
 import { val } from '../bind-fields.js'
 import { traceUrl } from './qr.js'
+import { renderInkStamp, stampVariant } from '../components/ink-stamp.js'
 
 export const meta = { id: 'dashboard', title: '产品信息' }
 
@@ -44,8 +45,7 @@ function galleryItems(state) {
  */
 function stampHtml(stamp) {
   const official = stamp === '检验检测专用章'
-  const label = official ? '检验检测<br>专用章' : (stamp || '待复核')
-  return `<div class="dash-stamp ${official ? '' : 'hold'}" aria-hidden="true"><span>${label}</span></div>`
+  return `<div class="dash-stamp ${official ? '' : 'hold'}" aria-hidden="true">${renderInkStamp({ variant: stampVariant(stamp) })}</div>`
 }
 
 /**
@@ -122,7 +122,7 @@ export function render(state) {
           <h3>从哪来</h3>
           <p class="dash-card-lead">产地为${val(f.location)} ${val(f.house)}。</p>
           <div class="dash-map">
-            <img src="./evidence/map.png" alt="荥阳、郑州一带示意地图，针位在康店镇" width="880" height="520">
+            <img src="./evidence/site-map.svg" alt="场区示意，针位在场区-03" width="880" height="520">
           </div>
           <p class="dash-addr"><b>${val(f.name)}</b>${val(f.location)}<br>${val(f.house)} · ${val(f.breed)} · ${val(f.count)} 羽</p>
         </article>

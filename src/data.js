@@ -8,9 +8,9 @@ export const DEMO_SEED = {
   platform: '减抗鸡肉全链条质控与溯源平台',
   team: '「替抗蓟化」食品安全创新团队',
   farm: {
-    name: '双汇·郑州农发共建养殖基地',
-    partners: '双汇集团、郑州市农村发展中心',
-    location: '河南省郑州市荥阳市康店镇',
+    name: '某某基地（基地-A07）',
+    partners: '合作单位-01、合作单位-02',
+    location: '场区-03',
     house: '3 号密闭鸡舍',
     flockId: 'FL-2026-0812-A',
     breed: '白羽肉鸡（AA+）',

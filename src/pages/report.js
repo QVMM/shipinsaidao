@@ -4,6 +4,7 @@ import { val } from '../bind-fields.js'
 import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { ensureReport } from '../lib/actions.js'
 import { armButton } from '../lib/busy.js'
+import { renderInkStamp, stampVariant } from '../components/ink-stamp.js'
 
 export const meta = { id: 'report', title: '检测报告' }
 
@@ -43,7 +44,7 @@ export function render(state) {
     `)}
     <div class="report-wrap">
       <article class="report-sheet">
-        <div class="report-seal ${v.stamp === '检验检测专用章' ? '' : 'hold'}"><span>${v.stamp === '检验检测专用章' ? '检验检测<br>专用章' : v.stamp}</span></div>
+        <div class="report-seal ${v.stamp === '检验检测专用章' ? '' : 'hold'}">${renderInkStamp({ variant: stampVariant(v.stamp) })}</div>
         <header class="report-head">
           <div>
             <div class="report-org">「替抗蓟化」食品安全创新团队</div>

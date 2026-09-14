@@ -180,6 +180,7 @@ function migrate(d) {
   migrateSpotlightIssued(d)
   restoreSpotlightFarm(d)
   migrateLiveBlankBatch(d)
+  migrateFarmIdentity(d)
   rebuildUnissuedFleetSeals(d)
 }
 
@@ -320,6 +321,7 @@ function restoreSpotlightFarm(d) {
   const emptyCount = farm.count == null || Number(farm.count) === 0
   const emptyAdd = !String(farm.additive || '').trim()
   const wrongName = farm.name === '郑州职业技术学院'
+    || looksIdentifying(`${farm.name || ''}`)
   if (!emptyCount && !emptyAdd && !wrongName) return
   upsertFarm(d, id, DEMO_SEED.farm)
   appendSeal(id, {
@@ -378,6 +380,33 @@ function rebuildUnissuedFleetSeals(d) {
   }
 }
 
+
+const IDENTITY_RE = /郑州|荥阳|双汇|职业技术|康店|中牟|巩义|新郑|登封|新密|贾峪|官渡|龙王|回郭|告成|曲梁|雁鸣|高村|芝田|郭店|河南/
+
+function looksIdentifying(s) {
+  return IDENTITY_RE.test(String(s || ''))
+}
+
+/**
+ * 演示数据去身份化：真实地名/校名/企业名换成基地编号。
+ * @param {import('better-sqlite3').Database} d
+ */
+function migrateFarmIdentity(d) {
+  const seeds = [DEMO_SEED, ...FLEET_SEEDS]
+  const byId = new Map(seeds.map((s) => [s.batchId, s.farm]))
+  const rows = d.prepare('SELECT batch_id, name, partners, location FROM farm_records').all()
+  const upd = d.prepare('UPDATE farm_records SET name = ?, partners = ?, location = ? WHERE batch_id = ?')
+  for (const row of rows) {
+    const blob = `${row.name || ''} ${row.partners || ''} ${row.location || ''}`
+    if (!looksIdentifying(blob)) continue
+    const farm = byId.get(row.batch_id)
+    if (farm) {
+      upd.run(farm.name, farm.partners, farm.location, row.batch_id)
+    } else {
+      upd.run('某某基地（基地-X01）', '合作单位-00', '场区-00', row.batch_id)
+    }
+  }
+}
 
 function migrateDemoCopy(d) {
   const id = DEMO_SEED.batchId

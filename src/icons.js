@@ -21,6 +21,13 @@ export const iconFarm = ico(`
   <circle cx="12" cy="2.8" r="1.1" fill="currentColor"/>
 `)
 
+/** 产品端 */
+export const iconProduct = ico(`
+  <rect x="5.2" y="6.4" width="13.6" height="12.2" rx="2" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M5.2 10.2h13.6" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M9.4 6.4V5.2A2.6 2.6 0 0 1 12 2.6 2.6 2.6 0 0 1 14.6 5.2V6.4" stroke="currentColor" stroke-width="1.6"/>
+`)
+
 /** 安全检测 */
 export const iconTube = ico(`
   <path d="M9 3.2h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -72,6 +79,7 @@ export const iconAudit = ico(`
 export const NAV_ICONS = {
   dashboard: iconBatch,
   farm: iconFarm,
+  product: iconProduct,
   screen: iconTube,
   eval: iconHeart,
   report: iconDoc,

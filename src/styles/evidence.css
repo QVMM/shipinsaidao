@@ -304,9 +304,41 @@
 }
 .result-plaque.hold .plaque-value { color: var(--warn); }
 
+.health-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.health-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.health-inflam > h3,
+.health-block > h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.health-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.health-block > .sub { margin: 4px 0 12px; }
+.health-side { min-height: 0; }
+.health-inflam .inflam-empty { flex: 1; display: grid; place-items: center; }
+
 .inflam-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 .inflam-tile {
@@ -316,6 +348,15 @@
   padding: 16px 16px 14px;
   box-shadow: var(--shadow);
   min-width: 0;
+}
+.health-inflam .inflam-grid { flex: none; }
+.inflam-tile h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  letter-spacing: .06em;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-weight: 600;
 }
 .inflam-tile .bar-row {
   grid-template-columns: 1fr;
@@ -347,7 +388,7 @@
 .flora-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 .flora-tile {
   background: var(--card);
@@ -363,10 +404,54 @@
   line-height: 1.55;
 }
 .flora-tile b { font-size: 20px; font-family: var(--font-display); }
+.health-flora .flora-tile { box-shadow: none; }
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 10px;
+}
+.quality-tile {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+}
+.quality-tile h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.quality-tile p {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.quality-tile b {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+.quality-tile small {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.quality-tile span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
 
 @media (max-width: 1100px) {
+  .health-board { grid-template-columns: 1fr; }
   .inflam-grid { grid-template-columns: 1fr; }
   .flora-grid { grid-template-columns: 1fr; }
+  .quality-grid { grid-template-columns: 1fr 1fr; }
   .fact-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 780px) {

@@ -59,7 +59,7 @@ body:has(.wall) {
   transform-origin: 0 0;
   display: grid;
   grid-template-columns: 392px 1fr 400px;
-  grid-template-rows: 132px 1fr;
+  grid-template-rows: auto 1fr;
   gap: 12px 14px;
   padding: 12px 16px 8px;
   background:
@@ -189,6 +189,57 @@ body:has(.wall) {
   justify-content: center;
   gap: 10px;
   padding-top: 6px;
+}
+
+.monitor-assist.is-stage {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  padding: 7px 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(228, 197, 106, 0.42);
+  background:
+    linear-gradient(90deg, rgba(232, 90, 90, 0.16), rgba(12, 28, 32, 0.55) 22%, rgba(12, 28, 32, 0.35));
+  box-shadow: inset 0 0 0 1px rgba(39, 224, 208, 0.06);
+  gap: 12px;
+}
+.monitor-assist.is-stage .ma-mark {
+  width: 28px; height: 28px;
+  background: rgba(232, 90, 90, 0.92);
+  font-size: 13px;
+  box-shadow: 0 0 10px rgba(232, 90, 90, 0.35);
+}
+.monitor-assist.is-stage h3 {
+  color: #f2ece0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+.monitor-assist.is-stage .ma-kicker {
+  color: #e4c56a;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+}
+.monitor-assist.is-stage .ma-body {
+  color: #d7ece8;
+  font-size: 13px;
+  margin-top: 2px;
+}
+.monitor-assist.is-stage .ma-next {
+  color: #7a9a96;
+  font-size: 11px;
+}
+.monitor-assist.is-stage .ma-cta {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 2px;
+  background: transparent;
+  border: 1px solid rgba(228, 197, 106, 0.55);
+  color: #e4c56a;
+  letter-spacing: 0.12em;
+}
+.monitor-assist.is-stage .ma-cta:hover {
+  color: #fff8e6;
+  border-color: #e4c56a;
+  background: rgba(228, 197, 106, 0.12);
 }
 
 .kpi {
@@ -394,25 +445,19 @@ body:has(.wall) {
 .spot-card { position: relative; padding-right: 78px; min-height: 168px; }
 .spot-seal {
   position: absolute;
-  right: 2px;
-  bottom: 6px;
-  width: 70px;
-  height: 70px;
-  border: 2px solid rgba(196, 90, 74, 0.88);
-  border-radius: 50%;
-  color: rgba(212, 104, 88, 0.95);
-  font-size: 11px;
+  right: 0;
+  bottom: 2px;
+  width: 78px;
+  height: 78px;
   font-style: normal;
-  letter-spacing: 0.14em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  line-height: 1.25;
-  transform: rotate(-18deg);
+  transform: rotate(-16deg);
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(196, 90, 74, 0.45), 0 0 12px rgba(196, 90, 74, 0.18);
-  background: rgba(196, 90, 74, 0.06);
+  background: transparent;
+}
+.spot-seal .ink-stamp { width: 100%; height: 100%; display: block; }
+.spot-card.is-scan,
+.q-row.is-scan {
+  box-shadow: inset 0 0 0 1px rgba(228, 197, 106, 0.75), 0 0 16px rgba(228, 197, 106, 0.2);
 }
 .spot-head {
   margin: 0 0 8px;

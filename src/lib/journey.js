@@ -3,12 +3,20 @@
 export const NAV = [
   { href: '#/dashboard', id: 'dashboard', label: '产品信息' },
   { href: '#/farm', id: 'farm', label: '养殖过程' },
-  { href: '#/screen', id: 'screen', label: '安全检测' },
-  { href: '#/eval', id: 'eval', label: '健康评价' },
+  {
+    id: 'product',
+    label: '产品端',
+    children: [
+      { href: '#/screen', id: 'screen', label: '安全检测' },
+      { href: '#/eval', id: 'eval', label: '健康评价' },
+    ],
+  },
   { href: '#/report', id: 'report', label: '检测报告' },
   { href: '#/qr', id: 'qr', label: '追溯码' },
   { href: '#/consumer', id: 'consumer', label: '客户端显示' },
 ]
+
+export const PRODUCT_NAV_IDS = ['screen', 'eval']
 
 /** 顶栏故事步进：产品路径，避免和侧栏抢注意力。 */
 export const STEPS = [

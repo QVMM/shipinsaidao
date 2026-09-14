@@ -1,4 +1,4 @@
-import { NAV } from '../lib/journey.js'
+import { NAV, PRODUCT_NAV_IDS } from '../lib/journey.js'
 import { ROLES } from '../data.js'
 import { markSvg } from '../svg.js'
 import { NAV_ICONS } from '../icons.js'
@@ -7,13 +7,41 @@ import { openStage } from '../lib/open-stage.js'
 import { canWrite, getUser, logout, roleLabel } from '../auth.js'
 import { renderStepper } from './journey-ui.js'
 
-function renderNav(routeId) {
-  return NAV.map((n) => `
-    <a href="${n.href}" data-nav="${n.id}" class="${routeId === n.id ? 'active' : ''}">
+const PRODUCT_NAV_KEY = 'tihua-nav-product'
+
+function productNavOpen(routeId) {
+  if (PRODUCT_NAV_IDS.includes(routeId)) return true
+  return sessionStorage.getItem(PRODUCT_NAV_KEY) !== '0'
+}
+
+function navLink(n, routeId, extraClass = '') {
+  const cls = [extraClass, routeId === n.id ? 'active' : ''].filter(Boolean).join(' ')
+  return `
+    <a href="${n.href}" data-nav="${n.id}" class="${cls}">
       ${NAV_ICONS[n.id] || ''}
       <span>${n.label}</span>
     </a>
-  `).join('')
+  `
+}
+
+function renderNav(routeId) {
+  return NAV.map((n) => {
+    if (!n.children) return navLink(n, routeId)
+    const open = productNavOpen(routeId)
+    const childActive = n.children.some((c) => c.id === routeId)
+    return `
+      <div class="nav-group${open ? ' is-open' : ''}${childActive ? ' has-active' : ''}" data-nav-group="${n.id}">
+        <button type="button" class="nav-parent" data-nav-parent="${n.id}" aria-expanded="${open ? 'true' : 'false'}">
+          ${NAV_ICONS[n.id] || ''}
+          <span>${n.label}</span>
+          <i class="nav-caret" aria-hidden="true"></i>
+        </button>
+        <div class="nav-sub" ${open ? '' : 'hidden'}>
+          ${n.children.map((c) => navLink(c, routeId, 'nav-child')).join('')}
+        </div>
+      </div>
+    `
+  }).join('')
 }
 
 export function renderShell(state, route, inner) {
@@ -125,7 +153,24 @@ export function updateChrome(root, state, route) {
   root.querySelectorAll('.role-list .role').forEach((el, i) => {
     el.classList.toggle('active', ROLES[i]?.id === role)
   })
+  syncProductNav(root, route.id)
   slideNav(root, route.id)
+}
+
+function syncProductNav(root, routeId) {
+  const group = root.querySelector('[data-nav-group="product"]')
+  if (!group) return
+  const childActive = PRODUCT_NAV_IDS.includes(routeId)
+  const open = productNavOpen(routeId)
+  group.classList.toggle('is-open', open)
+  group.classList.toggle('has-active', childActive)
+  const parent = group.querySelector('[data-nav-parent]')
+  if (parent) parent.setAttribute('aria-expanded', open ? 'true' : 'false')
+  const sub = group.querySelector('.nav-sub')
+  if (sub) {
+    if (open) sub.removeAttribute('hidden')
+    else sub.setAttribute('hidden', '')
+  }
 }
 
 export function slideNav(root, routeId) {
@@ -169,6 +214,22 @@ export function bindShell(root, onLogout) {
       onLogout?.()
     })
   }
+  root.querySelectorAll('[data-nav-parent]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('[data-nav-group]')
+      if (!group) return
+      const next = !group.classList.contains('is-open')
+      sessionStorage.setItem(PRODUCT_NAV_KEY, next ? '1' : '0')
+      group.classList.toggle('is-open', next)
+      btn.setAttribute('aria-expanded', next ? 'true' : 'false')
+      const sub = group.querySelector('.nav-sub')
+      if (sub) {
+        if (next) sub.removeAttribute('hidden')
+        else sub.setAttribute('hidden', '')
+      }
+      requestAnimationFrame(() => slideNav(root, root.querySelector('.nav a.active')?.dataset.nav || ''))
+    })
+  })
 }
 
 function esc(v) {

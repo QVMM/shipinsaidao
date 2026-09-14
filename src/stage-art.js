@@ -67,12 +67,15 @@ export const artEval = art(`
   <text x="79" y="16" text-anchor="middle" fill="#e8d5a8" font-size="9">蓟化</text>
 `)
 
-/** 合格印落下。 */
+/** 合格印落下。略不规则的油墨圈。 */
 export const artStamp = art(`
   <g class="stamp-seal">
-    <circle cx="60" cy="60" r="38" fill="rgba(180,35,24,.08)" stroke="#c45a4a" stroke-width="4"/>
-    <circle cx="60" cy="60" r="30" stroke="#c45a4a" stroke-width="1.6"/>
-    <text x="60" y="68" text-anchor="middle" fill="#c45a4a" font-size="22" font-family="serif" letter-spacing="4">合格</text>
+    <path d="M61 16.2C77.8 15 96.6 27.2 103.2 45.4C110.2 64.6 104.4 88.2 88.6 98.8C72.2 109.8 49.6 109.6 35.4 98.2C20.2 86.2 15.4 64.4 21.2 46.6C26.6 29.8 43.8 17.6 61 16.2Z"
+      fill="rgba(180,35,24,.07)" stroke="#b42318" stroke-width="3.6"/>
+    <path d="M60.4 23.6C73.8 22.6 89.2 32.4 94.4 46.8C99.8 62.2 95.2 81.2 82.4 90.2C69.2 99.4 51.2 99 40.2 89.6C28.4 79.6 24.8 61.8 29.6 47.8C34 34.8 46.8 24.8 60.4 23.6Z"
+      fill="none" stroke="#b42318" stroke-width="1.2" opacity=".75"/>
+    <text x="60.6" y="62" text-anchor="middle" fill="#b42318" font-size="18" font-family="STKaiti, KaiTi, serif" letter-spacing="3" opacity=".88">合格</text>
+    <text x="61" y="78" text-anchor="middle" fill="#b42318" font-size="9" font-family="STKaiti, KaiTi, serif" letter-spacing="1" opacity=".78">准予上市</text>
   </g>
 `)
 

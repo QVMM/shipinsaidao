@@ -6,7 +6,7 @@ import { renderVerdictStrip } from '../components/verdict-strip.js'
 import { isEditing, renderEditToggle, bindEditToggle } from '../components/page-edit.js'
 import { canWrite } from '../auth.js'
 import { iconPlus } from '../icons.js'
-import { envMetrics, HOUSE_ENV_LIMITS, resolveHouseEnv, pickHouseEnvPoint } from '../lib/house-env.js'
+import { envMetrics, HOUSE_ENV_LIMITS, resolveHouseEnv, pickHouseEnvPoint, clipHouseEnvSeries } from '../lib/house-env.js'
 
 export const meta = { id: 'farm', title: '养殖过程' }
 
@@ -52,7 +52,7 @@ function renderHouseEnv(houseEnv, listed) {
       </div>
       <div class="env-tiles">${tiles}</div>
       <div class="env-charts">${charts}</div>
-      <p class="sub mt-10">出栏前 8–19 时 · 半小时一条 · 演示传感器</p>
+      <p class="sub mt-10">出栏前 8–19 时 · 半小时一条 · 实时检测，不含预测</p>
     </div>
   `
 }
@@ -322,8 +322,9 @@ function envValueText(key, value) {
 function envChartOption(key, series, current, reduced) {
   const lim = HOUSE_ENV_LIMITS[key]
   const color = ENV_CHART_COLOR[key]
-  const labels = series.map((p) => hourLabel(p.at))
-  const data = series.map((p) => Number(p[key]))
+  const observed = clipHouseEnvSeries(series, current)
+  const labels = observed.map((p) => hourLabel(p.at))
+  const data = observed.map((p) => Number(p[key]))
   const { min: yMin, max: yMax } = envYWindow(key, data)
   const curLabel = hourLabel(current?.at)
   const curVal = Number(current?.[key])
@@ -350,6 +351,7 @@ function envChartOption(key, series, current, reduced) {
       extraCssText: 'box-shadow: 0 8px 20px rgba(18,38,28,.08); border-radius: 8px;',
       formatter: (params) => {
         const p = Array.isArray(params) ? params[0] : params
+        if (p == null || p.value == null || p.value === '') return ''
         return `${p.axisValue}  ${lim.label} ${envValueText(key, p.value)}${lim.unit}`
       },
     },

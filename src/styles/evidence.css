@@ -308,7 +308,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 .health-col {
   display: flex;
@@ -349,7 +349,7 @@
   box-shadow: var(--shadow);
   min-width: 0;
 }
-.health-inflam .inflam-grid { flex: 1; }
+.health-inflam .inflam-grid { flex: none; }
 .inflam-tile h3 {
   margin: 0 0 8px;
   font-size: 14px;
@@ -408,8 +408,8 @@
 
 .quality-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 10px;
 }
 .quality-tile {
   min-width: 0;
@@ -451,7 +451,7 @@
   .health-board { grid-template-columns: 1fr; }
   .inflam-grid { grid-template-columns: 1fr; }
   .flora-grid { grid-template-columns: 1fr; }
-  .quality-grid { grid-template-columns: 1fr; }
+  .quality-grid { grid-template-columns: 1fr 1fr; }
   .fact-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 780px) {

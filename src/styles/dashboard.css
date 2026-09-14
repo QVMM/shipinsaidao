@@ -97,7 +97,7 @@
 .dash-cert {
   position: relative;
   padding: 20px 22px 18px;
-  overflow: hidden;
+  overflow: visible;
   background:
     radial-gradient(420px 160px at 100% 0%, rgba(184, 137, 58, .10), transparent 55%),
     repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(22, 53, 40, .03) 28px),
@@ -186,8 +186,8 @@
   position: absolute;
   right: 10px;
   top: 10px;
-  width: 104px;
-  height: 104px;
+  width: 112px;
+  height: 112px;
   transform: rotate(-13deg);
   pointer-events: none;
   background: transparent;
@@ -236,7 +236,7 @@
   height: 168px;
   object-fit: cover;
 }
-.dash-map img { object-fit: contain; background: #f3ead4; }
+.dash-map img { height: 220px; object-fit: contain; background: #e7efea; }
 
 .dash-addr {
   margin: 10px 0 0;

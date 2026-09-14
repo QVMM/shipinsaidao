@@ -52,7 +52,7 @@ function renderHouseEnv(houseEnv, listed) {
       </div>
       <div class="env-tiles">${tiles}</div>
       <div class="env-charts">${charts}</div>
-      <p class="sub mt-10">出栏前 8–19 时 · 半小时一条 · 实时检测，不含预测</p>
+      <p class="sub mt-10">出栏前 8–19 时 · 半小时一条 · 实时检测，只显示已测点</p>
     </div>
   `
 }

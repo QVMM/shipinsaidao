@@ -9,6 +9,7 @@ export const NAV = [
     children: [
       { href: '#/screen', id: 'screen', label: '安全检测' },
       { href: '#/eval', id: 'eval', label: '健康评价' },
+      { href: 'http://stats.customs.gov.cn/', id: 'customs', label: '海关中心政务公开', external: true },
     ],
   },
   { href: '#/report', id: 'report', label: '检测报告' },

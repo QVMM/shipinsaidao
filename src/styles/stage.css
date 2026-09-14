@@ -191,16 +191,33 @@ body:has(.wall) {
   padding-top: 6px;
 }
 
+/* 浮层：不占 wall-hd 行高，避免把 HUD / 墙板挤矮 */
 .monitor-assist.is-stage {
-  grid-column: 1 / -1;
-  margin: 0 0 4px;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(980px, calc(100% - 48px));
+  z-index: 12;
+  margin: 0;
   padding: 7px 12px;
   border-radius: 2px;
   border: 1px solid rgba(228, 197, 106, 0.42);
   background:
-    linear-gradient(90deg, rgba(232, 90, 90, 0.16), rgba(12, 28, 32, 0.55) 22%, rgba(12, 28, 32, 0.35));
-  box-shadow: inset 0 0 0 1px rgba(39, 224, 208, 0.06);
+    linear-gradient(90deg, rgba(232, 90, 90, 0.22), rgba(4, 16, 20, 0.92) 22%, rgba(4, 16, 20, 0.88));
+  box-shadow:
+    inset 0 0 0 1px rgba(39, 224, 208, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.45);
   gap: 12px;
+  pointer-events: auto;
+}
+.monitor-assist.is-stage .ma-source {
+  color: #e4c56a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.monitor-assist.is-stage .ma-source:hover {
+  color: #fff8e6;
 }
 .monitor-assist.is-stage .ma-mark {
   width: 28px; height: 28px;
@@ -454,7 +471,8 @@ body:has(.wall) {
   pointer-events: none;
   background: transparent;
 }
-.spot-seal .ink-stamp { width: 100%; height: 100%; display: block; }
+.spot-seal .ink-stamp { width: 100%; height: 100%; display: block; object-fit: contain; }
+.spot-seal .ink-stamp-png { opacity: 0.9; }
 .spot-card.is-scan,
 .q-row.is-scan {
   box-shadow: inset 0 0 0 1px rgba(228, 197, 106, 0.75), 0 0 16px rgba(228, 197, 106, 0.2);

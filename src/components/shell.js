@@ -15,9 +15,10 @@ function productNavOpen(routeId) {
 }
 
 function navLink(n, routeId, extraClass = '') {
-  const cls = [extraClass, routeId === n.id ? 'active' : ''].filter(Boolean).join(' ')
+  const cls = [extraClass, !n.external && routeId === n.id ? 'active' : ''].filter(Boolean).join(' ')
+  const ext = n.external ? ' target="_blank" rel="noopener noreferrer"' : ''
   return `
-    <a href="${n.href}" data-nav="${n.id}" class="${cls}">
+    <a href="${n.href}" data-nav="${n.id}" class="${cls}"${ext}>
       ${NAV_ICONS[n.id] || ''}
       <span>${n.label}</span>
     </a>

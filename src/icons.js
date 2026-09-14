@@ -76,12 +76,22 @@ export const iconAudit = ico(`
   <path d="M9.6 17h4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
 `)
 
+
+/** 海关中心政务公开 */
+export const iconCustoms = ico(`
+  <path d="M4.5 19.2h15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M6.2 19.2V9.4l5.8-4.6 5.8 4.6v9.8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M9.2 19.2v-4.2h5.6v4.2" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M9.6 11.2h1.6M12.8 11.2h1.6M9.6 14h1.6M12.8 14h1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+`)
+
 export const NAV_ICONS = {
   dashboard: iconBatch,
   farm: iconFarm,
   product: iconProduct,
   screen: iconTube,
   eval: iconHeart,
+  customs: iconCustoms,
   report: iconDoc,
   qr: iconQr,
   consumer: iconPhone,

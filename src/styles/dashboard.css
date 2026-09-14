@@ -193,7 +193,8 @@
   background: transparent;
   filter: drop-shadow(0 1px 0 rgba(180, 35, 24, .12));
 }
-.dash-stamp .ink-stamp { width: 100%; height: 100%; display: block; }
+.dash-stamp .ink-stamp { width: 100%; height: 100%; display: block; object-fit: contain; }
+.dash-stamp .ink-stamp-png { opacity: 0.88; }
 .dash-stamp.hold { filter: drop-shadow(0 1px 0 rgba(138, 90, 18, .12)); }
 
 .dash-cols {

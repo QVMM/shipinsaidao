@@ -1,8 +1,10 @@
 /**
- * 橡胶印：不规则圆、油墨颗粒、略偏的字。不要卡通描边。
+ * 橡胶印：合格用实拍 PNG；待复核仍用 SVG。
  */
 
 let stampSeq = 0
+
+const STAMP_PNG = './stamp-qualified.png'
 
 /**
  * @param {'pass' | 'official' | 'hold'} variant
@@ -49,6 +51,10 @@ function star(ink) {
  */
 export function renderInkStamp(opts = {}) {
   const variant = opts.variant || 'pass'
+  // 合格 / 准予上市 / 已出证：用实拍橡胶印 PNG
+  if (variant === 'pass' || variant === 'official') {
+    return `<img class="ink-stamp ink-stamp-png" src="${STAMP_PNG}" alt="" aria-hidden="true" draggable="false" />`
+  }
   const face = faceOf(variant)
   const lines = opts.lines && opts.lines.length ? opts.lines : face.lines
   const ink = face.ink

@@ -297,8 +297,8 @@ export function render() {
       <div class="wall-board" data-board>
         <div class="wall-scan" aria-hidden="true"></div>
         <div class="wall-grid" aria-hidden="true"></div>
+        ${renderMonitorAssistant('stage')}
         <header class="wall-hd">
-          ${renderMonitorAssistant('stage')}
           <div class="hd-wing hd-left">
             <span class="hd-live"><i></i>LIVE</span>
             <span class="hd-sys">FLEET QC / TRACE COMMAND</span>

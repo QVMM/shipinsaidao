@@ -150,6 +150,12 @@ html.is-busy .progress-bar i {
   font-size: 13px; white-space: nowrap;
 }
 .monitor-assist .ma-cta:hover { background: var(--forest-2); }
+.monitor-assist .ma-source {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.monitor-assist .ma-source:hover { color: var(--forest); }
 .page-head + .monitor-assist { margin-bottom: 12px; }
 @media (max-width: 780px) {
   .monitor-assist { grid-template-columns: auto 1fr; }
@@ -370,7 +376,8 @@ a.btn { text-decoration: none; }
   background: transparent;
   pointer-events: none;
 }
-.report-seal .ink-stamp { width: 100%; height: 100%; display: block; }
+.report-seal .ink-stamp { width: 100%; height: 100%; display: block; object-fit: contain; }
+.report-seal .ink-stamp-png { opacity: 0.88; }
 .report-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12.5px; }
 .report-table th, .report-table td { border: 1px solid #cfcfcf; padding: 6px 8px; }
 .report-table th { background: #f4f1ea; width: 22%; text-align: left; font-weight: 600; }

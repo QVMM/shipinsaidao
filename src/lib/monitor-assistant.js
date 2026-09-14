@@ -1,5 +1,7 @@
 /** DJTK智控助手：演示话术三段（开头风险 → 中间判定 → 升华收束）。 */
 
+import { isDemoSpeechSupported, speakDemoAct, stopDemoSpeech } from './demo-tts.js'
+
 export const CUSTOMS_URL = 'http://stats.customs.gov.cn/'
 
 /** @typedef {'open' | 'mid' | 'end'} DemoAct */
@@ -149,6 +151,8 @@ function renderDemoPanel(s, withCollapse) {
     </div>
     <div class="ma-actions ${withCollapse ? '' : 'is-staff-actions'}">
       ${s.customs ? `<a class="ma-link-out${withCollapse ? '' : ' is-staff-link'}" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">打开海关政务公开</a>` : ''}
+      <button type="button" class="ma-speak" data-demo-speak>播报本段</button>
+      <button type="button" class="ma-speak-stop" data-demo-stop hidden>停止播报</button>
       <button type="button" class="ma-prev" data-demo-prev>上一段</button>
       <button type="button" class="ma-next-act" data-demo-next>${esc(s.nextLabel)}</button>
       <a class="ma-cta" href="${esc(s.href)}" data-assistant-cta>${esc(s.cta)}</a>
@@ -168,6 +172,24 @@ export function bindMonitorAssistant(root, opts = {}) {
   /** @type {DemoAct} */
   let act = /** @type {DemoAct} */ (box.dataset.demoAct || 'open')
   const isStage = box.classList.contains('is-stage')
+  const canSpeak = isDemoSpeechSupported()
+
+  const setSpeakingUi = (on) => {
+    const play = box.querySelector('[data-demo-speak]')
+    const stop = box.querySelector('[data-demo-stop]')
+    if (play) play.hidden = on
+    if (stop) stop.hidden = !on
+    box.classList.toggle('is-speaking', on)
+  }
+
+  const playAct = () => {
+    if (!canSpeak) return
+    const s = DEMO_SCRIPT[act]
+    setSpeakingUi(true)
+    speakDemoAct(s, {
+      onEnd() { setSpeakingUi(false) },
+    })
+  }
 
   const setCollapsed = (collapsed) => {
     const panel = box.querySelector('.ma-panel')
@@ -176,9 +198,13 @@ export function bindMonitorAssistant(root, opts = {}) {
     box.dataset.collapsed = collapsed ? '1' : '0'
     if (panel) panel.hidden = collapsed
     if (chip) chip.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+    if (collapsed) {
+      stopDemoSpeech()
+      setSpeakingUi(false)
+    }
   }
 
-  const paint = (next) => {
+  const paint = (next, { autoSpeak = true } = {}) => {
     act = next
     const s = DEMO_SCRIPT[act]
     box.dataset.demoAct = act
@@ -194,7 +220,17 @@ export function bindMonitorAssistant(root, opts = {}) {
     } else {
       box.innerHTML = renderDemoPanel(s, false)
     }
+    if (!canSpeak) {
+      box.querySelector('[data-demo-speak]')?.setAttribute('hidden', '')
+      box.querySelector('[data-demo-stop]')?.setAttribute('hidden', '')
+    }
     opts.onAct?.(act)
+    if (autoSpeak && (!isStage || box.dataset.collapsed !== '1')) playAct()
+  }
+
+  if (!canSpeak) {
+    box.querySelector('[data-demo-speak]')?.setAttribute('hidden', '')
+    box.querySelector('[data-demo-stop]')?.setAttribute('hidden', '')
   }
 
   box.addEventListener('click', (ev) => {
@@ -202,27 +238,44 @@ export function bindMonitorAssistant(root, opts = {}) {
     const toggle = t.closest?.('[data-assist-toggle]')
     if (toggle && box.contains(toggle)) {
       ev.preventDefault()
-      setCollapsed(box.dataset.collapsed !== '1')
+      const willExpand = box.dataset.collapsed === '1'
+      setCollapsed(!willExpand)
+      if (willExpand) playAct()
+      return
+    }
+    const speakBtn = t.closest?.('[data-demo-speak]')
+    if (speakBtn && box.contains(speakBtn)) {
+      ev.preventDefault()
+      playAct()
+      return
+    }
+    const stopBtn = t.closest?.('[data-demo-stop]')
+    if (stopBtn && box.contains(stopBtn)) {
+      ev.preventDefault()
+      stopDemoSpeech()
+      setSpeakingUi(false)
       return
     }
     const next = t.closest?.('[data-demo-next]')
     if (next && box.contains(next)) {
       ev.preventDefault()
       const i = DEMO_ACTS.indexOf(act)
-      paint(DEMO_ACTS[(i + 1) % DEMO_ACTS.length])
       if (isStage) setCollapsed(false)
+      paint(DEMO_ACTS[(i + 1) % DEMO_ACTS.length])
       return
     }
     const prev = t.closest?.('[data-demo-prev]')
     if (prev && box.contains(prev)) {
       ev.preventDefault()
       const i = DEMO_ACTS.indexOf(act)
-      paint(DEMO_ACTS[(i - 1 + DEMO_ACTS.length) % DEMO_ACTS.length])
       if (isStage) setCollapsed(false)
+      paint(DEMO_ACTS[(i - 1 + DEMO_ACTS.length) % DEMO_ACTS.length])
       return
     }
     const link = t.closest?.('[data-assistant-cta]')
     if (link && box.contains(link)) {
+      stopDemoSpeech()
+      setSpeakingUi(false)
       opts.onStart?.()
       const href = link.getAttribute('href') || ''
       if (href.startsWith('#/')) {
@@ -232,6 +285,7 @@ export function bindMonitorAssistant(root, opts = {}) {
     }
   })
 }
+
 
 function esc(v) {
   return v == null ? '' : String(v)

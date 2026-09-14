@@ -886,3 +886,23 @@ a.text-link { color: var(--gold); }
 .seal-events li{font-size:13px;line-height:1.45;padding:6px 0;border-bottom:1px dashed var(--line-soft)}
 .seal-events li span{display:inline-block;min-width:124px;color:var(--muted);font-variant-numeric:tabular-nums}
 .seal-events li b{display:inline-block;min-width:42px;margin-right:8px}
+
+.monitor-assist.is-staff .ma-speak,
+.monitor-assist.is-staff .ma-speak-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--forest);
+  background: #fff;
+  color: var(--forest);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.monitor-assist.is-staff .ma-speak-stop {
+  border-color: #9b2c2c;
+  color: #9b2c2c;
+}

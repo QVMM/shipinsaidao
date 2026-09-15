@@ -1616,6 +1616,9 @@ body:has(.wall) {
 }
 .djtk-human.is-stage:not(.is-collapsed) .djtk-fab,
 .djtk-human.is-stage[data-collapsed="0"] .djtk-fab { display: none; }
+.djtk-panel[hidden] {
+  display: none !important;
+}
 .djtk-panel {
   width: 340px;
   max-height: min(520px, 58vh);

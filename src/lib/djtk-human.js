@@ -287,7 +287,7 @@ export function renderDjtkHuman(opts = {}) {
           </div>
           <div class="djtk-hd-actions">
             <button type="button" class="djtk-cabin-open" data-djtk-cabin-open title="进入全屏 AI 指挥舱">全屏指挥舱</button>
-            ${compact ? '' : '<button type="button" class="djtk-close" data-djtk-toggle aria-label="收起">收起</button>'}
+            ${compact ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
           </div>
         </header>
         <p class="djtk-tip">第一次可以问：从哪来、安不安全、下一步、焦点风险、氟苯尼考筛查、待复核、海关演示预警。点「全屏指挥舱」可进入大屏问答。</p>
@@ -437,10 +437,13 @@ export function bindDjtkHuman(root, opts = {}) {
   const setCollapsed = (collapsed) => {
     if (opts.compact) return
     const panel = box.querySelector('[data-djtk-panel]')
-    const fab = box.querySelector('[data-djtk-toggle].djtk-fab, .djtk-fab')
+    const fab = box.querySelector('.djtk-fab')
     box.dataset.collapsed = collapsed ? '1' : '0'
     box.classList.toggle('is-collapsed', collapsed)
-    if (panel) panel.hidden = collapsed
+    if (panel) {
+      panel.hidden = !!collapsed
+      panel.classList.toggle('is-open', !collapsed)
+    }
     if (fab) fab.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
     if (collapsed && !cabinOpen) {
       askAbort?.abort()
@@ -564,10 +567,19 @@ export function bindDjtkHuman(root, opts = {}) {
       exitCabin()
       return
     }
+    const closeBtn = t.closest?.('.djtk-close, [data-djtk-close]')
+    if (closeBtn && host.contains(closeBtn)) {
+      ev.preventDefault()
+      ev.stopPropagation()
+      setCollapsed(true)
+      return
+    }
     const toggle = t.closest?.('[data-djtk-toggle]')
     if (toggle && host.contains(toggle)) {
       ev.preventDefault()
-      setCollapsed(box.dataset.collapsed !== '1')
+      // FAB opens; close handled above
+      const wantCollapse = box.dataset.collapsed !== '1'
+      setCollapsed(wantCollapse)
       return
     }
     const chip = t.closest?.('[data-djtk-chip]')

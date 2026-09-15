@@ -915,7 +915,10 @@ a.text-link { color: var(--gold); }
   border-radius: 12px;
   padding: 12px 14px;
 }
-.djtk-human.is-compact .djtk-panel {
+.djtk-human.is-compact .djtk-panel[hidden] {
+  display: none !important;
+}
+.djtk-panel {
   width: auto;
   max-height: none;
   border: 0;

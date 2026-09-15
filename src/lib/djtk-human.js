@@ -186,60 +186,16 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
 }
 
 /**
- * Unique gradient ids for fab / panel / cabin (duplicate SVG on page).
+ * Photo face for fab / panel / cabin. suffix kept for call-site identity.
  * @param {'fab' | 'panel' | 'cabin'} suffix
  */
-function avatarSvg(suffix = 'panel') {
-  const glow = `djtkGlow-${suffix}`
-  const skin = `djtkSkin-${suffix}`
-  const hair = `djtkHair-${suffix}`
+function avatarHtml(suffix = 'panel') {
   return `
-    <svg class="djtk-face" viewBox="0 0 96 96" aria-hidden="true">
-      <defs>
-        <radialGradient id="${glow}" cx="50%" cy="38%" r="62%">
-          <stop offset="0%" stop-color="#9ff8ef"/>
-          <stop offset="55%" stop-color="#1a9f96"/>
-          <stop offset="100%" stop-color="#061a1c"/>
-        </radialGradient>
-        <linearGradient id="${skin}" x1="20%" y1="10%" x2="80%" y2="95%">
-          <stop offset="0%" stop-color="#1a4a52"/>
-          <stop offset="45%" stop-color="#0e3338"/>
-          <stop offset="100%" stop-color="#071e22"/>
-        </linearGradient>
-        <linearGradient id="${hair}" x1="50%" y1="0%" x2="50%" y2="100%">
-          <stop offset="0%" stop-color="#0a2226"/>
-          <stop offset="100%" stop-color="#123840"/>
-        </linearGradient>
-      </defs>
-      <circle class="djtk-halo" cx="48" cy="48" r="45" fill="url(#${glow})" opacity="0.5"/>
-      <!-- soft hair / bangs -->
-      <ellipse cx="48" cy="34" rx="30" ry="26" fill="url(#${hair})" opacity="0.95"/>
-      <path d="M22 40 Q28 22 48 18 Q68 22 74 40 Q70 28 48 24 Q26 28 22 40Z" fill="#0c2a2e"/>
-      <path d="M30 28 Q38 34 42 30" fill="none" stroke="#e4c56a" stroke-width="1.2" opacity="0.55" stroke-linecap="round"/>
-      <path d="M54 30 Q58 34 66 28" fill="none" stroke="#e4c56a" stroke-width="1.2" opacity="0.55" stroke-linecap="round"/>
-      <!-- face -->
-      <ellipse cx="48" cy="52" rx="26" ry="30" fill="url(#${skin})" stroke="#3aefe0" stroke-width="1.8"/>
-      <!-- cheek soft glow -->
-      <ellipse cx="32" cy="54" rx="5" ry="3.5" fill="#27e0d0" opacity="0.12"/>
-      <ellipse cx="64" cy="54" rx="5" ry="3.5" fill="#27e0d0" opacity="0.12"/>
-      <!-- eyes -->
-      <ellipse cx="37" cy="46" rx="5.5" ry="6" fill="#061618"/>
-      <ellipse cx="59" cy="46" rx="5.5" ry="6" fill="#061618"/>
-      <circle class="djtk-eye" cx="37" cy="46" r="2.6" fill="#e8fff8"/>
-      <circle class="djtk-eye" cx="59" cy="46" r="2.6" fill="#e8fff8"/>
-      <circle cx="38.2" cy="44.8" r="0.9" fill="#fff" opacity="0.85"/>
-      <circle cx="60.2" cy="44.8" r="0.9" fill="#fff" opacity="0.85"/>
-      <!-- soft headset -->
-      <path d="M20 48 Q18 36 28 28" fill="none" stroke="#e4c56a" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
-      <path d="M76 48 Q78 36 68 28" fill="none" stroke="#e4c56a" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
-      <rect x="15" y="46" width="7" height="12" rx="3" fill="#0d2f34" stroke="#27e0d0" stroke-width="1.2"/>
-      <rect x="74" y="46" width="7" height="12" rx="3" fill="#0d2f34" stroke="#27e0d0" stroke-width="1.2"/>
-      <circle cx="18.5" cy="52" r="1.6" fill="#7ff5ea"/>
-      <circle cx="77.5" cy="52" r="1.6" fill="#7ff5ea"/>
-      <!-- mouth: closed line + open ellipse -->
-      <path class="djtk-mouth-closed" d="M40 64 Q48 67 56 64" fill="none" stroke="#7ff5ea" stroke-width="2.4" stroke-linecap="round"/>
-      <ellipse class="djtk-mouth-open" cx="48" cy="65" rx="7" ry="4.5" fill="#061618" stroke="#7ff5ea" stroke-width="1.6"/>
-    </svg>
+    <span class="djtk-face djtk-face-photo" data-djtk-face data-djtk-face-ctx="${suffix}" aria-hidden="true">
+      <img class="djtk-face-img is-closed" src="/djtk-avatar-closed.png" alt="" />
+      <img class="djtk-face-img is-open" src="/djtk-avatar-open.png" alt="" />
+      <i class="djtk-face-glow" aria-hidden="true"></i>
+    </span>
   `
 }
 
@@ -261,7 +217,7 @@ function cabinMarkup() {
       </header>
       <div class="djtk-cabin-main">
         <section class="djtk-cabin-hero">
-          <div class="djtk-cabin-avatar" data-djtk-avatar>${avatarSvg('cabin')}</div>
+          <div class="djtk-cabin-avatar" data-djtk-avatar>${avatarHtml('cabin')}</div>
           <p class="djtk-cabin-hero-name">DJTK智控助手</p>
           <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>待命</p>
         </section>
@@ -306,11 +262,11 @@ export function renderDjtkHuman(opts = {}) {
     <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}" data-djtk-human data-collapsed="${compact ? '0' : '1'}">
       ${compact ? '' : `
       <button type="button" class="djtk-fab" data-djtk-toggle aria-expanded="false" title="打开 DJTK 智控助手" aria-label="打开 DJTK 智控助手">
-        <span class="djtk-fab-face">${avatarSvg('fab')}</span>
+        <span class="djtk-fab-face">${avatarHtml('fab')}</span>
       </button>`}
       <div class="djtk-panel${compact ? ' is-open' : ''}" ${compact ? '' : 'hidden'} data-djtk-panel>
         <header class="djtk-hd">
-          <div class="djtk-avatar" data-djtk-avatar>${avatarSvg('panel')}</div>
+          <div class="djtk-avatar" data-djtk-avatar>${avatarHtml('panel')}</div>
           <div class="djtk-hd-copy">
             <b>DJTK智控助手</b>
             <span>替抗蓟化 · 质控溯源</span>

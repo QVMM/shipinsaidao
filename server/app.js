@@ -28,10 +28,13 @@ import {
   publicUser,
   readToken,
   requireStaff,
+  requireStaffOrStage,
   setSessionCookie,
+  stageDemoToken,
   userFromToken,
   verifyPassword,
 } from './auth.js'
+import { mimoAsk, mimoConfigured, mimoTts } from './mimo.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal, demoTamper, demoRestore } from './seal.js'
 
@@ -189,6 +192,73 @@ export async function buildApp() {
     const data = demoRestore(batchId, req.user)
     if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
     return { ok: data.ok, seal: data.seal, batch: getBatch(batchId) }
+  })
+
+  app.get('/api/djtk/status', async () => ({
+    ok: true,
+    mimoConfigured: mimoConfigured(),
+    stageTokenHint: 'x-stage-token',
+    defaultStageToken: stageDemoToken(),
+  }))
+
+  app.post('/api/djtk/ask', { preHandler: requireStaffOrStage }, async (req, reply) => {
+    const question = String(req.body?.question || '').trim()
+    const history = Array.isArray(req.body?.history) ? req.body.history : []
+    if (!question) {
+      return reply.code(400).send({ error: 'invalid', message: '请先输入问题。' })
+    }
+    if (!mimoConfigured()) {
+      return reply.code(503).send({
+        error: 'mimo_unconfigured',
+        message: '服务端未配置 MIMO_API_KEY，可用浏览器朗读兜底。',
+        fallback: true,
+      })
+    }
+    const result = await mimoAsk({ question, history })
+    if (!result.ok) {
+      return reply.code(result.status >= 400 ? result.status : 502).send({
+        error: result.error || 'mimo_failed',
+        message: '智控助手暂时无法回答，请稍后再试或用浏览器朗读。',
+        detail: result.body,
+        fallback: true,
+      })
+    }
+    return {
+      answer: result.answer,
+      audioBase64: result.audioBase64,
+      mime: result.mime || 'audio/wav',
+      voice: result.voice,
+      model: result.model,
+      ttsFallback: !result.audioBase64,
+    }
+  })
+
+  app.post('/api/djtk/tts', { preHandler: requireStaffOrStage }, async (req, reply) => {
+    const text = String(req.body?.text || '').trim()
+    if (!text) {
+      return reply.code(400).send({ error: 'invalid', message: '没有要播报的文字。' })
+    }
+    if (!mimoConfigured()) {
+      return reply.code(503).send({
+        error: 'mimo_unconfigured',
+        message: '服务端未配置 MIMO_API_KEY，请用浏览器朗读。',
+        fallback: true,
+      })
+    }
+    const result = await mimoTts(text)
+    if (!result.ok) {
+      return reply.code(result.status >= 400 ? result.status : 502).send({
+        error: result.error || 'mimo_tts_failed',
+        message: '语音合成失败，请用浏览器朗读。',
+        detail: result.body,
+        fallback: true,
+      })
+    }
+    return {
+      audioBase64: result.audioBase64,
+      mime: result.mime,
+      voice: result.voice,
+    }
   })
 
   app.get('/api/health', async () => ({ ok: true, defaultBatchId: DEFAULT_BATCH_ID }))

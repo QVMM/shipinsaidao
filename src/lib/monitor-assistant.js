@@ -1,6 +1,6 @@
 /** DJTK智控助手：演示话术三段（开头风险 → 中间判定 → 升华收束）。 */
 
-import { isDemoSpeechSupported, speakDemoAct, stopDemoSpeech } from './demo-tts.js'
+import { speakDemoAct, stopDemoSpeech } from './demo-tts.js'
 
 export const CUSTOMS_URL = 'http://stats.customs.gov.cn/'
 
@@ -172,7 +172,6 @@ export function bindMonitorAssistant(root, opts = {}) {
   /** @type {DemoAct} */
   let act = /** @type {DemoAct} */ (box.dataset.demoAct || 'open')
   const isStage = box.classList.contains('is-stage')
-  const canSpeak = isDemoSpeechSupported()
 
   const setSpeakingUi = (on) => {
     const play = box.querySelector('[data-demo-speak]')
@@ -183,7 +182,6 @@ export function bindMonitorAssistant(root, opts = {}) {
   }
 
   const playAct = () => {
-    if (!canSpeak) return
     const s = DEMO_SCRIPT[act]
     setSpeakingUi(true)
     speakDemoAct(s, {
@@ -220,17 +218,8 @@ export function bindMonitorAssistant(root, opts = {}) {
     } else {
       box.innerHTML = renderDemoPanel(s, false)
     }
-    if (!canSpeak) {
-      box.querySelector('[data-demo-speak]')?.setAttribute('hidden', '')
-      box.querySelector('[data-demo-stop]')?.setAttribute('hidden', '')
-    }
     opts.onAct?.(act)
     if (autoSpeak && (!isStage || box.dataset.collapsed !== '1')) playAct()
-  }
-
-  if (!canSpeak) {
-    box.querySelector('[data-demo-speak]')?.setAttribute('hidden', '')
-    box.querySelector('[data-demo-stop]')?.setAttribute('hidden', '')
   }
 
   box.addEventListener('click', (ev) => {

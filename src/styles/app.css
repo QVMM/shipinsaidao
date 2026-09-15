@@ -906,3 +906,64 @@ a.text-link { color: var(--gold); }
   border-color: #9b2c2c;
   color: #9b2c2c;
 }
+
+/* DJTK 数字人 · 工作人员页精简条 */
+.djtk-human.is-compact {
+  margin: 0 0 14px;
+  border: 1px solid var(--line, #d5e4df);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.djtk-human.is-compact .djtk-panel {
+  width: auto;
+  max-height: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 14px;
+}
+.djtk-human.is-compact .djtk-hd { grid-column: 1 / -1; }
+.djtk-human.is-compact .djtk-avatar { width: 48px; height: 48px; }
+.djtk-human.is-compact .djtk-avatar .djtk-face { width: 48px; height: 48px; }
+.djtk-human.is-compact .djtk-hd-copy b { color: var(--forest, #1a6b5c); }
+.djtk-human.is-compact .djtk-hd-copy span,
+.djtk-human.is-compact .djtk-tip { color: var(--muted, #6b7c78); }
+.djtk-human.is-compact .djtk-tip,
+.djtk-human.is-compact .djtk-chips,
+.djtk-human.is-compact .djtk-log,
+.djtk-human.is-compact .djtk-form,
+.djtk-human.is-compact .djtk-status { grid-column: 1 / -1; }
+.djtk-human.is-compact .djtk-log { max-height: 160px; min-height: 72px; }
+.djtk-human.is-compact .djtk-bubble {
+  background: #f4faf8;
+  border-color: #d5e4df;
+}
+.djtk-human.is-compact .djtk-bubble.is-user { background: #fff8ea; }
+.djtk-human.is-compact .djtk-bubble p { color: var(--ink, #1a2b28); }
+.djtk-human.is-compact .djtk-form input {
+  background: #fff;
+  color: var(--ink, #1a2b28);
+  border-color: #c5d6d1;
+}
+.djtk-human.is-compact .djtk-send {
+  background: var(--forest, #1a6b5c);
+  border-color: transparent;
+  color: #fff;
+  border-radius: 8px;
+}
+.djtk-human.is-compact .djtk-chip {
+  background: #eef7f4;
+  color: var(--forest, #1a6b5c);
+  border-color: #c5d6d1;
+}
+.djtk-human.is-speaking .djtk-mouth {
+  animation: djtk-talk-staff 0.28s ease-in-out infinite alternate;
+}
+@keyframes djtk-talk-staff {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(1.35); transform-origin: center; }
+}

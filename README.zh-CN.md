@@ -38,6 +38,18 @@ npm run build
 
 复制 `.env.example` 为 `.env`。至少改 `SESSION_SECRET`。不要把 `.env` 和 `*.db` 提交进 git。
 
+### DJTK 智控助手（MIMO）
+
+指挥舱 `#/stage` 右下角有可对话数字人。服务端用小米 MIMO Token Plan：
+
+- 环境变量 `MIMO_API_KEY`（必填才能云端问答/TTS；**不要**写进前端或提交 git）
+- 可选 `MIMO_BASE_URL`（默认 `https://token-plan-cn.xiaomimimo.com/v1`）
+- 可选 `DJTK_STAGE_TOKEN`（默认 `tihua-djtk-stage`，舞台页用 `x-stage-token` / body.stageToken）
+
+Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `sync: false`）。未配置时接口返回 503，前端回退浏览器 `speechSynthesis`。
+
+接口：`POST /api/djtk/ask`、`POST /api/djtk/tts`（需登录工作人员或舞台令牌）；`GET /api/djtk/status`。
+
 ## 工作账号
 
 默认密码全是 `Demo#2026`。上线必须改。
@@ -78,6 +90,7 @@ server/app.js       路由
 server/command.js   公开指挥舱
 server/db.js        SQLite 表、种子、组装批次
 server/auth.js      哈希口令 + httpOnly 会话 cookie
+server/mimo.js      小米 MIMO Chat/TTS（仅服务端持 key）
 server/roles.js     角色与 403 文案
 server/seed.js      npm run seed
 src/                Vite 前端（旅程 IA 未改）
@@ -101,6 +114,9 @@ data/tihua.db       本地库（git 忽略）
 - `GET  /api/public/command` command wall
 - `GET  /api/public/stage/:batchId` 公开大屏
 - `GET  /api/audit?batchId=` 工作人员
+- `GET  /api/djtk/status` MIMO 是否配置
+- `POST /api/djtk/ask` `{question, history?}` → `{answer, audioBase64, mime, voice}`
+- `POST /api/djtk/tts` `{text}` → `{audioBase64, mime, voice}`
 
 会话 cookie：`tihua_session`，httpOnly，SameSite=Lax。口令 bcryptjs（cost 10）。SQL 全是参数化。服务端不打口令日志。
 

@@ -7,6 +7,7 @@ import { renderLabDock } from '../lib/lab-status.js'
 import { envMetrics } from '../lib/house-env.js'
 import { SEAL_HINT, SEAL_OK, SEAL_TAMPER } from '../lib/seal-copy.js'
 import { bindMonitorAssistant, renderMonitorAssistant } from '../lib/monitor-assistant.js'
+import { bindDjtkHuman, renderDjtkHuman } from '../lib/djtk-human.js'
 import { renderInkStamp } from '../components/ink-stamp.js'
 
 export const meta = { id: 'stage', title: '指挥舱' }
@@ -298,6 +299,7 @@ export function render() {
         <div class="wall-scan" aria-hidden="true"></div>
         <div class="wall-grid" aria-hidden="true"></div>
         ${renderMonitorAssistant('stage')}
+        ${renderDjtkHuman()}
         <header class="wall-hd">
           <div class="hd-wing hd-left">
             <span class="hd-live"><i></i>LIVE</span>
@@ -448,6 +450,7 @@ export async function bind(root) {
       root.querySelector('.q-row.is-spot')?.classList.add('is-scan')
     },
   })
+  bindDjtkHuman(root)
   window.addEventListener('resize', onResize)
   clockTimer = window.setInterval(tickClock, 1000)
   await tick()

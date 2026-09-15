@@ -88,3 +88,28 @@ export async function requireStaff(req, reply) {
 }
 
 export { publicUser }
+
+/** Booth / stage demo: logged-in staff OR x-stage-token / body.stageToken. */
+export function stageDemoToken() {
+  return String(process.env.DJTK_STAGE_TOKEN || process.env.STAGE_DEMO_TOKEN || 'tihua-djtk-stage').trim()
+}
+
+export async function requireStaffOrStage(req, reply) {
+  const user = userFromToken(readToken(req))
+  if (user) {
+    req.user = user
+    return
+  }
+  const provided = String(
+    req.headers['x-stage-token']
+    || req.body?.stageToken
+    || (typeof req.query?.stageToken === 'string' ? req.query.stageToken : '')
+    || '',
+  ).trim()
+  if (provided && provided === stageDemoToken()) {
+    req.user = null
+    req.stageDemo = true
+    return
+  }
+  return reply.code(401).send({ error: 'unauthorized', message: '请先登录，或携带舞台演示令牌。' })
+}

@@ -18,3 +18,9 @@ services:
         generateValue: true
       - key: SEAL_SECRET
         generateValue: true
+      - key: MIMO_API_KEY
+        sync: false
+      - key: MIMO_BASE_URL
+        value: https://token-plan-cn.xiaomimimo.com/v1
+      - key: DJTK_STAGE_TOKEN
+        value: tihua-djtk-stage

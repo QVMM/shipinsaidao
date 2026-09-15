@@ -278,7 +278,7 @@ export function renderDjtkHuman(opts = {}) {
         <span class="djtk-fab-label">DJTK智控助手</span>
         <span class="djtk-fab-hint">问我</span>
       </button>`}
-      <div class="djtk-panel" ${compact ? '' : 'hidden'} data-djtk-panel>
+      <div class="djtk-panel${compact ? ' is-open' : ''}" ${compact ? '' : 'hidden'} data-djtk-panel>
         <header class="djtk-hd">
           <div class="djtk-avatar" data-djtk-avatar>${avatarSvg('panel')}</div>
           <div class="djtk-hd-copy">
@@ -325,6 +325,13 @@ export function bindDjtkHuman(root, opts = {}) {
   const box = /** @type {HTMLElement | null} */ (root.querySelector('[data-djtk-human]'))
   if (!box) return
   box.dataset.bound = '1'
+
+  // Stage float lives on body (like cabin) so wall-board CSS scale cannot skew hit-testing.
+  const floatOnBody = !opts.compact
+  if (floatOnBody && box.parentElement !== document.body) {
+    box.classList.add('is-body-float')
+    document.body.appendChild(box)
+  }
 
   /** @type {{ role: string, content: string }[]} */
   const history = []
@@ -443,6 +450,8 @@ export function bindDjtkHuman(root, opts = {}) {
     if (panel) {
       panel.hidden = !!collapsed
       panel.classList.toggle('is-open', !collapsed)
+      // Class wins even if some stylesheet fights [hidden]
+      panel.style.display = collapsed ? 'none' : ''
     }
     if (fab) fab.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
     if (collapsed && !cabinOpen) {
@@ -641,6 +650,11 @@ export function bindDjtkHuman(root, opts = {}) {
     stopDjtkAudio()
     window.removeEventListener('keydown', onKey)
     exitCabin()
+    try {
+      if (box.classList.contains('is-body-float') || box.parentElement === document.body) {
+        box.remove()
+      }
+    } catch { /* ignore */ }
     try { cabin.remove() } catch { /* ignore */ }
     document.documentElement.classList.remove('djtk-cabin-open')
     try {

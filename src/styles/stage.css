@@ -1578,11 +1578,12 @@ body:has(.wall) {
 }
 
 /* —— DJTK 数字人（指挥舱浮动，不占满 HUD） —— */
-.djtk-human.is-stage {
-  position: absolute;
+.djtk-human.is-stage,
+.djtk-human.is-stage.is-body-float {
+  position: fixed;
   right: 16px;
   bottom: 72px;
-  z-index: 40;
+  z-index: 1200;
   width: auto;
   max-width: 360px;
   pointer-events: none;
@@ -1618,6 +1619,9 @@ body:has(.wall) {
 .djtk-human.is-stage[data-collapsed="0"] .djtk-fab { display: none; }
 .djtk-panel[hidden] {
   display: none !important;
+}
+.djtk-human.is-stage .djtk-panel.is-open {
+  display: flex !important;
 }
 .djtk-panel {
   width: 340px;

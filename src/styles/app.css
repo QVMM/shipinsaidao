@@ -918,6 +918,9 @@ a.text-link { color: var(--gold); }
 .djtk-human.is-compact .djtk-panel[hidden] {
   display: none !important;
 }
+.djtk-human.is-stage .djtk-panel.is-open {
+  display: flex !important;
+}
 .djtk-panel {
   width: auto;
   max-height: none;

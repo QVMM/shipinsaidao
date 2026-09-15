@@ -190,23 +190,55 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
  * @param {'fab' | 'panel' | 'cabin'} suffix
  */
 function avatarSvg(suffix = 'panel') {
-  const id = `djtkGlow-${suffix}`
+  const glow = `djtkGlow-${suffix}`
+  const skin = `djtkSkin-${suffix}`
+  const hair = `djtkHair-${suffix}`
   return `
     <svg class="djtk-face" viewBox="0 0 96 96" aria-hidden="true">
       <defs>
-        <radialGradient id="${id}" cx="50%" cy="40%" r="60%">
-          <stop offset="0%" stop-color="#7ff5ea"/>
-          <stop offset="70%" stop-color="#1a8f88"/>
-          <stop offset="100%" stop-color="#0a2a2c"/>
+        <radialGradient id="${glow}" cx="50%" cy="38%" r="62%">
+          <stop offset="0%" stop-color="#9ff8ef"/>
+          <stop offset="55%" stop-color="#1a9f96"/>
+          <stop offset="100%" stop-color="#061a1c"/>
         </radialGradient>
+        <linearGradient id="${skin}" x1="20%" y1="10%" x2="80%" y2="95%">
+          <stop offset="0%" stop-color="#1a4a52"/>
+          <stop offset="45%" stop-color="#0e3338"/>
+          <stop offset="100%" stop-color="#071e22"/>
+        </linearGradient>
+        <linearGradient id="${hair}" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stop-color="#0a2226"/>
+          <stop offset="100%" stop-color="#123840"/>
+        </linearGradient>
       </defs>
-      <circle class="djtk-halo" cx="48" cy="48" r="44" fill="url(#${id})" opacity="0.55"/>
-      <ellipse cx="48" cy="52" rx="28" ry="32" fill="#0d2f34" stroke="#27e0d0" stroke-width="2"/>
-      <ellipse cx="48" cy="38" rx="22" ry="18" fill="#123a40" stroke="#3aefe0" stroke-width="1.4"/>
-      <circle class="djtk-eye" cx="38" cy="38" r="3.2" fill="#e8fff8"/>
-      <circle class="djtk-eye" cx="58" cy="38" r="3.2" fill="#e8fff8"/>
-      <path class="djtk-mouth" d="M40 58 Q48 62 56 58" fill="none" stroke="#7ff5ea" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M30 28 Q48 18 66 28" fill="none" stroke="#e4c56a" stroke-width="1.4" opacity="0.7"/>
+      <circle class="djtk-halo" cx="48" cy="48" r="45" fill="url(#${glow})" opacity="0.5"/>
+      <!-- soft hair / bangs -->
+      <ellipse cx="48" cy="34" rx="30" ry="26" fill="url(#${hair})" opacity="0.95"/>
+      <path d="M22 40 Q28 22 48 18 Q68 22 74 40 Q70 28 48 24 Q26 28 22 40Z" fill="#0c2a2e"/>
+      <path d="M30 28 Q38 34 42 30" fill="none" stroke="#e4c56a" stroke-width="1.2" opacity="0.55" stroke-linecap="round"/>
+      <path d="M54 30 Q58 34 66 28" fill="none" stroke="#e4c56a" stroke-width="1.2" opacity="0.55" stroke-linecap="round"/>
+      <!-- face -->
+      <ellipse cx="48" cy="52" rx="26" ry="30" fill="url(#${skin})" stroke="#3aefe0" stroke-width="1.8"/>
+      <!-- cheek soft glow -->
+      <ellipse cx="32" cy="54" rx="5" ry="3.5" fill="#27e0d0" opacity="0.12"/>
+      <ellipse cx="64" cy="54" rx="5" ry="3.5" fill="#27e0d0" opacity="0.12"/>
+      <!-- eyes -->
+      <ellipse cx="37" cy="46" rx="5.5" ry="6" fill="#061618"/>
+      <ellipse cx="59" cy="46" rx="5.5" ry="6" fill="#061618"/>
+      <circle class="djtk-eye" cx="37" cy="46" r="2.6" fill="#e8fff8"/>
+      <circle class="djtk-eye" cx="59" cy="46" r="2.6" fill="#e8fff8"/>
+      <circle cx="38.2" cy="44.8" r="0.9" fill="#fff" opacity="0.85"/>
+      <circle cx="60.2" cy="44.8" r="0.9" fill="#fff" opacity="0.85"/>
+      <!-- soft headset -->
+      <path d="M20 48 Q18 36 28 28" fill="none" stroke="#e4c56a" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+      <path d="M76 48 Q78 36 68 28" fill="none" stroke="#e4c56a" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+      <rect x="15" y="46" width="7" height="12" rx="3" fill="#0d2f34" stroke="#27e0d0" stroke-width="1.2"/>
+      <rect x="74" y="46" width="7" height="12" rx="3" fill="#0d2f34" stroke="#27e0d0" stroke-width="1.2"/>
+      <circle cx="18.5" cy="52" r="1.6" fill="#7ff5ea"/>
+      <circle cx="77.5" cy="52" r="1.6" fill="#7ff5ea"/>
+      <!-- mouth: closed line + open ellipse -->
+      <path class="djtk-mouth-closed" d="M40 64 Q48 67 56 64" fill="none" stroke="#7ff5ea" stroke-width="2.4" stroke-linecap="round"/>
+      <ellipse class="djtk-mouth-open" cx="48" cy="65" rx="7" ry="4.5" fill="#061618" stroke="#7ff5ea" stroke-width="1.6"/>
     </svg>
   `
 }
@@ -273,10 +305,8 @@ export function renderDjtkHuman(opts = {}) {
   return `
     <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}" data-djtk-human data-collapsed="${compact ? '0' : '1'}">
       ${compact ? '' : `
-      <button type="button" class="djtk-fab" data-djtk-toggle aria-expanded="false" title="打开 DJTK 智控助手">
+      <button type="button" class="djtk-fab" data-djtk-toggle aria-expanded="false" title="打开 DJTK 智控助手" aria-label="打开 DJTK 智控助手">
         <span class="djtk-fab-face">${avatarSvg('fab')}</span>
-        <span class="djtk-fab-label">DJTK智控助手</span>
-        <span class="djtk-fab-hint">问我</span>
       </button>`}
       <div class="djtk-panel${compact ? ' is-open' : ''}" ${compact ? '' : 'hidden'} data-djtk-panel>
         <header class="djtk-hd">

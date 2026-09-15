@@ -972,12 +972,33 @@ a.text-link { color: var(--gold); }
   color: var(--forest, #1a6b5c);
   border-color: #c5d6d1;
 }
-.djtk-human.is-speaking .djtk-mouth {
-  animation: djtk-talk-staff 0.28s ease-in-out infinite alternate;
+.djtk-mouth-closed { opacity: 1; }
+.djtk-mouth-open {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
 }
-@keyframes djtk-talk-staff {
-  from { transform: scaleY(1); }
-  to { transform: scaleY(1.35); transform-origin: center; }
+.djtk-human.is-speaking .djtk-mouth-closed { opacity: 0; }
+.djtk-human.is-speaking .djtk-mouth-open {
+  opacity: 1;
+  animation: djtk-lip-flap-staff 0.22s ease-in-out infinite alternate;
+}
+.djtk-human.is-speaking .djtk-halo {
+  animation: djtk-glow-staff 1.1s ease-in-out infinite alternate;
+}
+.djtk-human.is-speaking .djtk-eye { fill: #7ff5ea; }
+@keyframes djtk-lip-flap-staff {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1.15); }
+}
+@keyframes djtk-glow-staff {
+  from { opacity: 0.45; }
+  to { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .djtk-human.is-speaking .djtk-mouth-open,
+  .djtk-human.is-speaking .djtk-halo { animation: none; }
+  .djtk-human.is-speaking .djtk-mouth-open { transform: scaleY(1); }
 }
 
 .monitor-assist .ma-speak-status {
@@ -1137,8 +1158,8 @@ a.text-link { color: var(--gold); }
   box-shadow: inset 0 0 40px rgba(39, 224, 208, 0.06);
 }
 .djtk-cabin-avatar {
-  width: min(220px, 28vw);
-  height: min(220px, 28vw);
+  width: min(240px, 30vw);
+  height: min(240px, 30vw);
 }
 .djtk-cabin-avatar .djtk-face {
   width: 100%;
@@ -1331,16 +1352,18 @@ a.text-link { color: var(--gold); }
   background: rgba(228, 197, 106, 0.08);
   border-left: 2px solid rgba(228, 197, 106, 0.55);
 }
-.djtk-cabin.is-speaking .djtk-mouth {
-  animation: djtk-talk-cabin 0.28s ease-in-out infinite alternate;
+.djtk-cabin.is-speaking .djtk-mouth-closed { opacity: 0; }
+.djtk-cabin.is-speaking .djtk-mouth-open {
+  opacity: 1;
+  animation: djtk-lip-flap-cabin 0.22s ease-in-out infinite alternate;
 }
 .djtk-cabin.is-speaking .djtk-halo {
   animation: djtk-glow-cabin 1.1s ease-in-out infinite alternate;
 }
 .djtk-cabin.is-speaking .djtk-eye { fill: #7ff5ea; }
-@keyframes djtk-talk-cabin {
-  from { d: path('M40 58 Q48 60 56 58'); }
-  to { d: path('M40 58 Q48 66 56 58'); }
+@keyframes djtk-lip-flap-cabin {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1.15); }
 }
 @keyframes djtk-glow-cabin {
   from { opacity: 0.45; }
@@ -1354,11 +1377,12 @@ html.djtk-cabin-open { overflow: hidden; }
     grid-template-columns: 1fr;
     overflow: auto;
   }
-  .djtk-cabin-avatar { width: 140px; height: 140px; }
+  .djtk-cabin-avatar { width: 160px; height: 160px; }
   .djtk-cabin-side { flex-direction: row; flex-wrap: wrap; }
   .djtk-cabin-card { flex: 1 1 220px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .djtk-cabin.is-speaking .djtk-mouth,
+  .djtk-cabin.is-speaking .djtk-mouth-open,
   .djtk-cabin.is-speaking .djtk-halo { animation: none; }
+  .djtk-cabin.is-speaking .djtk-mouth-open { transform: scaleY(1); }
 }

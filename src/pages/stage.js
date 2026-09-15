@@ -6,7 +6,6 @@ import { get } from '../api.js'
 import { renderLabDock } from '../lib/lab-status.js'
 import { envMetrics } from '../lib/house-env.js'
 import { SEAL_HINT, SEAL_OK, SEAL_TAMPER } from '../lib/seal-copy.js'
-import { bindMonitorAssistant, renderMonitorAssistant } from '../lib/monitor-assistant.js'
 import { bindDjtkHuman, renderDjtkHuman, unbindDjtkHuman } from '../lib/djtk-human.js'
 import { chosenBatchId } from '../store.js'
 import { renderInkStamp } from '../components/ink-stamp.js'
@@ -299,7 +298,6 @@ export function render() {
       <div class="wall-board" data-board>
         <div class="wall-scan" aria-hidden="true"></div>
         <div class="wall-grid" aria-hidden="true"></div>
-        ${renderMonitorAssistant('stage')}
         ${renderDjtkHuman()}
         <header class="wall-hd">
           <div class="hd-wing hd-left">
@@ -445,12 +443,6 @@ export async function bind(root) {
   initCharts()
   tickClock()
   root.querySelector('[data-fs]')?.addEventListener('click', toggleFs)
-  bindMonitorAssistant(root, {
-    onStart() {
-      root.querySelector('[data-spot-card]')?.classList.add('is-scan')
-      root.querySelector('.q-row.is-spot')?.classList.add('is-scan')
-    },
-  })
   bindDjtkHuman(root, { batchId: chosenBatchId() })
   window.addEventListener('resize', onResize)
   clockTimer = window.setInterval(tickClock, 1000)

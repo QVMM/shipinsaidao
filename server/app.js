@@ -37,7 +37,7 @@ import {
   userFromToken,
   verifyPassword,
 } from './auth.js'
-import { mimoAsk, mimoConfigured, mimoTts, buildDjtkEvidence, buildDegradedAnswer, sanitizeDjtkAnswer } from './mimo.js'
+import { mimoAsk, mimoConfigured, mimoTts, buildDjtkEvidence, buildDegradedAnswer, buildFastAnswer, sanitizeDjtkAnswer } from './mimo.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal, demoTamper, demoRestore } from './seal.js'
 
@@ -300,6 +300,19 @@ export async function buildApp() {
         degraded: true,
         ttsFallback: true,
         fallback: true,
+      }
+    }
+    const fast = buildFastAnswer(question, evidence)
+    if (fast?.answer) {
+      return {
+        answer: sanitizeDjtkAnswer(fast.answer, evidence),
+        audioBase64: null,
+        mime: 'audio/wav',
+        voice: null,
+        model: 'local-evidence',
+        degraded: false,
+        fast: true,
+        ttsFallback: true,
       }
     }
     if (!mimoConfigured()) {

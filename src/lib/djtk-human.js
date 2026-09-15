@@ -90,10 +90,15 @@ function stageBody() {
   return t ? { stageToken: t } : {}
 }
 
-/** Silent booth cookie mint — no secret in response body. */
-export async function ensureStageSession() {
+/** Booth cookie already minted this page lifetime — skip repeat network. */
+let stageSessionOk = false
+
+/** Silent booth cookie mint — no secret in response body. @param {boolean} [force] */
+export async function ensureStageSession(force = false) {
+  if (stageSessionOk && !force) return true
   try {
     await post('/api/djtk/stage-session', {}, { silent: true })
+    stageSessionOk = true
     return true
   } catch {
     return false
@@ -311,13 +316,28 @@ export function speakBrowser(text, hooks = {}) {
 }
 
 /**
+ * Cut long answers for TTS latency: first ~120 Chinese chars, prefer sentence end 。！？
+ * Full text still shown in the bubble.
+ * @param {string} text
+ * @param {number} [maxChars]
+ */
+export function speakPreview(text, maxChars = 120) {
+  const s = String(text || '').trim()
+  if (s.length <= maxChars) return s
+  const head = s.slice(0, maxChars)
+  const m = head.match(/^[\s\S]*[。！？]/)
+  return (m && m[0].trim()) ? m[0].trim() : head
+}
+
+/**
  * Prefer MIMO TTS API, else browser.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
  * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
  */
 export async function speakWithMimoOrBrowser(text, opts = {}) {
-  const say = String(text || '').trim()
+  const full = String(text || '').trim()
+  const say = speakPreview(full, 120)
   if (!say) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
@@ -725,8 +745,8 @@ export function bindDjtkHuman(root, opts = {}) {
     const signal = askAbort.signal
     const batchId = resolveBatchId()
 
-    // Refresh booth cookie before ask (covers expiry / first open).
-    await ensureStageSession()
+    // Booth cookie: skip network once stageSessionOk (mount already called once).
+    if (!stageSessionOk) await ensureStageSession()
 
     /** @type {string} */
     let answer
@@ -744,6 +764,8 @@ export function bindDjtkHuman(root, opts = {}) {
       answer = String(data?.answer || '').trim() || localFallback(q)
       if (data?.degraded) {
         setStatus('【降级·未连模型】已用平台记录简答')
+      } else if (data?.fast) {
+        flashStatus('平台证据速答', 1800)
       } else {
         flashStatus('MIMO 已回答', 1800)
       }
@@ -764,14 +786,18 @@ export function bindDjtkHuman(root, opts = {}) {
     history.push({ role: 'assistant', content: answer })
     if (history.length > 12) history.splice(0, history.length - 12)
 
+    // Clear thinking as soon as text is shown; TTS runs with 「正在播报…」
+    setThinking(false)
+
     if (authFail) {
       setBusy(false)
-      setThinking(false)
       setSpeaking(false)
       allStop().forEach((b) => { b.hidden = true })
       askAbort = null
       return
     }
+
+    setStatus('正在播报…')
 
     let browserFallbackNoted = false
     const hooks = {
@@ -796,7 +822,7 @@ export function bindDjtkHuman(root, opts = {}) {
     } catch {
       if (seq === askSeq) {
         hooks.onFallback?.()
-        await speakBrowser(answer, hooks)
+        await speakBrowser(speakPreview(answer, 120), hooks)
       }
     } finally {
       if (seq === askSeq) {

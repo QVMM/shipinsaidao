@@ -6,15 +6,16 @@
 import { DEFAULT_BATCH_ID, getBatch } from './db.js'
 
 const DEFAULT_BASE = 'https://token-plan-cn.xiaomimimo.com/v1'
-const CHAT_MODELS = ['mimo-v2.5', 'mimo-v2.5-pro']
+const CHAT_MODELS = [String(process.env.MIMO_CHAT_MODEL || 'mimo-v2.5').trim() || 'mimo-v2.5']
 const TTS_MODEL = 'mimo-v2.5-tts'
 const TTS_VOICES = ['茉莉', 'mimo_default']
-const MIMO_TIMEOUT_MS = 12_000
-const MAX_COMPLETION_TOKENS = 320
+const MIMO_TIMEOUT_MS = 8_000
+const MAX_COMPLETION_TOKENS = 160
 
 export const DJTK_SYSTEM_PROMPT = [
   'You are DJTK智控助手 for 替抗蓟化减抗鸡肉全链条质控与溯源平台.',
   'Answer in plain Chinese, 2 to 4 short spoken sentences suitable for TTS.',
+  '回答不超过三句，优先短句。',
   'No markdown, no bullet lists, no blank lines, no English UI labels.',
   'Use 基地-A07 style names OK; never invent real cities or school names.',
   '【产品定位 / Product】本产品是「大蓟替抗 / 减抗鸡肉」质控溯源助手，不是兽医处方助手。This product is 大蓟替抗 / 减抗鸡肉 — NEVER say 氟苯尼考可以合规使用 / 可以用药 / 推荐用药 / 休药期后可用 / dosage / prescription advice.',
@@ -160,6 +161,141 @@ export function buildDegradedAnswer(question, evidence) {
 
   parts.push('请打开检测/焦点档案查看平台记录。')
   return { answer: parts.join(''), degraded: true }
+}
+
+
+
+/**
+ * Intentional local evidence reply for booth chips / common intents (speed path).
+ * Grounded ONLY in evidence; no 【降级·未连模型】 prefix; model label is local-evidence.
+ * @param {string} question
+ * @param {object} [evidence]
+ * @returns {{ answer: string, fast: true } | null}
+ */
+export function buildFastAnswer(question, evidence) {
+  const q = String(question || '').trim()
+  if (!q) return null
+  const ev = evidence && typeof evidence === 'object' ? evidence : {}
+  const qualitative = String(ev?.screen?.qualitative || '').trim()
+  const result = String(ev?.screen?.result || '').trim()
+  const reportNo = String(ev?.report?.no || '').trim()
+  const feedNote = String(ev?.farm?.feedAntibioticNote || '').trim()
+  const farmName = String(ev?.farm?.name || '').trim()
+  const farmLoc = String(ev?.farm?.location || '').trim()
+  const house = String(ev?.farm?.house || '').trim()
+  const breed = String(ev?.farm?.breed || '').trim()
+  const batch = String(ev?.batchId || '').trim()
+  const nextHint = String(ev?.nextStepHint || '指挥舱焦点档案 → 检测 → 评价 → 出证 → 溯源').trim()
+
+  const ok = (answer) => ({ answer, fast: true })
+
+  // 海关演示预警 — always demo disclaimer
+  if (/海关|演示预警|政务公开/.test(q)) {
+    return ok('【演示·非真实】海关演示预警是展台剧本场景，不是真实海关通报。请打开指挥舱演示话术或海关演示链接核对。')
+  }
+
+  // Medication how-to → refuse (do not invent 合格/用药处方)
+  if (/氟苯|用药|兽药|剂量|处方|怎么用|如何用|合规使用|休药/.test(q)) {
+    const isScreenAsk = /筛查|结果|检出|残留|阴性|阳性/.test(q) && !/怎么用|如何用|剂量|处方|合规使用/.test(q)
+    if (isScreenAsk) {
+      if (qualitative || result) {
+        const bits = []
+        if (qualitative) bits.push(`筛查定性 ${qualitative}`)
+        if (result) bits.push(`结果 ${result}`)
+        if (reportNo) bits.push(`报告号 ${reportNo}`)
+        return ok(`本批平台氟苯尼考相关证据：${bits.join('，')}。本助手不做用药处方，详情请打开检测或焦点档案核对。`)
+      }
+      return ok('平台尚无明确筛查字段可引用。请打开安全检测或焦点档案查看本批记录。本助手不做用药处方。')
+    }
+    return ok(DJTK_SAFE_REFUSE)
+  }
+
+  // 待复核
+  if (/待复核|复核/.test(q)) {
+    const stamp = String(ev?.report?.stamp || ev?.verdict?.stamp || '').trim()
+    const res = result || qualitative
+    const bits = []
+    if (batch) bits.push(`批次 ${batch}`)
+    if (stamp) bits.push(`印章 ${stamp}`)
+    if (res) bits.push(`检测 ${res}`)
+    if (bits.length) {
+      return ok(`据平台记录：${bits.join('，')}。待复核请看焦点档案判定条；可打开安全检测或健康评价核对。`)
+    }
+    return ok('请看焦点档案判定条与报告印章是否为待复核；下一步可点安全检测或健康评价，以页面为准。')
+  }
+
+  // 焦点 / 风险
+  if (/焦点|风险/.test(q)) {
+    const bits = []
+    if (batch) bits.push(`焦点批次 ${batch}`)
+    if (qualitative || result) bits.push(`筛查 ${qualitative || result}`)
+    if (reportNo) bits.push(`报告 ${reportNo}`)
+    if (bits.length) {
+      return ok(`${bits.join('，')}。风险与下一步请看焦点档案判定条，勿臆造合格。`)
+    }
+    return ok('请打开焦点档案查看当前批次判定与风险提示，以页面记录为准。')
+  }
+
+  // 从哪来 / 基地 / 鸡舍 / 品种
+  if (/从哪来|哪来|产地|基地|鸡舍|品种|从哪/.test(q) || (/哪|来|从/.test(q) && /鸡|批/.test(q))) {
+    const bits = []
+    if (batch) bits.push(`批次 ${batch}`)
+    if (farmName) bits.push(farmName)
+    if (farmLoc) bits.push(farmLoc)
+    if (house) bits.push(house)
+    if (breed) bits.push(`品种 ${breed}`)
+    if (bits.length) {
+      return ok(`据平台批次记录：${bits.join('，')}。`)
+    }
+    return ok('请打开焦点档案查看基地、鸡舍与品种字段。')
+  }
+
+  // 安不安全 / 能上桌 / 合格
+  if (/安全|合格|残留|上桌|放心|检出|食用/.test(q)) {
+    if (qualitative || result) {
+      const bits = []
+      if (qualitative) bits.push(`筛查定性 ${qualitative}`)
+      if (result) bits.push(`结果 ${result}`)
+      if (reportNo) bits.push(`报告号 ${reportNo}`)
+      if (feedNote) bits.push(`饲用抗生素记录 ${feedNote}`)
+      return ok(`本批平台证据：${bits.join('，')}。其余请打开检测或焦点档案核对。`)
+    }
+    return ok('平台证据不足，无法笼统宣称合格或可上桌。请打开检测或焦点档案查看本批记录。')
+  }
+
+  // 下一步 / 点哪
+  if (/下一步|点哪|操作|去哪/.test(q)) {
+    return ok(`${nextHint}。请以界面节点为准。`)
+  }
+
+  return null
+}
+
+/**
+ * Shrink evidence JSON for MIMO prompt (latency): drop empties, cap samples at 2.
+ * @param {object} pack
+ */
+export function trimEvidenceForPrompt(pack) {
+  if (!pack || typeof pack !== 'object') return pack
+  const out = {}
+  for (const [k, v] of Object.entries(pack)) {
+    if (v == null || v === '') continue
+    if (Array.isArray(v)) {
+      if (!v.length) continue
+      out[k] = v.slice(0, 2)
+      continue
+    }
+    if (typeof v === 'object') {
+      const nested = trimEvidenceForPrompt(v)
+      if (nested && Object.keys(nested).length) out[k] = nested
+      continue
+    }
+    out[k] = v
+  }
+  if (out.screen && Array.isArray(out.screen.samples) && out.screen.samples.length > 2) {
+    out.screen.samples = out.screen.samples.slice(0, 2)
+  }
+  return out
 }
 
 
@@ -322,10 +458,11 @@ export async function mimoChat({ question, history = [], batchId, evidence } = {
     return { ok: false, status: 400, error: 'invalid', body: '请先输入问题。' }
   }
   const pack = evidence || buildDjtkEvidence(batchId)
+  const promptPack = trimEvidenceForPrompt(pack)
   const system = [
     DJTK_SYSTEM_PROMPT,
     'EVIDENCE JSON (authoritative; do not invent beyond it):',
-    JSON.stringify(pack),
+    JSON.stringify(promptPack),
   ].join('\n')
 
   const messages = [
@@ -339,7 +476,7 @@ export async function mimoChat({ question, history = [], batchId, evidence } = {
     const r = await postCompletions({
       model,
       messages,
-      temperature: 0.35,
+      temperature: 0.2,
       max_tokens: MAX_COMPLETION_TOKENS,
     })
     if (!r.ok) {

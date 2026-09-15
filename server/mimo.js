@@ -25,7 +25,9 @@ export const DJTK_SYSTEM_PROMPT = [
   'If unsure / no evidence: refuse clearly — do not guess.',
   'Cover origin/safety/next step when relevant.',
   'Guide next clicks: 指挥舱焦点档案、检测、评价、出证、溯源；do not invent shopping buttons.',
-  'First answers should help: 鸡从哪来、安不安全、下一步点哪里.',
+  'First answers should help: 鸡从哪来、安不安全、下一步点哪里、焦点批次风险、氟苯尼考筛查结果、待复核、海关演示预警.',
+  '【海关演示】If asked about 海关演示预警 / customs demo alert / 出口鸡肉兽药残留预警: ALWAYS include 【演示·非真实】; it is booth script, not a real customs notice.',
+  '【筛查问法】For 氟苯尼考筛查结果: cite only evidence screen.qualitative / screen.result / report.no; never invent 阴性/合格; never give medication advice.',
 ].join(' ')
 
 const DJTK_RX_BAN =
@@ -76,8 +78,50 @@ export function buildDegradedAnswer(question, evidence) {
   const feedNote = String(ev?.farm?.feedAntibioticNote || '').trim()
   const prefix = '【降级·未连模型】'
 
+  if (/海关|演示预警|政务公开/.test(q)) {
+    return {
+      answer: `${prefix}【演示·非真实】海关演示预警是展台剧本场景，不是真实海关通报。请打开指挥舱 DJTK 演示话术或海关演示链接核对。`,
+      degraded: true,
+    }
+  }
+
   if (/氟苯|用药|兽药|剂量|处方|怎么用|如何用|合规使用|休药/.test(q)) {
+    if (/筛查|结果|检出|残留|阴性|阳性/.test(q) && !/怎么用|如何用|剂量|处方|合规使用/.test(q)) {
+      if (qualitative || result) {
+        const bits = []
+        if (qualitative) bits.push(`筛查定性 ${qualitative}`)
+        if (result) bits.push(`结果 ${result}`)
+        if (reportNo) bits.push(`报告号 ${reportNo}`)
+        return {
+          answer: `${prefix}本批平台氟苯尼考相关证据：${bits.join('，')}。本助手不做用药处方，其余请打开检测/焦点档案核对。`,
+          degraded: true,
+        }
+      }
+      return {
+        answer: `${prefix}平台尚无明确筛查字段可引用。请打开安全检测或焦点档案查看本批记录。本助手不做用药处方。`,
+        degraded: true,
+      }
+    }
     return { answer: `${prefix}${DJTK_SAFE_REFUSE}`, degraded: true }
+  }
+
+  if (/风险|待复核|复核/.test(q)) {
+    const stamp = String(ev?.report?.stamp || ev?.verdict?.stamp || '').trim()
+    const res = result || qualitative
+    const bits = []
+    if (ev?.batchId) bits.push(`批次 ${ev.batchId}`)
+    if (stamp) bits.push(`印章 ${stamp}`)
+    if (res) bits.push(`检测 ${res}`)
+    if (bits.length) {
+      return {
+        answer: `${prefix}据平台记录：${bits.join('，')}。待复核与下一步请看焦点档案判定条；可打开安全检测或健康评价核对，勿臆造合格。`,
+        degraded: true,
+      }
+    }
+    return {
+      answer: `${prefix}请看焦点档案判定条与报告印章是否为待复核；下一步可点安全检测或健康评价，以页面为准。`,
+      degraded: true,
+    }
   }
 
   const parts = [prefix]

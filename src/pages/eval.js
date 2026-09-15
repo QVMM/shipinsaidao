@@ -7,7 +7,7 @@ import { isEditing, renderEditToggle, bindEditToggle } from '../components/page-
 import { canWrite } from '../auth.js'
 import { QUALITY_METRICS } from '../lib/quality-metrics.js'
 import { bindMonitorAssistant, renderMonitorAssistant } from '../lib/monitor-assistant.js'
-import { bindDjtkHuman, renderDjtkHuman } from '../lib/djtk-human.js'
+import { bindDjtkHuman, renderDjtkHuman, unbindDjtkHuman } from '../lib/djtk-human.js'
 
 export const meta = { id: 'eval', title: '健康评价' }
 
@@ -168,5 +168,10 @@ export function bind(root, state) {
   bindEditToggle(root, 'eval', 'eval', state.batchId)
   bindJourneyActions(root, state)
   bindMonitorAssistant(root)
-  bindDjtkHuman(root, { compact: true })
+  bindDjtkHuman(root, { compact: true, batchId: state.batchId })
 }
+
+export function unbind() {
+  unbindDjtkHuman()
+}
+

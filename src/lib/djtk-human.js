@@ -1,7 +1,13 @@
 /**
  * DJTK 数字人：指挥舱浮动面板 + 全屏 AI 指挥舱，问答 + MIMO 语音（失败则浏览器 TTS）。
- * Auth: staff session cookie preferred; optional x-stage-token only if injected
- * (window.__DJTK_STAGE_TOKEN__ or sessionStorage djtk_stage_token) — never hardcoded.
+ * Auth: staff session cookie preferred; anonymous booth uses httpOnly djtk_stage
+ * cookie from POST /api/djtk/stage-session (no secret in client JS).
+ * Optional legacy x-stage-token only if injected (window.__DJTK_STAGE_TOKEN__ or
+ * sessionStorage) — never hardcoded.
+ *
+ * Mic / STT: uses browser SpeechRecognition only (webkitSpeechRecognition).
+ * Audio is NOT uploaded to our server or third-party APIs beyond the browser's
+ * built-in speech engine.
  */
 
 import { post } from '../api.js'
@@ -19,10 +25,19 @@ const STARTERS = [
 ]
 
 const SS_KEY = 'djtk_stage_token'
+const MOUTH_RMS_THRESHOLD = 0.018
 
 let activeAudio = null
 /** @type {null | ((ok: boolean) => void)} */
 let activeAudioDone = null
+/** @type {AudioContext | null} */
+let sharedAudioCtx = null
+/** @type {WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>} */
+const mediaSources = typeof WeakMap !== 'undefined' ? new WeakMap() : null
+/** @type {number | null} */
+let mouthRaf = null
+/** @type {ReturnType<typeof setInterval> | null} */
+let mouthTimer = null
 
 /** @type {null | { destroy: () => void, exitCabin: () => void }} */
 let activeCtrl = null
@@ -37,7 +52,7 @@ function esc(v) {
 
 /**
  * Stage token only from server-injected window var or sessionStorage after staff helper.
- * Empty → rely on cookies when logged in.
+ * Empty → rely on cookies (staff or booth djtk_stage).
  */
 export function getStageToken() {
   try {
@@ -75,7 +90,93 @@ function stageBody() {
   return t ? { stageToken: t } : {}
 }
 
+/** Silent booth cookie mint — no secret in response body. */
+export async function ensureStageSession() {
+  try {
+    await post('/api/djtk/stage-session', {}, { silent: true })
+    return true
+  } catch {
+    return false
+  }
+}
+
+function getAudioCtx() {
+  if (typeof window === 'undefined') return null
+  const AC = window.AudioContext || window.webkitAudioContext
+  if (!AC) return null
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    sharedAudioCtx = new AC()
+  }
+  return sharedAudioCtx
+}
+
+function clearMouthClasses() {
+  document.querySelectorAll('.djtk-human, .djtk-cabin').forEach((el) => {
+    el.classList.remove('is-mouth-open')
+  })
+}
+
+function setMouthOpen(open) {
+  document.querySelectorAll('.djtk-human, .djtk-cabin').forEach((el) => {
+    el.classList.toggle('is-mouth-open', !!open)
+  })
+}
+
+function stopMouthAnim() {
+  if (mouthRaf != null) {
+    cancelAnimationFrame(mouthRaf)
+    mouthRaf = null
+  }
+  if (mouthTimer != null) {
+    clearInterval(mouthTimer)
+    mouthTimer = null
+  }
+  clearMouthClasses()
+}
+
+/**
+ * RAF loop: toggle is-mouth-open from analyser RMS while MIMO wav plays.
+ * @param {AnalyserNode} analyser
+ * @param {() => boolean} stillActive
+ */
+function startAnalyserMouth(analyser, stillActive) {
+  stopMouthAnim()
+  const data = new Uint8Array(analyser.fftSize)
+  const tick = () => {
+    if (!stillActive()) {
+      clearMouthClasses()
+      mouthRaf = null
+      return
+    }
+    analyser.getByteTimeDomainData(data)
+    let sum = 0
+    for (let i = 0; i < data.length; i += 1) {
+      const v = (data[i] - 128) / 128
+      sum += v * v
+    }
+    const rms = Math.sqrt(sum / data.length)
+    setMouthOpen(rms > MOUTH_RMS_THRESHOLD)
+    mouthRaf = requestAnimationFrame(tick)
+  }
+  mouthRaf = requestAnimationFrame(tick)
+}
+
+/** Gentle timed mouth for browser TTS (no analyser). ~0.35s toggle. */
+function startTimedMouth(stillActive) {
+  stopMouthAnim()
+  let open = false
+  mouthTimer = setInterval(() => {
+    if (!stillActive()) {
+      stopMouthAnim()
+      return
+    }
+    open = !open
+    setMouthOpen(open)
+  }, 350)
+}
+
 export function stopDjtkAudio() {
+  stopMouthAnim()
   try {
     activeAudio?.pause()
   } catch { /* ignore */ }
@@ -92,8 +193,13 @@ function isBrowserSpeechOk() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window
 }
 
+function speechRecognitionCtor() {
+  if (typeof window === 'undefined') return null
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null
+}
+
 /**
- * Play base64 wav; resolves when ended/errored/stopped.
+ * Play base64 wav with optional AnalyserNode mouth sync.
  * @param {string} base64
  * @param {string} [mime]
  * @param {{ onStart?: () => void, onEnd?: () => void }} [hooks]
@@ -110,9 +216,14 @@ export function playBase64Audio(base64, mime = 'audio/wav', hooks = {}) {
     const audio = new Audio(url)
     activeAudio = audio
     let settled = false
+    let speaking = false
+    const stillActive = () => !settled && activeAudio === audio
+
     const done = (ok) => {
       if (settled) return
       settled = true
+      speaking = false
+      stopMouthAnim()
       if (activeAudio === audio) activeAudio = null
       if (activeAudioDone === done) activeAudioDone = null
       hooks.onEnd?.()
@@ -121,13 +232,47 @@ export function playBase64Audio(base64, mime = 'audio/wav', hooks = {}) {
     activeAudioDone = done
     audio.onended = () => done(true)
     audio.onerror = () => done(false)
-    hooks.onStart?.()
-    audio.play().catch(() => done(false))
+
+    /** Connect MediaElementSource before play (required once graph is used). */
+    const prepareGraph = async () => {
+      try {
+        const ctx = getAudioCtx()
+        if (!ctx) return null
+        if (ctx.state === 'suspended') {
+          try { await ctx.resume() } catch { /* ignore */ }
+        }
+        if (!stillActive()) return null
+        let source
+        if (mediaSources?.has(audio)) {
+          source = mediaSources.get(audio)
+        } else {
+          source = ctx.createMediaElementSource(audio)
+          mediaSources?.set(audio, source)
+        }
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.55
+        source.connect(analyser)
+        analyser.connect(ctx.destination)
+        return analyser
+      } catch {
+        return null
+      }
+    }
+
+    prepareGraph().then((analyser) => {
+      if (!stillActive()) return
+      hooks.onStart?.()
+      speaking = true
+      if (analyser) startAnalyserMouth(analyser, () => stillActive() && speaking)
+      else startTimedMouth(() => stillActive() && speaking)
+      audio.play().catch(() => done(false))
+    })
   })
 }
 
 /**
- * Browser speechSynthesis one-shot (Chinese).
+ * Browser speechSynthesis one-shot (Chinese) + timed mouth.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void }} [hooks]
  */
@@ -139,20 +284,28 @@ export function speakBrowser(text, hooks = {}) {
       return
     }
     try { window.speechSynthesis.cancel() } catch { /* ignore */ }
+    stopMouthAnim()
     const u = new SpeechSynthesisUtterance(String(text).trim())
     u.lang = 'zh-CN'
     u.rate = 1.02
     const list = window.speechSynthesis.getVoices?.() || []
     const voice = list.find((v) => /zh(-|_)CN/i.test(v.lang)) || list.find((v) => /^zh/i.test(v.lang))
     if (voice) u.voice = voice
-    u.onend = () => { hooks.onEnd?.(); resolve(true) }
-    u.onerror = () => { hooks.onEnd?.(); resolve(false) }
+    let active = true
+    const finish = (ok) => {
+      active = false
+      stopMouthAnim()
+      hooks.onEnd?.()
+      resolve(ok)
+    }
+    u.onend = () => finish(true)
+    u.onerror = () => finish(false)
     hooks.onStart?.()
+    startTimedMouth(() => active)
     try {
       window.speechSynthesis.speak(u)
     } catch {
-      hooks.onEnd?.()
-      resolve(false)
+      finish(false)
     }
   })
 }
@@ -160,13 +313,14 @@ export function speakBrowser(text, hooks = {}) {
 /**
  * Prefer MIMO TTS API, else browser.
  * @param {string} text
- * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal }} [opts]
+ * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
+ * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
  */
 export async function speakWithMimoOrBrowser(text, opts = {}) {
   const say = String(text || '').trim()
   if (!say) {
     opts.onEnd?.()
-    return false
+    return { ok: false, via: 'none' }
   }
   try {
     const data = await post('/api/djtk/tts', {
@@ -174,25 +328,29 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
       ...stageBody(),
     }, { silent: true, signal: opts.signal, headers: stageHeaders() })
     if (data?.audioBase64) {
-      return playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
+      const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
+      return { ok, via: 'mimo' }
     }
   } catch (err) {
     if (err?.name === 'AbortError') {
       opts.onEnd?.()
-      return false
+      return { ok: false, via: 'none' }
     }
   }
-  return speakBrowser(say, opts)
+  opts.onFallback?.()
+  const ok = await speakBrowser(say, opts)
+  return { ok, via: ok ? 'browser' : 'none' }
 }
 
 /**
- * Photo face for fab / panel / cabin. suffix kept for call-site identity.
+ * Photo face: closed base + mouth-masked open overlay.
  * @param {'fab' | 'panel' | 'cabin'} suffix
  */
 function avatarHtml(suffix = 'panel') {
   return `
     <span class="djtk-face djtk-face-photo" data-djtk-face data-djtk-face-ctx="${suffix}" aria-hidden="true">
-      <img class="djtk-face-img" src="/djtk-avatar-closed.png" alt="" decoding="async" />
+      <img class="djtk-face-img is-closed" src="/djtk-avatar-closed.png" alt="" decoding="async" />
+      <img class="djtk-face-img is-open" src="/djtk-avatar-open.png" alt="" decoding="async" />
       <i class="djtk-face-glow" aria-hidden="true"></i>
       <span class="djtk-face-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>
@@ -201,6 +359,24 @@ function avatarHtml(suffix = 'panel') {
 
 function chipsHtml() {
   return STARTERS.map((q) => `<button type="button" class="djtk-chip" data-djtk-chip>${esc(q)}</button>`).join('')
+}
+
+function formActionsHtml() {
+  return `
+    <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：这批鸡从哪来？" autocomplete="off" />
+    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">🎤</button>
+    <button type="submit" class="djtk-send" data-djtk-send>发送</button>
+    <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
+  `
+}
+
+function cabinFormActionsHtml() {
+  return `
+    <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：当前焦点批次风险？" autocomplete="off" />
+    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">🎤</button>
+    <button type="submit" class="djtk-send" data-djtk-send>发送</button>
+    <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
+  `
 }
 
 function cabinMarkup() {
@@ -225,9 +401,7 @@ function cabinMarkup() {
           <div class="djtk-chips djtk-cabin-chips">${chipsHtml()}</div>
           <div class="djtk-log" data-djtk-log aria-live="polite"></div>
           <form class="djtk-form" data-djtk-form>
-            <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：当前焦点批次风险？" autocomplete="off" />
-            <button type="submit" class="djtk-send" data-djtk-send>发送</button>
-            <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
+            ${cabinFormActionsHtml()}
           </form>
           <p class="djtk-status" data-djtk-status hidden></p>
         </section>
@@ -280,9 +454,7 @@ export function renderDjtkHuman(opts = {}) {
         <div class="djtk-chips">${starters}</div>
         <div class="djtk-log" data-djtk-log aria-live="polite"></div>
         <form class="djtk-form" data-djtk-form>
-          <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：这批鸡从哪来？" autocomplete="off" />
-          <button type="submit" class="djtk-send" data-djtk-send>发送</button>
-          <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
+          ${formActionsHtml()}
         </form>
         <p class="djtk-status" data-djtk-status hidden></p>
       </div>
@@ -341,12 +513,30 @@ export function bindDjtkHuman(root, opts = {}) {
   const allStop = () => [...box.querySelectorAll('[data-djtk-stop]'), ...cabin.querySelectorAll('[data-djtk-stop]')]
   const allChips = () => [...box.querySelectorAll('[data-djtk-chip]'), ...cabin.querySelectorAll('[data-djtk-chip]')]
   const allStatus = () => [...box.querySelectorAll('[data-djtk-status]'), ...cabin.querySelectorAll('[data-djtk-status]')]
+  const allMics = () => [...box.querySelectorAll('[data-djtk-mic]'), ...cabin.querySelectorAll('[data-djtk-mic]')]
 
   let asking = false
   let askSeq = 0
   /** @type {AbortController | null} */
   let askAbort = null
   let cabinOpen = false
+  /** @type {SpeechRecognition | null} */
+  let recognition = null
+  let listening = false
+  let mimoStatusTimer = 0
+
+  // Resume AudioContext on first user gesture (autoplay policies).
+  const unlockAudio = () => {
+    try {
+      const ctx = getAudioCtx()
+      if (ctx?.state === 'suspended') ctx.resume()
+    } catch { /* ignore */ }
+  }
+  box.addEventListener('pointerdown', unlockAudio, { once: true })
+  cabin.addEventListener('pointerdown', unlockAudio, { once: true })
+
+  // Anonymous booth: mint httpOnly djtk_stage cookie (silent).
+  ensureStageSession()
 
   const resolveBatchId = () => {
     try {
@@ -370,11 +560,31 @@ export function bindDjtkHuman(root, opts = {}) {
     el.textContent = id || '（当前页未绑定批次，问答将用平台默认焦点批）'
   }
 
+  const setMicUi = (on) => {
+    listening = on
+    allMics().forEach((btn) => {
+      btn.classList.toggle('is-listening', on)
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false')
+      btn.title = on ? '停止语音输入' : (btn.dataset.micOk === '0' ? '当前浏览器不支持语音输入' : '语音输入')
+    })
+  }
+
+  const stopMic = () => {
+    try { recognition?.stop() } catch { /* ignore */ }
+    try { recognition?.abort() } catch { /* ignore */ }
+    setMicUi(false)
+  }
+
   const setBusy = (on) => {
     asking = on
     allSend().forEach((b) => { b.disabled = on })
     allChips().forEach((c) => { c.disabled = on })
     allInputs().forEach((inp) => { inp.disabled = on })
+    allMics().forEach((b) => {
+      if (b.dataset.micOk === '0') return
+      b.disabled = on
+    })
+    if (on) stopMic()
   }
 
   const setThinking = (on) => {
@@ -386,6 +596,7 @@ export function bindDjtkHuman(root, opts = {}) {
     box.classList.toggle('is-speaking', on)
     cabin.classList.toggle('is-speaking', on)
     if (on) setThinking(false)
+    else clearMouthClasses()
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
     if (hint) hint.textContent = on ? '播报中…' : (asking ? '思考中…' : '待命')
     allStop().forEach((btn) => {
@@ -404,6 +615,15 @@ export function bindDjtkHuman(root, opts = {}) {
       status.hidden = false
       status.textContent = msg
     })
+  }
+
+  const flashStatus = (msg, ms = 2200) => {
+    setStatus(msg)
+    if (mimoStatusTimer) clearTimeout(mimoStatusTimer)
+    mimoStatusTimer = window.setTimeout(() => {
+      setStatus('')
+      mimoStatusTimer = 0
+    }, ms)
   }
 
   const pushBubble = (role, text) => {
@@ -442,13 +662,13 @@ export function bindDjtkHuman(root, opts = {}) {
     if (panel) {
       panel.hidden = !!collapsed
       panel.classList.toggle('is-open', !collapsed)
-      // Class wins even if some stylesheet fights [hidden]
       panel.style.display = collapsed ? 'none' : ''
     }
     if (fab) fab.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
     if (collapsed && !cabinOpen) {
       askAbort?.abort()
       askAbort = null
+      stopMic()
       stopDjtkAudio()
       setThinking(false)
       setSpeaking(false)
@@ -463,6 +683,7 @@ export function bindDjtkHuman(root, opts = {}) {
     askAbort?.abort()
     askAbort = null
     askSeq += 1
+    stopMic()
     stopDjtkAudio()
     setSpeaking(false)
     setBusy(false)
@@ -483,16 +704,13 @@ export function bindDjtkHuman(root, opts = {}) {
     refreshCabinBatch()
     cabin.hidden = false
     document.documentElement.classList.add('djtk-cabin-open')
-    // Keep floating panel usable underneath; cabin is an additional mode.
-    if (!opts.compact && box.dataset.collapsed === '1') {
-      // leave fab as-is; cabin is independent
-    }
     cabinInputs()[0]?.focus()
   }
 
   const ask = async (question) => {
     const q = String(question || '').trim().slice(0, 200)
     if (!q || asking) return
+    stopMic()
     pushBubble('user', q)
     history.push({ role: 'user', content: q })
     setStatus('智控助手思考中…')
@@ -507,8 +725,13 @@ export function bindDjtkHuman(root, opts = {}) {
     const signal = askAbort.signal
     const batchId = resolveBatchId()
 
+    // Refresh booth cookie before ask (covers expiry / first open).
+    await ensureStageSession()
+
     /** @type {string} */
     let answer
+    /** @type {boolean} */
+    let authFail = false
     try {
       const data = await post('/api/djtk/ask', {
         question: q,
@@ -519,12 +742,21 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
-      if (data?.degraded) setStatus('【降级·未连模型】已用平台记录简答')
-      else setStatus('')
+      if (data?.degraded) {
+        setStatus('【降级·未连模型】已用平台记录简答')
+      } else {
+        flashStatus('MIMO 已回答', 1800)
+      }
     } catch (err) {
       if (seq !== askSeq || err?.name === 'AbortError') return
-      setStatus('云端暂不可用，请看左侧焦点档案与判定条')
-      answer = localFallback(q)
+      if (err?.status === 401) {
+        authFail = true
+        setStatus('请重新登录工作人员账号')
+        answer = '请先登录工作人员账号后再提问。展台大屏若仍无会话，请刷新页面重试。'
+      } else {
+        setStatus('云端暂不可用，请看左侧焦点档案与判定条')
+        answer = localFallback(q)
+      }
     }
 
     if (seq !== askSeq) return
@@ -532,6 +764,16 @@ export function bindDjtkHuman(root, opts = {}) {
     history.push({ role: 'assistant', content: answer })
     if (history.length > 12) history.splice(0, history.length - 12)
 
+    if (authFail) {
+      setBusy(false)
+      setThinking(false)
+      setSpeaking(false)
+      allStop().forEach((b) => { b.hidden = true })
+      askAbort = null
+      return
+    }
+
+    let browserFallbackNoted = false
     const hooks = {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
       onEnd: () => {
@@ -541,12 +783,21 @@ export function bindDjtkHuman(root, opts = {}) {
         setBusy(false)
         allStop().forEach((b) => { b.hidden = true })
       },
+      onFallback: () => {
+        if (seq === askSeq && !browserFallbackNoted) {
+          browserFallbackNoted = true
+          setStatus('已用浏览器朗读（MIMO 语音暂不可用）')
+        }
+      },
     }
 
     try {
       await speakWithMimoOrBrowser(answer, { ...hooks, signal })
     } catch {
-      if (seq === askSeq) await speakBrowser(answer, hooks)
+      if (seq === askSeq) {
+        hooks.onFallback?.()
+        await speakBrowser(answer, hooks)
+      }
     } finally {
       if (seq === askSeq) {
         setBusy(false)
@@ -556,6 +807,69 @@ export function bindDjtkHuman(root, opts = {}) {
         askAbort = null
       }
     }
+  }
+
+  const startMic = () => {
+    const Ctor = speechRecognitionCtor()
+    if (!Ctor) return
+    stopMic()
+    unlockAudio()
+    const rec = new Ctor()
+    recognition = rec
+    rec.lang = 'zh-CN'
+    rec.interimResults = true
+    rec.continuous = false
+    rec.onstart = () => setMicUi(true)
+    rec.onend = () => setMicUi(false)
+    rec.onerror = () => setMicUi(false)
+    rec.onresult = (ev) => {
+      let finalText = ''
+      let interim = ''
+      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+        const r = ev.results[i]
+        const t = String(r?.[0]?.transcript || '').trim()
+        if (!t) continue
+        if (r.isFinal) finalText += t
+        else interim += t
+      }
+      const fill = finalText || interim
+      if (fill) {
+        allInputs().forEach((inp) => { inp.value = fill })
+      }
+      if (finalText) {
+        stopMic()
+        if (!asking) ask(finalText)
+      }
+    }
+    try {
+      rec.start()
+      setMicUi(true)
+    } catch {
+      setMicUi(false)
+    }
+  }
+
+  const toggleMic = () => {
+    if (asking) return
+    if (listening) {
+      stopMic()
+      return
+    }
+    startMic()
+  }
+
+  // Mic support probe
+  {
+    const ok = !!speechRecognitionCtor()
+    allMics().forEach((btn) => {
+      if (!ok) {
+        btn.disabled = true
+        btn.dataset.micOk = '0'
+        btn.title = '当前浏览器不支持语音输入'
+      } else {
+        btn.dataset.micOk = '1'
+      }
+    })
   }
 
   const onHostClick = (ev, host) => {
@@ -572,6 +886,13 @@ export function bindDjtkHuman(root, opts = {}) {
       exitCabin()
       return
     }
+    const micBtn = t.closest?.('[data-djtk-mic]')
+    if (micBtn && host.contains(micBtn)) {
+      ev.preventDefault()
+      if (micBtn.dataset.micOk === '0') return
+      toggleMic()
+      return
+    }
     const closeBtn = t.closest?.('.djtk-close, [data-djtk-close]')
     if (closeBtn && host.contains(closeBtn)) {
       ev.preventDefault()
@@ -582,7 +903,6 @@ export function bindDjtkHuman(root, opts = {}) {
     const toggle = t.closest?.('[data-djtk-toggle]')
     if (toggle && host.contains(toggle)) {
       ev.preventDefault()
-      // FAB opens; close handled above
       const wantCollapse = box.dataset.collapsed !== '1'
       setCollapsed(wantCollapse)
       return
@@ -624,7 +944,6 @@ export function bindDjtkHuman(root, opts = {}) {
   const onCabinLink = (ev) => {
     const a = /** @type {HTMLElement} */ (ev.target).closest?.('a[href^="#/"]')
     if (!a || !cabin.contains(a)) return
-    // Allow hash navigation; exit cabin so staff pages are visible.
     exitCabin()
   }
 
@@ -643,6 +962,9 @@ export function bindDjtkHuman(root, opts = {}) {
     askAbort?.abort()
     askAbort = null
     askSeq += 1
+    stopMic()
+    recognition = null
+    if (mimoStatusTimer) clearTimeout(mimoStatusTimer)
     stopDjtkAudio()
     window.removeEventListener('keydown', onKey)
     exitCabin()

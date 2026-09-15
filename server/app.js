@@ -25,11 +25,15 @@ import {
   createSession,
   destroySession,
   findUserByName,
+  mintStageCookieValue,
   publicUser,
   readToken,
   requireStaff,
   requireStaffOrStage,
   setSessionCookie,
+  setStageSessionCookie,
+  stageBoothEnabled,
+  stageCookieValid,
   userFromToken,
   verifyPassword,
 } from './auth.js'
@@ -67,6 +71,8 @@ function makeRateLimiter({ windowMs, max }) {
 
 const askLimiter = makeRateLimiter(ASK_LIMIT)
 const ttsLimiter = makeRateLimiter(TTS_LIMIT)
+const STAGE_SESSION_LIMIT = { windowMs: 60_000, max: 20 }
+const stageSessionLimiter = makeRateLimiter(STAGE_SESSION_LIMIT)
 
 function clientKey(req) {
   const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim()
@@ -233,8 +239,39 @@ export async function buildApp() {
   app.get('/api/djtk/status', async () => ({
     ok: true,
     mimoConfigured: mimoConfigured(),
-    stageAuth: 'staff-session-or-x-stage-token',
+    stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
+    stageBooth: stageBoothEnabled(),
   }))
+
+  /**
+   * Mint httpOnly booth cookie for anonymous #/stage.
+   * Never returns the raw stage token / signing key in the body.
+   */
+  async function mintStageSession(req, reply) {
+    const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim()
+    if (!stageSessionLimiter(ip)) {
+      return reply.code(429).send({ error: 'rate_limited', message: '展台会话请求太频繁，请稍后再试。' })
+    }
+    if (!stageBoothEnabled()) {
+      return reply.code(503).send({
+        error: 'stage_booth_disabled',
+        message: '展台会话未启用（需配置 DJTK_STAGE_TOKEN / SESSION_SECRET 或 MIMO_API_KEY）。',
+        ok: false,
+      })
+    }
+    if (stageCookieValid(req)) {
+      return { ok: true, refreshed: false }
+    }
+    const value = mintStageCookieValue()
+    if (!value) {
+      return reply.code(503).send({ error: 'stage_booth_disabled', message: '展台会话无法签发。', ok: false })
+    }
+    setStageSessionCookie(reply, value)
+    return { ok: true, refreshed: true }
+  }
+
+  app.post('/api/djtk/stage-session', mintStageSession)
+  app.get('/api/djtk/stage-session', mintStageSession)
 
   app.post('/api/djtk/ask', { preHandler: requireStaffOrStage }, async (req, reply) => {
     if (!askLimiter(clientKey(req))) {

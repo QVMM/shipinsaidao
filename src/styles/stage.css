@@ -1731,7 +1731,7 @@ body:has(.wall) {
 }
 .djtk-form {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 6px;
 }
 .djtk-form input {
@@ -1744,6 +1744,27 @@ body:has(.wall) {
   outline: none;
 }
 .djtk-form input:focus { border-color: #27e0d0; }
+.djtk-mic {
+  border: 1px solid rgba(39, 224, 208, 0.45);
+  background: rgba(39, 224, 208, 0.1);
+  color: #e8fff8;
+  padding: 0 10px;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 40px;
+  letter-spacing: 0;
+}
+.djtk-mic:hover { background: rgba(39, 224, 208, 0.22); }
+.djtk-mic:disabled { opacity: 0.45; cursor: not-allowed; }
+.djtk-mic.is-listening {
+  background: rgba(232, 90, 90, 0.28);
+  border-color: rgba(232, 90, 90, 0.55);
+  animation: djtk-mic-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes djtk-mic-pulse {
+  from { box-shadow: 0 0 0 0 rgba(232, 90, 90, 0.35); }
+  to { box-shadow: 0 0 0 6px rgba(232, 90, 90, 0); }
+}
 .djtk-send,
 .djtk-stop {
   border: 1px solid rgba(39, 224, 208, 0.45);
@@ -1801,7 +1822,7 @@ body:has(.wall) {
   border-left: 2px solid rgba(228, 197, 106, 0.55);
 }
 
-/* Photo face: single portrait; speak = soft breathe + wave (no mouth swap) */
+/* Photo face: closed base + mouth-band open overlay (no full-face flicker) */
 .djtk-face-photo {
   position: relative;
   display: block;
@@ -1821,11 +1842,44 @@ body:has(.wall) {
   user-select: none;
   transform-origin: 50% 60%;
 }
+.djtk-face-img.is-closed {
+  z-index: 0;
+  opacity: 1;
+}
+.djtk-face-img.is-open {
+  z-index: 1;
+  opacity: 0;
+  /* Only lower-mid face (mouth band) can show through */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 48%,
+    #000 58%,
+    #000 78%,
+    transparent 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 48%,
+    #000 58%,
+    #000 78%,
+    transparent 88%,
+    transparent 100%
+  );
+  transition: opacity 150ms ease;
+}
+.djtk-human.is-speaking.is-mouth-open .djtk-face-img.is-open,
+.djtk-cabin.is-speaking.is-mouth-open .djtk-face-img.is-open {
+  opacity: 1;
+}
 .djtk-face-glow {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   pointer-events: none;
+  z-index: 3;
   box-shadow:
     inset 0 0 0 1.5px rgba(39, 224, 208, 0.42),
     0 0 16px rgba(39, 224, 208, 0.22);
@@ -1839,7 +1893,7 @@ body:has(.wall) {
   align-items: flex-end;
   gap: 2px;
   height: 12px;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
 }
 .djtk-face-wave i {
@@ -1853,8 +1907,8 @@ body:has(.wall) {
 .djtk-cabin.is-thinking .djtk-face-glow {
   animation: djtk-think-glow 1.4s ease-in-out infinite alternate;
 }
-.djtk-human.is-speaking .djtk-face-img,
-.djtk-cabin.is-speaking .djtk-face-img {
+.djtk-human.is-speaking .djtk-face-img.is-closed,
+.djtk-cabin.is-speaking .djtk-face-img.is-closed {
   animation: djtk-breathe 1.6s ease-in-out infinite;
 }
 .djtk-human.is-speaking .djtk-face-glow,
@@ -1898,6 +1952,7 @@ body:has(.wall) {
   .djtk-cabin.is-thinking .djtk-face-glow,
   .djtk-human.is-speaking .djtk-face-wave i,
   .djtk-cabin.is-speaking .djtk-face-wave i { animation: none; }
+  .djtk-face-img.is-open { transition: none; }
 }
 
 /* —— DJTK 面板：快捷芯片禁用 + 全屏入口 —— */

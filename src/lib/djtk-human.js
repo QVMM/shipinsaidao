@@ -12,6 +12,7 @@
 
 import { post } from '../api.js'
 import { chosenBatchId, getState } from '../store.js'
+import { DEMO_ACTS, DEMO_CHIP_LABELS, DEMO_SCRIPT } from './demo-script.js'
 
 /** 展台快捷问：一律走 grounded ask，禁止本地臆造合格/用药。 */
 const STARTERS = [
@@ -377,8 +378,20 @@ function avatarHtml(suffix = 'panel') {
   `
 }
 
-function chipsHtml() {
+function demoChipsHtml() {
+  return DEMO_ACTS.map((id) => {
+    const label = DEMO_CHIP_LABELS[id]
+    const ask = DEMO_SCRIPT[id].engineer.say
+    return `<button type="button" class="djtk-chip is-demo" data-djtk-chip data-djtk-ask="${esc(ask)}">${esc(label)}</button>`
+  }).join('')
+}
+
+function businessChipsHtml() {
   return STARTERS.map((q) => `<button type="button" class="djtk-chip" data-djtk-chip>${esc(q)}</button>`).join('')
+}
+
+function chipsHtml() {
+  return `${demoChipsHtml()}${businessChipsHtml()}`
 }
 
 function formActionsHtml() {
@@ -408,7 +421,7 @@ function cabinMarkup() {
           <b>DJTK · AI 指挥舱</b>
           <span>替抗蓟化 · 质控溯源 · 证据问答</span>
         </div>
-        <p class="djtk-cabin-first">第一次可以点下方快捷问，或直接输入。回答只依据平台记录；不做用药处方；降级会标【降级】；海关相关须标【演示·非真实】。</p>
+        <p class="djtk-cabin-first">展台固定词：先点开头，再中间，再升华。也可点下方业务快捷问或直接输入。回答只依据平台记录；不做用药处方；降级会标【降级】；海关相关须标【演示·非真实】。</p>
         <button type="button" class="djtk-cabin-exit" data-djtk-cabin-exit title="退出全屏指挥舱（Esc）">退出</button>
       </header>
       <div class="djtk-cabin-main">
@@ -470,7 +483,7 @@ export function renderDjtkHuman(opts = {}) {
             ${compact ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
           </div>
         </header>
-        <p class="djtk-tip">第一次可以问：从哪来、安不安全、下一步、焦点风险、氟苯尼考筛查、待复核、海关演示预警。点「全屏指挥舱」可进入大屏问答。</p>
+        <p class="djtk-tip">展台固定词：先点开头，再中间，再升华。业务问：从哪来、安不安全、下一步、焦点风险、氟苯尼考筛查、待复核、海关演示预警。点「全屏指挥舱」可进入大屏问答。</p>
         <div class="djtk-chips">${starters}</div>
         <div class="djtk-log" data-djtk-log aria-live="polite"></div>
         <form class="djtk-form" data-djtk-form>
@@ -937,7 +950,8 @@ export function bindDjtkHuman(root, opts = {}) {
     if (chip && host.contains(chip)) {
       ev.preventDefault()
       if (asking) return
-      ask(chip.textContent || '')
+      const askText = chip.getAttribute('data-djtk-ask') || chip.textContent || ''
+      ask(askText)
       return
     }
     const stop = t.closest?.('[data-djtk-stop]')

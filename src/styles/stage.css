@@ -1689,6 +1689,15 @@ body:has(.wall) {
   border-radius: 999px;
 }
 .djtk-chip:hover { border-color: #27e0d0; color: #fff; }
+.djtk-chip.is-demo {
+  border-color: rgba(228, 197, 106, 0.55);
+  background: rgba(228, 197, 106, 0.12);
+  color: #f0e0a8;
+}
+.djtk-chip.is-demo:hover {
+  border-color: #e4c56a;
+  color: #fff8dc;
+}
 .djtk-log {
   flex: 1;
   min-height: 120px;

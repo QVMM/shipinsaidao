@@ -985,6 +985,11 @@ a.text-link { color: var(--gold); }
   color: var(--forest, #1a6b5c);
   border-color: #c5d6d1;
 }
+.djtk-human.is-compact .djtk-chip.is-demo {
+  background: #fff8ea;
+  color: #8a6a1a;
+  border-color: rgba(200, 160, 40, 0.55);
+}
 /* Photo face: closed base + mouth-band open overlay (no full-face flicker) */
 .djtk-face-photo {
   position: relative;
@@ -1345,6 +1350,11 @@ a.text-link { color: var(--gold); }
   padding: 4px 8px;
   cursor: pointer;
   border-radius: 999px;
+}
+.djtk-cabin-chat .djtk-chip.is-demo {
+  border-color: rgba(228, 197, 106, 0.55);
+  background: rgba(228, 197, 106, 0.12);
+  color: #f0e0a8;
 }
 .djtk-cabin-chat .djtk-chip:disabled {
   opacity: 0.45;

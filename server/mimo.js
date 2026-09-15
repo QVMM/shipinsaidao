@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_BATCH_ID, getBatch } from './db.js'
+import { matchDemoAct, demoReply } from './demo-script.js'
 
 const DEFAULT_BASE = 'https://token-plan-cn.xiaomimimo.com/v1'
 const CHAT_MODELS = [String(process.env.MIMO_CHAT_MODEL || 'mimo-v2.5').trim() || 'mimo-v2.5']
@@ -175,6 +176,16 @@ export function buildDegradedAnswer(question, evidence) {
 export function buildFastAnswer(question, evidence) {
   const q = String(question || '').trim()
   if (!q) return null
+
+  // Booth fixed script (3 acts) — exact lines, not degraded
+  const demoAct = matchDemoAct(q)
+  if (demoAct) {
+    const reply = demoReply(demoAct)
+    if (reply?.assistantSay) {
+      return { answer: reply.assistantSay, fast: true }
+    }
+  }
+
   const ev = evidence && typeof evidence === 'object' ? evidence : {}
   const qualitative = String(ev?.screen?.qualitative || '').trim()
   const result = String(ev?.screen?.result || '').trim()

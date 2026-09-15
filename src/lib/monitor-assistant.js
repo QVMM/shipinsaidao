@@ -12,17 +12,17 @@ export const DEMO_SCRIPT = {
   open: {
     id: 'open',
     step: '开头',
-    chip: '风险排查 · 订单缺口',
+    chip: '【演示】风险排查 · 订单缺口',
     mark: '险',
     tone: 'warn',
     engineer: {
       who: '4号 · 质量工程师',
-      say: '我是某出口鸡肉企业的质量工程师，我联动自主开发的大蓟替抗智控平台，对近期我国出口鸡肉安全进行风险排查。请DJTK智控助手结合大数据平台进行安全风险排查。',
+      say: '【演示】我是某出口鸡肉企业的质量工程师，我联动自主开发的大蓟替抗智控平台，对近期我国出口鸡肉安全进行风险排查。请DJTK智控助手结合大数据平台进行安全风险排查。',
     },
     assistant: {
       who: 'DJTK智控助手',
-      say: '对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标，相关产品依法退市，造成约 10 万吨订单缺口。',
-      note: '确定真实产业场景，引出市场缺口任务，直观展现系统的全域数据研判能力。',
+      say: '【演示·非真实】对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标，相关产品依法退市，造成约 10 万吨订单缺口。',
+      note: '【演示·非真实】剧本场景，非真实海关通报；引出市场缺口任务，展现系统全域数据研判能力。',
     },
     customs: true,
     cta: '开始风险排查',
@@ -78,14 +78,14 @@ export const DEMO_SCRIPT = {
 
 /** 兼容旧引用 */
 export const CUSTOMS_ALERT = {
-  source: '海关中心政务公开（演示）',
+  source: '【演示·非真实】海关中心政务公开',
   sourceHref: CUSTOMS_URL,
-  title: '出口鸡肉兽药残留预警',
+  title: '【演示·非真实】出口鸡肉兽药残留预警',
   body: DEMO_SCRIPT.open.assistant.say,
   next: DEMO_SCRIPT.open.assistant.note,
   cta: DEMO_SCRIPT.open.cta,
   href: DEMO_SCRIPT.open.href,
-  openCustoms: '打开海关政务公开',
+  openCustoms: '打开海关政务公开（演示链接）',
 }
 
 /**
@@ -130,7 +130,7 @@ function renderDemoPanel(s, withCollapse) {
       <p class="ma-kicker">
         <b>DJTK智控助手</b>
         <span class="ma-step">${esc(s.step)}</span>
-        ${s.customs ? `· <a class="ma-source" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">海关中心政务公开（演示）</a>` : ''}
+        ${s.customs ? `· <a class="ma-source" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">【演示·非真实】海关中心政务公开</a>` : ''}
       </p>
       ${withCollapse ? '<button type="button" class="ma-collapse" data-assist-toggle aria-label="收起助手">收起</button>' : ''}
     </div>
@@ -150,7 +150,7 @@ function renderDemoPanel(s, withCollapse) {
       </article>
     </div>
     <div class="ma-actions ${withCollapse ? '' : 'is-staff-actions'}">
-      ${s.customs ? `<a class="ma-link-out${withCollapse ? '' : ' is-staff-link'}" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">打开海关政务公开</a>` : ''}
+      ${s.customs ? `<a class="ma-link-out${withCollapse ? '' : ' is-staff-link'}" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">打开海关政务公开（演示链接）</a>` : ''}
       <button type="button" class="ma-speak" data-demo-speak>播报本段</button>
       <button type="button" class="ma-speak-stop" data-demo-stop hidden>停止播报</button>
       <button type="button" class="ma-prev" data-demo-prev>上一段</button>

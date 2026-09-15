@@ -89,9 +89,12 @@ export async function requireStaff(req, reply) {
 
 export { publicUser }
 
-/** Booth / stage demo: logged-in staff OR x-stage-token / body.stageToken. */
+/**
+ * Booth / stage: logged-in staff OR x-stage-token matching env DJTK_STAGE_TOKEN.
+ * No published default — unset env means stage-token auth is disabled.
+ */
 export function stageDemoToken() {
-  return String(process.env.DJTK_STAGE_TOKEN || process.env.STAGE_DEMO_TOKEN || 'tihua-djtk-stage').trim()
+  return String(process.env.DJTK_STAGE_TOKEN || process.env.STAGE_DEMO_TOKEN || '').trim()
 }
 
 export async function requireStaffOrStage(req, reply) {
@@ -100,16 +103,17 @@ export async function requireStaffOrStage(req, reply) {
     req.user = user
     return
   }
+  const expected = stageDemoToken()
   const provided = String(
     req.headers['x-stage-token']
     || req.body?.stageToken
     || (typeof req.query?.stageToken === 'string' ? req.query.stageToken : '')
     || '',
   ).trim()
-  if (provided && provided === stageDemoToken()) {
+  if (expected && provided && provided === expected) {
     req.user = null
     req.stageDemo = true
     return
   }
-  return reply.code(401).send({ error: 'unauthorized', message: '请先登录，或携带舞台演示令牌。' })
+  return reply.code(401).send({ error: 'unauthorized', message: '请先登录工作人员账号，或由展台配置舞台令牌。' })
 }

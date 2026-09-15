@@ -3,18 +3,24 @@
  * Key usage lives only here. Never log the key.
  */
 
+import { DEFAULT_BATCH_ID, getBatch } from './db.js'
+
 const DEFAULT_BASE = 'https://token-plan-cn.xiaomimimo.com/v1'
 const CHAT_MODELS = ['mimo-v2.5', 'mimo-v2.5-pro']
 const TTS_MODEL = 'mimo-v2.5-tts'
 const TTS_VOICES = ['茉莉', 'mimo_default']
+const MIMO_TIMEOUT_MS = 12_000
+const MAX_COMPLETION_TOKENS = 320
 
 export const DJTK_SYSTEM_PROMPT = [
   'You are DJTK智控助手 for 替抗蓟化减抗鸡肉全链条质控与溯源平台.',
-  'Answer in plain Chinese, short spoken sentences suitable for TTS.',
-  'No markdown, no bullet lists, no English UI labels.',
+  'Answer in plain Chinese, 2 to 4 short spoken sentences suitable for TTS.',
+  'No markdown, no bullet lists, no blank lines, no English UI labels.',
+  'Use 基地-A07 style names OK; never invent real cities or school names.',
+  'ONLY claim florfenicol / 兽药残留 / 安全 / 合格 from the EVIDENCE JSON; if a field is missing say 平台尚无该检测记录.',
+  'Do not invent zeros, concentrations, or「抗生素归零」unless evidence explicitly supports it.',
   'Cover origin/safety/next step when relevant.',
-  'No real city/school names; use 某某基地 / batch codes like 蓟化-2026-0812.',
-  'Guide next clicks on this platform: 指挥舱焦点档案、检测、评价、出证、溯源；do not invent shopping buttons.',
+  'Guide next clicks: 指挥舱焦点档案、检测、评价、出证、溯源；do not invent shopping buttons.',
   'First answers should help: 鸡从哪来、安不安全、下一步点哪里.',
 ].join(' ')
 
@@ -33,6 +39,70 @@ function apiKey() {
 }
 
 /**
+ * Compact evidence pack for the system prompt (no secrets).
+ * @param {string} [batchId]
+ */
+export function buildDjtkEvidence(batchId) {
+  const id = String(batchId || DEFAULT_BATCH_ID || '').trim() || DEFAULT_BATCH_ID
+  const full = getBatch(id)
+  if (!full) {
+    return { batchId: id, missing: true, note: '平台尚无该批次记录' }
+  }
+  const farm = full.farm || {}
+  const screen = full.screen || {}
+  const ev = full.eval || {}
+  const samples = Array.isArray(screen.samples)
+    ? screen.samples.slice(0, 6).map((s) => ({
+      id: s.id,
+      group: s.group,
+      qualitative: s.qualitative,
+      result: s.result,
+    }))
+    : []
+  return {
+    batchId: full.batchId,
+    farm: {
+      name: farm.name || '',
+      location: farm.location || '',
+      house: farm.house || '',
+      breed: farm.breed || '',
+      additive: farm.additive || '',
+      dose: farm.dose || '',
+      count: farm.count ?? '',
+      stockDate: farm.stockDate || '',
+      plannedSlaughter: farm.plannedSlaughter || '',
+      feedAntibioticNote: (farm.medLog || []).find((r) => /饲用抗生素/.test(String(r.item || '')))?.result || '',
+    },
+    screen: {
+      target: screen.target || '',
+      qualitative: screen.qualitative || '',
+      result: screen.result || '',
+      valueText: screen.valueText || '',
+      valueNum: screen.valueNum ?? '',
+      unit: screen.unit || '',
+      lod: screen.lod ?? '',
+      sampleDate: screen.sampleDate || '',
+      samples,
+    },
+    eval: {
+      valueText: ev.valueText || '',
+      lod: ev.lod ?? '',
+      unit: ev.unit || '',
+      testDate: ev.testDate || '',
+    },
+    report: {
+      generated: !!full.report?.generated,
+      no: full.report?.no || '',
+    },
+    trace: {
+      generated: !!full.trace?.generated,
+      verifyId: full.trace?.verifyId || '',
+    },
+    nextStepHint: '指挥舱焦点档案 → 检测 → 评价 → 出证 → 溯源',
+  }
+}
+
+/**
  * @param {unknown} errBody
  * @returns {string}
  */
@@ -44,7 +114,6 @@ function redact(errBody) {
 }
 
 /**
- * @param {string} path
  * @param {object} body
  * @returns {Promise<{ ok: true, status: number, json: any } | { ok: false, status: number, error: string, body: string }>}
  */
@@ -64,12 +133,14 @@ async function postCompletions(body) {
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(MIMO_TIMEOUT_MS),
     })
   } catch (err) {
+    const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError'
     return {
       ok: false,
-      status: 502,
-      error: 'mimo_network',
+      status: timedOut ? 504 : 502,
+      error: timedOut ? 'mimo_timeout' : 'mimo_network',
       body: redact(err?.message || 'network error'),
     }
   }
@@ -92,23 +163,36 @@ async function postCompletions(body) {
 }
 
 /**
- * @param {{ question: string, history?: { role: string, content: string }[] }} opts
+ * Client may forge assistant turns — only keep user lines.
+ * @param {unknown} history
+ */
+function sanitizeHistory(history) {
+  return (Array.isArray(history) ? history : [])
+    .filter((m) => m && m.role === 'user' && String(m.content || '').trim())
+    .slice(-6)
+    .map((m) => ({ role: 'user', content: String(m.content).trim().slice(0, 200) }))
+}
+
+/**
+ * @param {{ question: string, history?: { role: string, content: string }[], batchId?: string, evidence?: object }} opts
  * @returns {Promise<{ ok: true, answer: string, model: string } | { ok: false, status: number, error: string, body: string }>}
  */
-export async function mimoChat({ question, history = [] }) {
+export async function mimoChat({ question, history = [], batchId, evidence } = {}) {
   const q = String(question || '').trim()
   if (!q) {
     return { ok: false, status: 400, error: 'invalid', body: '请先输入问题。' }
   }
-  const hist = (Array.isArray(history) ? history : [])
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
-    .slice(-8)
-    .map((m) => ({ role: m.role, content: String(m.content).trim().slice(0, 800) }))
+  const pack = evidence || buildDjtkEvidence(batchId)
+  const system = [
+    DJTK_SYSTEM_PROMPT,
+    'EVIDENCE JSON (authoritative; do not invent beyond it):',
+    JSON.stringify(pack),
+  ].join('\n')
 
   const messages = [
-    { role: 'system', content: DJTK_SYSTEM_PROMPT },
-    ...hist,
-    { role: 'user', content: q },
+    { role: 'system', content: system },
+    ...sanitizeHistory(history),
+    { role: 'user', content: q.slice(0, 200) },
   ]
 
   let lastFail = null
@@ -116,14 +200,16 @@ export async function mimoChat({ question, history = [] }) {
     const r = await postCompletions({
       model,
       messages,
-      temperature: 0.4,
-      max_tokens: 280,
+      temperature: 0.35,
+      max_tokens: MAX_COMPLETION_TOKENS,
     })
     if (!r.ok) {
       lastFail = r
       continue
     }
-    const answer = String(r.json?.choices?.[0]?.message?.content || '').trim()
+    const answer = String(r.json?.choices?.[0]?.message?.content || '')
+      .replace(/\n{2,}/g, '\n')
+      .trim()
     if (!answer) {
       lastFail = { ok: false, status: 502, error: 'mimo_empty', body: '模型没有返回文字。' }
       continue
@@ -146,7 +232,7 @@ export async function mimoTts(text) {
   for (const voice of TTS_VOICES) {
     const r = await postCompletions({
       model: TTS_MODEL,
-      messages: [{ role: 'assistant', content: say.slice(0, 600) }],
+      messages: [{ role: 'assistant', content: say.slice(0, 400) }],
       audio: { format: 'wav', voice },
     })
     if (!r.ok) {
@@ -169,12 +255,23 @@ export async function mimoTts(text) {
 }
 
 /**
- * Chat then TTS. TTS failure still returns the answer (audioBase64 null).
- * @param {{ question: string, history?: { role: string, content: string }[] }} opts
+ * Chat then optional TTS. Prefer speak:false + separate /tts to avoid huge payloads.
+ * @param {{ question: string, history?: { role: string, content: string }[], batchId?: string, speak?: boolean }} opts
  */
-export async function mimoAsk(opts) {
+export async function mimoAsk(opts = {}) {
+  const speak = opts.speak !== false
   const chat = await mimoChat(opts)
   if (!chat.ok) return chat
+  if (!speak) {
+    return {
+      ok: true,
+      answer: chat.answer,
+      audioBase64: null,
+      mime: 'audio/wav',
+      voice: null,
+      model: chat.model,
+    }
+  }
   const tts = await mimoTts(chat.answer)
   if (!tts.ok) {
     return {

@@ -1,16 +1,18 @@
 /**
  * DJTK 数字人：指挥舱浮动面板，问答 + MIMO 语音（失败则浏览器 TTS）。
+ * Auth: staff session cookie preferred; optional x-stage-token only if injected
+ * (window.__DJTK_STAGE_TOKEN__ or sessionStorage djtk_stage_token) — never hardcoded.
  */
 
 import { post } from '../api.js'
-
-export const STAGE_TOKEN = 'tihua-djtk-stage'
 
 const STARTERS = [
   '这批鸡从哪来？',
   '安不安全？能上桌吗？',
   '下一步我该点哪里？',
 ]
+
+const SS_KEY = 'djtk_stage_token'
 
 let activeAudio = null
 /** @type {null | ((ok: boolean) => void)} */
@@ -22,6 +24,46 @@ function esc(v) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
+}
+
+/**
+ * Stage token only from server-injected window var or sessionStorage after staff helper.
+ * Empty → rely on cookies when logged in.
+ */
+export function getStageToken() {
+  try {
+    if (typeof window !== 'undefined' && window.__DJTK_STAGE_TOKEN__) {
+      return String(window.__DJTK_STAGE_TOKEN__).trim()
+    }
+    const fromSs = sessionStorage.getItem(SS_KEY)
+    if (fromSs) return String(fromSs).trim()
+  } catch { /* ignore */ }
+  return ''
+}
+
+/** @deprecated Use getStageToken(); kept empty so old imports do not leak a secret. */
+export const STAGE_TOKEN = ''
+
+/**
+ * Optional helper after staff login for booth tooling — not set automatically.
+ * @param {string} token
+ */
+export function setStageToken(token) {
+  try {
+    const t = String(token || '').trim()
+    if (!t) sessionStorage.removeItem(SS_KEY)
+    else sessionStorage.setItem(SS_KEY, t)
+  } catch { /* ignore */ }
+}
+
+function stageHeaders() {
+  const t = getStageToken()
+  return t ? { 'x-stage-token': t } : {}
+}
+
+function stageBody() {
+  const t = getStageToken()
+  return t ? { stageToken: t } : {}
 }
 
 export function stopDjtkAudio() {
@@ -109,7 +151,7 @@ export function speakBrowser(text, hooks = {}) {
 /**
  * Prefer MIMO TTS API, else browser.
  * @param {string} text
- * @param {{ onStart?: () => void, onEnd?: () => void, stageToken?: string }} [opts]
+ * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal }} [opts]
  */
 export async function speakWithMimoOrBrowser(text, opts = {}) {
   const say = String(text || '').trim()
@@ -119,29 +161,37 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
   }
   try {
     const data = await post('/api/djtk/tts', {
-      text: say,
-      stageToken: opts.stageToken || STAGE_TOKEN,
-    }, { silent: true })
+      text: say.slice(0, 300),
+      ...stageBody(),
+    }, { silent: true, signal: opts.signal, headers: stageHeaders() })
     if (data?.audioBase64) {
       return playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
     }
-  } catch {
-    /* fall through */
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      opts.onEnd?.()
+      return false
+    }
   }
   return speakBrowser(say, opts)
 }
 
-function avatarSvg() {
+/**
+ * Unique gradient ids for fab vs panel (duplicate SVG on page).
+ * @param {'fab' | 'panel'} suffix
+ */
+function avatarSvg(suffix = 'panel') {
+  const id = `djtkGlow-${suffix}`
   return `
     <svg class="djtk-face" viewBox="0 0 96 96" aria-hidden="true">
       <defs>
-        <radialGradient id="djtkGlow" cx="50%" cy="40%" r="60%">
+        <radialGradient id="${id}" cx="50%" cy="40%" r="60%">
           <stop offset="0%" stop-color="#7ff5ea"/>
           <stop offset="70%" stop-color="#1a8f88"/>
           <stop offset="100%" stop-color="#0a2a2c"/>
         </radialGradient>
       </defs>
-      <circle class="djtk-halo" cx="48" cy="48" r="44" fill="url(#djtkGlow)" opacity="0.55"/>
+      <circle class="djtk-halo" cx="48" cy="48" r="44" fill="url(#${id})" opacity="0.55"/>
       <ellipse cx="48" cy="52" rx="28" ry="32" fill="#0d2f34" stroke="#27e0d0" stroke-width="2"/>
       <ellipse cx="48" cy="38" rx="22" ry="18" fill="#123a40" stroke="#3aefe0" stroke-width="1.4"/>
       <circle class="djtk-eye" cx="38" cy="38" r="3.2" fill="#e8fff8"/>
@@ -162,13 +212,13 @@ export function renderDjtkHuman(opts = {}) {
     <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}" data-djtk-human data-collapsed="${compact ? '0' : '1'}">
       ${compact ? '' : `
       <button type="button" class="djtk-fab" data-djtk-toggle aria-expanded="false" title="打开 DJTK 智控助手">
-        <span class="djtk-fab-face">${avatarSvg()}</span>
+        <span class="djtk-fab-face">${avatarSvg('fab')}</span>
         <span class="djtk-fab-label">DJTK智控助手</span>
         <span class="djtk-fab-hint">问我</span>
       </button>`}
       <div class="djtk-panel" ${compact ? '' : 'hidden'} data-djtk-panel>
         <header class="djtk-hd">
-          <div class="djtk-avatar" data-djtk-avatar>${avatarSvg()}</div>
+          <div class="djtk-avatar" data-djtk-avatar>${avatarSvg('panel')}</div>
           <div class="djtk-hd-copy">
             <b>DJTK智控助手</b>
             <span>替抗蓟化 · 质控溯源</span>
@@ -191,7 +241,7 @@ export function renderDjtkHuman(opts = {}) {
 
 /**
  * @param {ParentNode} root
- * @param {{ compact?: boolean }} [opts]
+ * @param {{ compact?: boolean, batchId?: string }} [opts]
  */
 export function bindDjtkHuman(root, opts = {}) {
   const box = /** @type {HTMLElement | null} */ (root.querySelector('[data-djtk-human]'))
@@ -206,11 +256,24 @@ export function bindDjtkHuman(root, opts = {}) {
   const form = box.querySelector('[data-djtk-form]')
   const stopBtn = box.querySelector('[data-djtk-stop]')
   const sendBtn = box.querySelector('[data-djtk-send]')
+  const chips = () => [...box.querySelectorAll('[data-djtk-chip]')]
+
+  let asking = false
+  let askSeq = 0
+  /** @type {AbortController | null} */
+  let askAbort = null
+
+  const setBusy = (on) => {
+    asking = on
+    if (sendBtn) sendBtn.disabled = on
+    chips().forEach((c) => { c.disabled = on })
+    if (input) input.disabled = on
+  }
 
   const setSpeaking = (on) => {
     box.classList.toggle('is-speaking', on)
-    if (stopBtn) stopBtn.hidden = !on
-    if (sendBtn) sendBtn.disabled = on
+    if (stopBtn) stopBtn.hidden = !on && !asking
+    if (on && stopBtn) stopBtn.hidden = false
   }
 
   const setStatus = (msg) => {
@@ -243,54 +306,86 @@ export function bindDjtkHuman(root, opts = {}) {
     if (panel) panel.hidden = collapsed
     if (fab) fab.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
     if (collapsed) {
+      askAbort?.abort()
+      askAbort = null
       stopDjtkAudio()
       setSpeaking(false)
+      setBusy(false)
+      setStatus('')
     } else {
       input?.focus()
     }
   }
 
+  const abortAsk = () => {
+    askAbort?.abort()
+    askAbort = null
+    askSeq += 1
+    stopDjtkAudio()
+    setSpeaking(false)
+    setBusy(false)
+    setStatus('已停止')
+  }
+
   const ask = async (question) => {
-    const q = String(question || '').trim()
-    if (!q) return
+    const q = String(question || '').trim().slice(0, 200)
+    if (!q || asking) return
     pushBubble('user', q)
     history.push({ role: 'user', content: q })
     setStatus('智控助手思考中…')
+    setBusy(true)
     setSpeaking(true)
+    if (stopBtn) stopBtn.hidden = false
     if (input) input.value = ''
 
-    const result = await (async () => {
-      try {
-        const data = await post('/api/djtk/ask', {
-          question: q,
-          history: history.slice(0, -1),
-          stageToken: STAGE_TOKEN,
-        }, { silent: true })
-        if (data?.ttsFallback) setStatus('文字已出，语音走浏览器朗读。')
-        else setStatus('')
-        return {
-          answer: String(data?.answer || '').trim() || localFallback(q),
-          audioBase64: data?.audioBase64 || null,
-          mime: data?.mime || 'audio/wav',
-        }
-      } catch {
-        setStatus('云端助手暂不可用，已用本地简答 + 浏览器朗读。')
-        return { answer: localFallback(q), audioBase64: null, mime: 'audio/wav' }
-      }
-    })()
+    const seq = ++askSeq
+    askAbort = new AbortController()
+    const signal = askAbort.signal
 
-    pushBubble('bot', result.answer)
-    history.push({ role: 'assistant', content: result.answer })
+    let answer = ''
+    try {
+      const data = await post('/api/djtk/ask', {
+        question: q,
+        history: history.slice(0, -1).filter((m) => m.role === 'user'),
+        batchId: opts.batchId || undefined,
+        speak: false,
+        ...stageBody(),
+      }, { silent: true, signal, headers: stageHeaders() })
+      if (seq !== askSeq) return
+      answer = String(data?.answer || '').trim() || localFallback(q)
+      setStatus('')
+    } catch (err) {
+      if (seq !== askSeq || err?.name === 'AbortError') return
+      setStatus('云端助手暂不可用，已用本地简答 + 浏览器朗读。')
+      answer = localFallback(q)
+    }
+
+    if (seq !== askSeq) return
+    pushBubble('bot', answer)
+    history.push({ role: 'assistant', content: answer })
     if (history.length > 12) history.splice(0, history.length - 12)
 
     const hooks = {
-      onStart: () => setSpeaking(true),
-      onEnd: () => setSpeaking(false),
+      onStart: () => { if (seq === askSeq) setSpeaking(true) },
+      onEnd: () => {
+        if (seq !== askSeq) return
+        setSpeaking(false)
+        setBusy(false)
+        if (stopBtn) stopBtn.hidden = true
+      },
     }
-    if (result.audioBase64) {
-      await playBase64Audio(result.audioBase64, result.mime, hooks)
-    } else {
-      await speakBrowser(result.answer, hooks)
+
+    try {
+      await speakWithMimoOrBrowser(answer, { ...hooks, signal })
+    } catch {
+      if (seq === askSeq) await speakBrowser(answer, hooks)
+    } finally {
+      if (seq === askSeq) {
+        setBusy(false)
+        setSpeaking(false)
+        if (stopBtn) stopBtn.hidden = true
+        askAbort = null
+      }
     }
   }
 
@@ -305,19 +400,20 @@ export function bindDjtkHuman(root, opts = {}) {
     const chip = t.closest?.('[data-djtk-chip]')
     if (chip && box.contains(chip)) {
       ev.preventDefault()
+      if (asking) return
       ask(chip.textContent || '')
       return
     }
     const stop = t.closest?.('[data-djtk-stop]')
     if (stop && box.contains(stop)) {
       ev.preventDefault()
-      stopDjtkAudio()
-      setSpeaking(false)
+      abortAsk()
     }
   })
 
   form?.addEventListener('submit', (ev) => {
     ev.preventDefault()
+    if (asking) return
     ask(input?.value || '')
   })
 
@@ -330,7 +426,7 @@ export function bindDjtkHuman(root, opts = {}) {
 function localFallback(q) {
   const s = q.toLowerCase()
   if (/哪|来|产地|基地|从/.test(s)) {
-    return '这批鸡来自某某基地，批次代号蓟化-2026-0812。点左侧焦点档案可看鸡舍与日粮。'
+    return '这批鸡来自某某基地（基地-A07），批次代号蓟化-2026-0812。点左侧焦点档案可看鸡舍与日粮。'
   }
   if (/安全|合格|残留|上桌|放心|检出/.test(s)) {
     return '当前焦点批次安全筛查未检出目标兽药残留，评价合格，可以进入出证与溯源。'

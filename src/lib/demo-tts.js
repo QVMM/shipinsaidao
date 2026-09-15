@@ -1,11 +1,15 @@
 /** 演示话术 TTS：优先 MIMO /api/djtk/tts，失败则浏览器 SpeechSynthesis。 */
 
-import { STAGE_TOKEN, speakWithMimoOrBrowser, stopDjtkAudio } from './djtk-human.js'
+import { speakWithMimoOrBrowser, stopDjtkAudio } from './djtk-human.js'
 
 let speaking = false
+/** @type {AbortController | null} */
+let demoAbort = null
 
 export function stopDemoSpeech() {
   speaking = false
+  demoAbort?.abort()
+  demoAbort = null
   try {
     window.speechSynthesis?.cancel()
   } catch {
@@ -70,11 +74,12 @@ function speakOneBrowser(text, opts = {}) {
 /**
  * One line: MIMO TTS first, browser fallback.
  * @param {string} text
+ * @param {AbortSignal} [signal]
  */
-async function speakOne(text) {
+async function speakOne(text, signal) {
   if (!speaking || !text?.trim()) return
-  await speakWithMimoOrBrowser(String(text).trim(), {
-    stageToken: STAGE_TOKEN,
+  await speakWithMimoOrBrowser(String(text).trim().slice(0, 300), {
+    signal,
     onStart() { /* keep speaking flag */ },
     onEnd() { /* per-line */ },
   })
@@ -105,6 +110,8 @@ export async function speakDemoAct(script, hooks = {}) {
     })
   }
 
+  demoAbort = new AbortController()
+  const signal = demoAbort.signal
   speaking = true
   hooks.onStart?.()
   const lines = [
@@ -117,7 +124,7 @@ export async function speakDemoAct(script, hooks = {}) {
   for (const line of lines) {
     if (!speaking) break
     try {
-      await speakOne(line)
+      await speakOne(line, signal)
     } catch {
       if (!speaking) break
       await speakOneBrowser(line)
@@ -125,6 +132,7 @@ export async function speakDemoAct(script, hooks = {}) {
   }
   const ok = speaking
   speaking = false
+  demoAbort = null
   hooks.onEnd?.()
   return ok
 }

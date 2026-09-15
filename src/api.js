@@ -2,12 +2,15 @@
  * 同源 API。cookie 随请求走，不在前端存 token。
  */
 export async function api(path, opts = {}) {
-  const { method = 'GET', body, silent } = opts
+  const { method = 'GET', body, silent, signal, headers: extra = {} } = opts
+  const headers = { ...extra }
+  if (body != null) headers['Content-Type'] = 'application/json'
   const res = await fetch(path, {
     method,
     credentials: 'same-origin',
-    headers: body == null ? {} : { 'Content-Type': 'application/json' },
+    headers,
     body: body == null ? undefined : JSON.stringify(body),
+    signal,
   })
   const text = await res.text()
   let data

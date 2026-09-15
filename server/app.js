@@ -30,7 +30,6 @@ import {
   requireStaff,
   requireStaffOrStage,
   setSessionCookie,
-  stageDemoToken,
   userFromToken,
   verifyPassword,
 } from './auth.js'
@@ -39,6 +38,43 @@ import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal, demoTamper, demoRestore } from './seal.js'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
+
+const DJTK_Q_MAX = 200
+const DJTK_TTS_MAX = 300
+const ASK_LIMIT = { windowMs: 60_000, max: 8 }
+const TTS_LIMIT = { windowMs: 60_000, max: 15 }
+
+/** Simple in-memory rate limit (single instance). Key = IP + session fragment. */
+function makeRateLimiter({ windowMs, max }) {
+  /** @type {Map<string, { start: number, count: number }>} */
+  const hits = new Map()
+  return (key) => {
+    const now = Date.now()
+    let bucket = hits.get(key)
+    if (!bucket || now - bucket.start > windowMs) {
+      bucket = { start: now, count: 0 }
+      hits.set(key, bucket)
+    }
+    bucket.count += 1
+    if (hits.size > 5000) {
+      for (const [k, v] of hits) {
+        if (now - v.start > windowMs) hits.delete(k)
+      }
+    }
+    return bucket.count <= max
+  }
+}
+
+const askLimiter = makeRateLimiter(ASK_LIMIT)
+const ttsLimiter = makeRateLimiter(TTS_LIMIT)
+
+function clientKey(req) {
+  const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim()
+  const sess = readToken(req)
+  const sessPart = sess ? sess.slice(0, 12) : 'anon'
+  return `${ip}|${sessPart}`
+}
+
 
 export async function buildApp() {
   ensureSeeded()
@@ -197,15 +233,22 @@ export async function buildApp() {
   app.get('/api/djtk/status', async () => ({
     ok: true,
     mimoConfigured: mimoConfigured(),
-    stageTokenHint: 'x-stage-token',
-    defaultStageToken: stageDemoToken(),
+    stageAuth: 'staff-session-or-x-stage-token',
   }))
 
   app.post('/api/djtk/ask', { preHandler: requireStaffOrStage }, async (req, reply) => {
+    if (!askLimiter(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited', message: '提问太频繁，请稍后再试。' })
+    }
     const question = String(req.body?.question || '').trim()
     const history = Array.isArray(req.body?.history) ? req.body.history : []
+    const batchId = String(req.body?.batchId || DEFAULT_BATCH_ID || '').trim() || DEFAULT_BATCH_ID
+    const speak = req.body?.speak === true
     if (!question) {
       return reply.code(400).send({ error: 'invalid', message: '请先输入问题。' })
+    }
+    if (question.length > DJTK_Q_MAX) {
+      return reply.code(400).send({ error: 'invalid', message: `问题请控制在 ${DJTK_Q_MAX} 字以内。` })
     }
     if (!mimoConfigured()) {
       return reply.code(503).send({
@@ -214,29 +257,35 @@ export async function buildApp() {
         fallback: true,
       })
     }
-    const result = await mimoAsk({ question, history })
+    const result = await mimoAsk({ question, history, batchId, speak })
     if (!result.ok) {
+      req.log.warn({ err: result.error, detail: result.body }, 'djtk ask failed')
       return reply.code(result.status >= 400 ? result.status : 502).send({
         error: result.error || 'mimo_failed',
         message: '智控助手暂时无法回答，请稍后再试或用浏览器朗读。',
-        detail: result.body,
         fallback: true,
       })
     }
     return {
       answer: result.answer,
-      audioBase64: result.audioBase64,
+      audioBase64: speak ? (result.audioBase64 || null) : null,
       mime: result.mime || 'audio/wav',
-      voice: result.voice,
+      voice: speak ? result.voice : null,
       model: result.model,
-      ttsFallback: !result.audioBase64,
+      ttsFallback: speak ? !result.audioBase64 : true,
     }
   })
 
   app.post('/api/djtk/tts', { preHandler: requireStaffOrStage }, async (req, reply) => {
+    if (!ttsLimiter(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited', message: '语音请求太频繁，请稍后再试。' })
+    }
     const text = String(req.body?.text || '').trim()
     if (!text) {
       return reply.code(400).send({ error: 'invalid', message: '没有要播报的文字。' })
+    }
+    if (text.length > DJTK_TTS_MAX) {
+      return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
     if (!mimoConfigured()) {
       return reply.code(503).send({
@@ -247,10 +296,10 @@ export async function buildApp() {
     }
     const result = await mimoTts(text)
     if (!result.ok) {
+      req.log.warn({ err: result.error, detail: result.body }, 'djtk tts failed')
       return reply.code(result.status >= 400 ? result.status : 502).send({
         error: result.error || 'mimo_tts_failed',
         message: '语音合成失败，请用浏览器朗读。',
-        detail: result.body,
         fallback: true,
       })
     }

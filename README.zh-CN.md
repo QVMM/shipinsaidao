@@ -44,11 +44,12 @@ npm run build
 
 - 环境变量 `MIMO_API_KEY`（必填才能云端问答/TTS；**不要**写进前端或提交 git）
 - 可选 `MIMO_BASE_URL`（默认 `https://token-plan-cn.xiaomimimo.com/v1`）
-- 可选 `DJTK_STAGE_TOKEN`（默认 `tihua-djtk-stage`，舞台页用 `x-stage-token` / body.stageToken）
+- `DJTK_STAGE_TOKEN`：仅服务端；**必须在 Render Dashboard 配置长随机值**。请求头 `x-stage-token`（或 body.stageToken）与之匹配时可走展台鉴权；工作人员登录后 cookie 会话即可，无需令牌。前端**不再**内置或从 `/api/djtk/status` 下发任何默认令牌。
+- 生产环境 `SESSION_SECRET` 必填且不得为 `dev-only-change-me`，否则进程拒绝启动。
 
-Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `sync: false`）。未配置时接口返回 503，前端回退浏览器 `speechSynthesis`。
+Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `sync: false`），并**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。未配置 MIMO 时接口返回 503，前端回退浏览器 `speechSynthesis`。
 
-接口：`POST /api/djtk/ask`、`POST /api/djtk/tts`（需登录工作人员或舞台令牌）；`GET /api/djtk/status`。
+接口：`POST /api/djtk/ask`（默认 `speak:false`，先返文字；可再调 TTS）、`POST /api/djtk/tts`（需登录工作人员或舞台令牌；按 IP/会话限流）；`GET /api/djtk/status`（不含密钥）。
 
 ## 工作账号
 

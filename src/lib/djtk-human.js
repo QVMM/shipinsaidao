@@ -192,9 +192,9 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
 function avatarHtml(suffix = 'panel') {
   return `
     <span class="djtk-face djtk-face-photo" data-djtk-face data-djtk-face-ctx="${suffix}" aria-hidden="true">
-      <img class="djtk-face-img is-closed" src="/djtk-avatar-closed.png" alt="" />
-      <img class="djtk-face-img is-open" src="/djtk-avatar-open.png" alt="" />
+      <img class="djtk-face-img" src="/djtk-avatar-closed.png" alt="" decoding="async" />
       <i class="djtk-face-glow" aria-hidden="true"></i>
+      <span class="djtk-face-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>
   `
 }
@@ -377,9 +377,15 @@ export function bindDjtkHuman(root, opts = {}) {
     allInputs().forEach((inp) => { inp.disabled = on })
   }
 
+  const setThinking = (on) => {
+    box.classList.toggle('is-thinking', on)
+    cabin.classList.toggle('is-thinking', on)
+  }
+
   const setSpeaking = (on) => {
     box.classList.toggle('is-speaking', on)
     cabin.classList.toggle('is-speaking', on)
+    if (on) setThinking(false)
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
     if (hint) hint.textContent = on ? '播报中…' : (asking ? '思考中…' : '待命')
     allStop().forEach((btn) => {
@@ -444,6 +450,7 @@ export function bindDjtkHuman(root, opts = {}) {
       askAbort?.abort()
       askAbort = null
       stopDjtkAudio()
+      setThinking(false)
       setSpeaking(false)
       setBusy(false)
       setStatus('')
@@ -490,7 +497,8 @@ export function bindDjtkHuman(root, opts = {}) {
     history.push({ role: 'user', content: q })
     setStatus('智控助手思考中…')
     setBusy(true)
-    setSpeaking(true)
+    setThinking(true)
+    setSpeaking(false)
     allStop().forEach((b) => { b.hidden = false })
     allInputs().forEach((inp) => { inp.value = '' })
 
@@ -528,6 +536,7 @@ export function bindDjtkHuman(root, opts = {}) {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
       onEnd: () => {
         if (seq !== askSeq) return
+        setThinking(false)
         setSpeaking(false)
         setBusy(false)
         allStop().forEach((b) => { b.hidden = true })
@@ -541,6 +550,7 @@ export function bindDjtkHuman(root, opts = {}) {
     } finally {
       if (seq === askSeq) {
         setBusy(false)
+        setThinking(false)
         setSpeaking(false)
         allStop().forEach((b) => { b.hidden = true })
         askAbort = null

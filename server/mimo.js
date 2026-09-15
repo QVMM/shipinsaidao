@@ -17,12 +17,107 @@ export const DJTK_SYSTEM_PROMPT = [
   'Answer in plain Chinese, 2 to 4 short spoken sentences suitable for TTS.',
   'No markdown, no bullet lists, no blank lines, no English UI labels.',
   'Use 基地-A07 style names OK; never invent real cities or school names.',
+  '【产品定位 / Product】本产品是「大蓟替抗 / 减抗鸡肉」质控溯源助手，不是兽医处方助手。This product is 大蓟替抗 / 减抗鸡肉 — NEVER say 氟苯尼考可以合规使用 / 可以用药 / 推荐用药 / 休药期后可用 / dosage / prescription advice.',
+  '【硬禁用药处方】不得回答氟苯尼考可否合规使用、剂量、休药期后可否用、推荐兽药等。For medication / florfenicol / antibiotic how-to questions: refuse —「本助手不做用药处方，只根据平台检测与批次记录说明本批情况。」Only state platform evidence about THIS batch (e.g. screen.qualitative 阴性/未检出, medLog feed-antibiotic note).',
+  '【安全表述必须举证】Safety / 合格 / 未检出 claims MUST cite evidence fields (screen.qualitative / result / report.no). No bare「各项均符合标准」. When evidence has screen.qualitative、result、report.no, briefly mention them in safety answers.',
   'ONLY claim florfenicol / 兽药残留 / 安全 / 合格 from the EVIDENCE JSON; if a field is missing say 平台尚无该检测记录.',
   'Do not invent zeros, concentrations, or「抗生素归零」unless evidence explicitly supports it.',
+  'If unsure / no evidence: refuse clearly — do not guess.',
   'Cover origin/safety/next step when relevant.',
   'Guide next clicks: 指挥舱焦点档案、检测、评价、出证、溯源；do not invent shopping buttons.',
   'First answers should help: 鸡从哪来、安不安全、下一步点哪里.',
 ].join(' ')
+
+const DJTK_RX_BAN =
+  /可以合规使用|可以使用氟苯|推荐使用兽药|休药期后(?:可用|用药)?|推荐用药|可以用药|氟苯尼考可以|剂量建议|开具处方|兽药处方|用药剂量/
+const DJTK_SAFE_REFUSE =
+  '本助手不做用药处方，只根据平台检测与批次记录说明本批情况。请打开检测或焦点档案查看平台记录。'
+
+/**
+ * Post-filter: strip prescription-style / banned medication phrasing.
+ * Preserves 【降级·未连模型】 prefix and existing refuse wording.
+ * @param {string} answer
+ * @param {object} [evidence]
+ */
+export function sanitizeDjtkAnswer(answer, evidence) {
+  const raw = String(answer || '').trim()
+  if (!raw) return DJTK_SAFE_REFUSE
+  // Already a refuse / degraded refuse — keep as-is (do not strip prefix)
+  if (/不做用药处方/.test(raw)) return raw
+  if (DJTK_RX_BAN.test(raw)) {
+    const prefix = raw.startsWith('【降级·未连模型】') ? '【降级·未连模型】' : ''
+    return `${prefix}${DJTK_SAFE_REFUSE}`
+  }
+  // Bare unqualified safety claim without citing evidence fields → soften if no evidence
+  const hasCite =
+    evidence &&
+    (String(evidence?.screen?.qualitative || '') ||
+      String(evidence?.screen?.result || '') ||
+      String(evidence?.report?.no || ''))
+  if (/各项均符合标准/.test(raw) && !hasCite) {
+    return '平台证据不足，无法笼统宣称各项均符合标准。请打开检测或焦点档案查看本批记录。'
+  }
+  return raw
+}
+
+/**
+ * Local degraded answer when MIMO is unavailable. Never invent 合格/未检出/可食用/可用药
+ * unless evidence has explicit qualitative/result.
+ * @param {string} question
+ * @param {object} [evidence]
+ * @returns {{ answer: string, degraded: true }}
+ */
+export function buildDegradedAnswer(question, evidence) {
+  const q = String(question || '').trim()
+  const ev = evidence && typeof evidence === 'object' ? evidence : {}
+  const qualitative = String(ev?.screen?.qualitative || '').trim()
+  const result = String(ev?.screen?.result || '').trim()
+  const reportNo = String(ev?.report?.no || '').trim()
+  const feedNote = String(ev?.farm?.feedAntibioticNote || '').trim()
+  const prefix = '【降级·未连模型】'
+
+  if (/氟苯|用药|兽药|剂量|处方|怎么用|如何用|合规使用|休药/.test(q)) {
+    return { answer: `${prefix}${DJTK_SAFE_REFUSE}`, degraded: true }
+  }
+
+  const parts = [prefix]
+  if (/哪|来|产地|基地|从/.test(q)) {
+    const farm = ev?.farm?.name || ev?.farm?.location || ''
+    const batch = ev?.batchId || ''
+    if (farm || batch) {
+      parts.push(
+        `据平台批次记录${batch ? `（${batch}）` : ''}：${farm ? `关联 ${farm}` : '请打开焦点档案查看基地与鸡舍'}。`,
+      )
+    } else {
+      parts.push('请打开检测/焦点档案查看平台记录。')
+    }
+    return { answer: parts.join(''), degraded: true }
+  }
+
+  if (/安全|合格|残留|上桌|放心|检出|食用/.test(q)) {
+    if (qualitative || result) {
+      const bits = []
+      if (qualitative) bits.push(`筛查定性 ${qualitative}`)
+      if (result) bits.push(`结果 ${result}`)
+      if (reportNo) bits.push(`报告号 ${reportNo}`)
+      if (feedNote) bits.push(`饲用抗生素记录 ${feedNote}`)
+      parts.push(`本批平台证据：${bits.join('，')}。其余请打开检测/焦点档案核对。`)
+    } else {
+      parts.push('请打开检测/焦点档案查看平台记录。本助手在未连模型时不臆断合格或未检出。')
+    }
+    return { answer: parts.join(''), degraded: true }
+  }
+
+  if (/下一步|点哪|操作|去哪/.test(q)) {
+    parts.push(String(ev?.nextStepHint || '指挥舱焦点档案 → 检测 → 评价 → 出证 → 溯源'))
+    parts.push('。模型暂不可用，请以界面节点为准。')
+    return { answer: parts.join(''), degraded: true }
+  }
+
+  parts.push('请打开检测/焦点档案查看平台记录。')
+  return { answer: parts.join(''), degraded: true }
+}
+
 
 export function mimoConfigured() {
   const key = process.env.MIMO_API_KEY
@@ -207,14 +302,15 @@ export async function mimoChat({ question, history = [], batchId, evidence } = {
       lastFail = r
       continue
     }
-    const answer = String(r.json?.choices?.[0]?.message?.content || '')
+    const rawAnswer = String(r.json?.choices?.[0]?.message?.content || '')
       .replace(/\n{2,}/g, '\n')
       .trim()
-    if (!answer) {
+    if (!rawAnswer) {
       lastFail = { ok: false, status: 502, error: 'mimo_empty', body: '模型没有返回文字。' }
       continue
     }
-    return { ok: true, answer, model }
+    const answer = sanitizeDjtkAnswer(rawAnswer, pack)
+    return { ok: true, answer, model, evidence: pack }
   }
   return lastFail || { ok: false, status: 502, error: 'mimo_chat_failed', body: '对话失败。' }
 }
@@ -262,21 +358,22 @@ export async function mimoAsk(opts = {}) {
   const speak = opts.speak !== false
   const chat = await mimoChat(opts)
   if (!chat.ok) return chat
+  const answer = sanitizeDjtkAnswer(chat.answer, chat.evidence)
   if (!speak) {
     return {
       ok: true,
-      answer: chat.answer,
+      answer,
       audioBase64: null,
       mime: 'audio/wav',
       voice: null,
       model: chat.model,
     }
   }
-  const tts = await mimoTts(chat.answer)
+  const tts = await mimoTts(answer)
   if (!tts.ok) {
     return {
       ok: true,
-      answer: chat.answer,
+      answer,
       audioBase64: null,
       mime: 'audio/wav',
       voice: null,
@@ -286,7 +383,7 @@ export async function mimoAsk(opts = {}) {
   }
   return {
     ok: true,
-    answer: chat.answer,
+    answer,
     audioBase64: tts.audioBase64,
     mime: tts.mime,
     voice: tts.voice,

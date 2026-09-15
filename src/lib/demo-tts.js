@@ -93,9 +93,19 @@ async function speakOne(text, signal) {
  */
 export async function speakDemoAct(script, hooks = {}) {
   stopDemoSpeech()
+  // Mark speaking BEFORE any await so UI can show 「播报中…」 immediately
+  demoAbort = new AbortController()
+  const signal = demoAbort.signal
+  speaking = true
+  hooks.onStart?.()
+
   // Chrome：voices 可能异步就绪（浏览器兜底时用）
   if (isDemoSpeechSupported()) {
     await new Promise((r) => {
+      if (!speaking) {
+        r(undefined)
+        return
+      }
       const ready = window.speechSynthesis.getVoices()
       if (ready?.length) {
         r(undefined)
@@ -110,10 +120,6 @@ export async function speakDemoAct(script, hooks = {}) {
     })
   }
 
-  demoAbort = new AbortController()
-  const signal = demoAbort.signal
-  speaking = true
-  hooks.onStart?.()
   const lines = [
     `${script.engineer.who}。${script.engineer.say}`,
     `${script.assistant.who}。${script.assistant.say}`,
@@ -121,19 +127,30 @@ export async function speakDemoAct(script, hooks = {}) {
   if (script.team?.length) {
     lines.push(script.team.join(''))
   }
+  let failed = false
   for (const line of lines) {
     if (!speaking) break
     try {
       await speakOne(line, signal)
     } catch {
       if (!speaking) break
-      await speakOneBrowser(line)
+      try {
+        await speakOneBrowser(line)
+      } catch {
+        failed = true
+        break
+      }
     }
   }
-  const ok = speaking
+  const ok = speaking && !failed
+  const wasStopped = !speaking
   speaking = false
   demoAbort = null
-  hooks.onEnd?.()
+  if (failed && !wasStopped) {
+    hooks.onError?.()
+  } else {
+    hooks.onEnd?.()
+  }
   return ok
 }
 

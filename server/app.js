@@ -33,7 +33,7 @@ import {
   userFromToken,
   verifyPassword,
 } from './auth.js'
-import { mimoAsk, mimoConfigured, mimoTts } from './mimo.js'
+import { mimoAsk, mimoConfigured, mimoTts, buildDjtkEvidence, buildDegradedAnswer, sanitizeDjtkAnswer } from './mimo.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal, demoTamper, demoRestore } from './seal.js'
 
@@ -250,28 +250,42 @@ export async function buildApp() {
     if (question.length > DJTK_Q_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `问题请控制在 ${DJTK_Q_MAX} 字以内。` })
     }
-    if (!mimoConfigured()) {
-      return reply.code(503).send({
-        error: 'mimo_unconfigured',
-        message: '服务端未配置 MIMO_API_KEY，可用浏览器朗读兜底。',
+    const evidence = buildDjtkEvidence(batchId)
+    const sendDegraded = (reason) => {
+      const deg = buildDegradedAnswer(question, evidence)
+      req.log.warn({ err: reason }, 'djtk ask degraded')
+      return {
+        answer: sanitizeDjtkAnswer(deg.answer, evidence),
+        audioBase64: null,
+        mime: 'audio/wav',
+        voice: null,
+        model: null,
+        degraded: true,
+        ttsFallback: true,
         fallback: true,
-      })
+      }
     }
-    const result = await mimoAsk({ question, history, batchId, speak })
+    if (!mimoConfigured()) {
+      return sendDegraded('mimo_unconfigured')
+    }
+    const result = await mimoAsk({ question, history, batchId, speak, evidence })
     if (!result.ok) {
-      req.log.warn({ err: result.error, detail: result.body }, 'djtk ask failed')
-      return reply.code(result.status >= 400 ? result.status : 502).send({
-        error: result.error || 'mimo_failed',
-        message: '智控助手暂时无法回答，请稍后再试或用浏览器朗读。',
-        fallback: true,
-      })
+      // Booth keeps working: 200 + degraded answer instead of 500 when possible
+      if (result.status === 400) {
+        return reply.code(400).send({
+          error: result.error || 'invalid',
+          message: result.body || '请先输入问题。',
+        })
+      }
+      return sendDegraded(result.error || 'mimo_failed')
     }
     return {
-      answer: result.answer,
+      answer: sanitizeDjtkAnswer(result.answer, evidence),
       audioBase64: speak ? (result.audioBase64 || null) : null,
       mime: result.mime || 'audio/wav',
       voice: speak ? result.voice : null,
       model: result.model,
+      degraded: false,
       ttsFallback: speak ? !result.audioBase64 : true,
     }
   })

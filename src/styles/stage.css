@@ -1580,8 +1580,8 @@ body:has(.wall) {
 /* —— DJTK 数字人（指挥舱浮动，不占满 HUD） —— */
 .djtk-human.is-stage {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: 16px;
+  bottom: 72px;
   z-index: 40;
   width: auto;
   max-width: 360px;
@@ -1754,6 +1754,42 @@ body:has(.wall) {
   font-size: 11px;
   color: #e4c56a;
 }
+
+.monitor-assist .ma-speak-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #e4c56a;
+  margin-left: 4px;
+}
+.monitor-assist .ma-speak-status.is-error {
+  color: #f0a0a0;
+}
+.djtk-bubble.is-degraded {
+  border-color: rgba(228, 197, 106, 0.45);
+}
+.djtk-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(228, 197, 106, 0.55);
+  color: #e4c56a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+}
+.djtk-log-tip {
+  margin: 4px 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #e4c56a;
+  background: rgba(228, 197, 106, 0.08);
+  border-left: 2px solid rgba(228, 197, 106, 0.55);
+}
+
 .djtk-human.is-speaking .djtk-mouth {
   animation: djtk-talk 0.28s ease-in-out infinite alternate;
 }

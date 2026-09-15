@@ -290,10 +290,21 @@ export function bindDjtkHuman(root, opts = {}) {
   const pushBubble = (role, text) => {
     if (!log) return
     const art = document.createElement('article')
-    art.className = `djtk-bubble is-${role}`
-    art.innerHTML = `<header>${role === 'user' ? '你' : 'DJTK智控助手'}</header><p></p>`
+    const degraded = role === 'bot' && String(text || '').startsWith('【降级')
+    art.className = `djtk-bubble is-${role}${degraded ? ' is-degraded' : ''}`
+    const title = role === 'user' ? '你' : 'DJTK智控助手'
+    art.innerHTML = `<header>${title}${degraded ? '<span class="djtk-badge">降级</span>' : ''}</header><p></p>`
     art.querySelector('p').textContent = text
     log.appendChild(art)
+    log.scrollTop = log.scrollHeight
+  }
+
+  const pushTip = (msg) => {
+    if (!log) return
+    const tip = document.createElement('p')
+    tip.className = 'djtk-log-tip'
+    tip.textContent = msg
+    log.appendChild(tip)
     log.scrollTop = log.scrollHeight
   }
 
@@ -353,10 +364,11 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
-      setStatus('')
+      if (data?.degraded) setStatus('【降级·未连模型】已用平台记录简答')
+      else setStatus('')
     } catch (err) {
       if (seq !== askSeq || err?.name === 'AbortError') return
-      setStatus('云端助手暂不可用，已用本地简答 + 浏览器朗读。')
+      setStatus('云端暂不可用，请看左侧焦点档案与判定条')
       answer = localFallback(q)
     }
 
@@ -414,7 +426,12 @@ export function bindDjtkHuman(root, opts = {}) {
   form?.addEventListener('submit', (ev) => {
     ev.preventDefault()
     if (asking) return
-    ask(input?.value || '')
+    const q = String(input?.value || '').trim()
+    if (!q) {
+      pushTip('请先输入问题')
+      return
+    }
+    ask(q)
   })
 
   if (!opts.compact) setCollapsed(true)
@@ -424,15 +441,19 @@ export function bindDjtkHuman(root, opts = {}) {
  * @param {string} q
  */
 function localFallback(q) {
-  const s = q.toLowerCase()
+  const s = String(q || '')
+  // 降级简答禁止默认合格/未检出/用药结论；引导看平台只读证据。
+  if (/氟苯|兽药|用药|剂量|处方|能不能用|可以用|合规使用|休药/.test(s)) {
+    return '【降级·未连模型】本助手不做用药处方，也不回答氟苯尼考能否使用。请打开检测或焦点档案查看平台记录。'
+  }
   if (/哪|来|产地|基地|从/.test(s)) {
-    return '这批鸡来自某某基地（基地-A07），批次代号蓟化-2026-0812。点左侧焦点档案可看鸡舍与日粮。'
+    return '【降级·未连模型】云端暂不可用。请看左侧焦点档案里的基地与批次字段，以页面显示为准。'
   }
   if (/安全|合格|残留|上桌|放心|检出/.test(s)) {
-    return '当前焦点批次安全筛查未检出目标兽药残留，评价合格，可以进入出证与溯源。'
+    return '【降级·未连模型】云端暂不可用，我不能在本地直接下安全结论。请看左侧焦点档案与判定条、安全检测页的筛查结果。'
   }
   if (/下一步|点哪|怎么|操作|去哪/.test(s)) {
-    return '下一步请点中间传送带上的检测或评价节点，或展开上方 DJTK 演示话术，按「开始风险排查」走。'
+    return '【降级·未连模型】云端暂不可用。可先点传送带上的检测或评价节点，或打开安全检测/健康评价页查看记录。'
   }
-  return '我是 DJTK智控助手。可问鸡从哪来、安不安全、下一步点哪里。云端暂不可用时用这条本地简答。'
+  return '【降级·未连模型】云端暂不可用。请先查看左侧焦点档案与判定条；恢复后可再问鸡从哪来、安不安全、下一步点哪里。'
 }

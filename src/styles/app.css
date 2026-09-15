@@ -967,3 +967,34 @@ a.text-link { color: var(--gold); }
   from { transform: scaleY(1); }
   to { transform: scaleY(1.35); transform-origin: center; }
 }
+
+.monitor-assist .ma-speak-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #c9a227;
+  margin-left: 4px;
+}
+.monitor-assist .ma-speak-status.is-error { color: #c45c5c; }
+.djtk-bubble.is-degraded { border-color: rgba(201, 162, 39, 0.45); }
+.djtk-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(201, 162, 39, 0.55);
+  color: #c9a227;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+}
+.djtk-log-tip {
+  margin: 4px 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #c9a227;
+  background: rgba(201, 162, 39, 0.08);
+  border-left: 2px solid rgba(201, 162, 39, 0.55);
+}

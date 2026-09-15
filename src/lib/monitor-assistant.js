@@ -153,6 +153,7 @@ function renderDemoPanel(s, withCollapse) {
       ${s.customs ? `<a class="ma-link-out${withCollapse ? '' : ' is-staff-link'}" href="${esc(CUSTOMS_URL)}" target="_blank" rel="noopener noreferrer">打开海关政务公开（演示链接）</a>` : ''}
       <button type="button" class="ma-speak" data-demo-speak>播报本段</button>
       <button type="button" class="ma-speak-stop" data-demo-stop hidden>停止播报</button>
+      <span class="ma-speak-status" data-demo-speak-status hidden aria-live="polite"></span>
       <button type="button" class="ma-prev" data-demo-prev>上一段</button>
       <button type="button" class="ma-next-act" data-demo-next>${esc(s.nextLabel)}</button>
       <a class="ma-cta" href="${esc(s.href)}" data-assistant-cta>${esc(s.cta)}</a>
@@ -173,19 +174,41 @@ export function bindMonitorAssistant(root, opts = {}) {
   let act = /** @type {DemoAct} */ (box.dataset.demoAct || 'open')
   const isStage = box.classList.contains('is-stage')
 
-  const setSpeakingUi = (on) => {
+  const setSpeakingUi = (on, { error = false } = {}) => {
     const play = box.querySelector('[data-demo-speak]')
     const stop = box.querySelector('[data-demo-stop]')
-    if (play) play.hidden = on
+    const st = box.querySelector('[data-demo-speak-status]')
+    if (play) {
+      play.hidden = on
+      // Keep 「播报本段」 visible after success or failure (retry)
+      if (!on) play.hidden = false
+    }
     if (stop) stop.hidden = !on
     box.classList.toggle('is-speaking', on)
+    if (st) {
+      if (on) {
+        st.hidden = false
+        st.textContent = '播报中…'
+        st.classList.remove('is-error')
+      } else if (error) {
+        st.hidden = false
+        st.textContent = '播报失败，可重试'
+        st.classList.add('is-error')
+      } else {
+        st.hidden = true
+        st.textContent = ''
+        st.classList.remove('is-error')
+      }
+    }
   }
 
   const playAct = () => {
     const s = DEMO_SCRIPT[act]
     setSpeakingUi(true)
     speakDemoAct(s, {
+      onStart() { setSpeakingUi(true) },
       onEnd() { setSpeakingUi(false) },
+      onError() { setSpeakingUi(false, { error: true }) },
     })
   }
 

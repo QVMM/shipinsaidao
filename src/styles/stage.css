@@ -2102,10 +2102,14 @@ body:has(.wall) {
   position: relative;
   z-index: 1;
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(280px, 300px) minmax(0, 1fr) minmax(240px, 260px);
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(240px, 260px);
   gap: 14px;
+  overflow: hidden;
+  align-items: stretch;
 }
 .djtk-cabin-hero {
   display: flex;
@@ -2113,6 +2117,10 @@ body:has(.wall) {
   align-items: center;
   justify-content: center;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  contain: inline-size;
   padding: 22px 16px;
   border-radius: 12px;
   border: 1px solid rgba(39, 224, 208, 0.32);
@@ -2171,6 +2179,8 @@ body:has(.wall) {
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
+  contain: inline-size;
+  isolation: isolate;
   padding: 14px;
   border-radius: 12px;
   border: 1px solid rgba(39, 224, 208, 0.28);
@@ -2179,6 +2189,9 @@ body:has(.wall) {
 }
 .djtk-cabin-chip-block {
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .djtk-cabin-sec-label {
   margin: 0 0 6px;
@@ -2269,14 +2282,22 @@ body:has(.wall) {
   gap: 12px;
   min-width: 0;
   min-height: 0;
+  max-width: 100%;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
 }
 .djtk-cabin-card {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
   padding: 14px 14px 12px;
   border-radius: 12px;
   border: 1px solid rgba(39, 224, 208, 0.3);
   background:
     linear-gradient(165deg, rgba(10, 34, 40, 0.92), rgba(6, 22, 28, 0.88));
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), inset 0 0 28px rgba(39, 224, 208, 0.05);
+  overflow: visible;
 }
 .djtk-cabin-card h3 {
   margin: 0 0 8px;
@@ -2295,8 +2316,12 @@ body:has(.wall) {
 .djtk-cabin-card-hint {
   margin: 8px 0 0;
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.55;
   color: #7a9a96;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .djtk-cabin-links {
   display: flex;
@@ -2348,7 +2373,7 @@ html.djtk-cabin-open {
 
 @media (max-width: 1100px) {
   .djtk-cabin-main {
-    grid-template-columns: minmax(240px, 260px) minmax(0, 1fr) minmax(210px, 230px);
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(220px, 240px);
   }
   .djtk-cabin-avatar {
     width: 160px;

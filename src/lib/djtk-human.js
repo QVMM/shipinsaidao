@@ -453,7 +453,7 @@ function cabinMarkup() {
           <article class="djtk-cabin-card">
             <h3>焦点批次摘要</h3>
             <p class="djtk-cabin-batch" data-djtk-cabin-batch>—</p>
-            <p class="djtk-cabin-card-hint">以页面焦点档案与检测记录为准，助手不臆造合格结论。</p>
+            <p class="djtk-cabin-card-hint">以页面焦点档案与检测记录为准，<br>助手不臆造合格结论。</p>
           </article>
           <article class="djtk-cabin-card">
             <h3>风险 / 下一步</h3>

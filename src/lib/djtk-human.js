@@ -421,7 +421,7 @@ function cabinMarkup() {
           <b>DJTK · AI 指挥舱</b>
           <span>替抗蓟化 · 质控溯源 · 证据问答</span>
         </div>
-        <p class="djtk-cabin-first">展台固定词：先点开头，再中间，再升华。也可点下方业务快捷问或直接输入。回答只依据平台记录；不做用药处方；降级会标【降级】；海关相关须标【演示·非真实】。</p>
+        <p class="djtk-cabin-first">展台固定词：开头 → 中间 → 升华；回答只依据平台记录，不做用药处方。</p>
         <button type="button" class="djtk-cabin-exit" data-djtk-cabin-exit title="退出全屏指挥舱（Esc）">退出</button>
       </header>
       <div class="djtk-cabin-main">
@@ -431,12 +431,23 @@ function cabinMarkup() {
           <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>待命</p>
         </section>
         <section class="djtk-cabin-chat">
-          <div class="djtk-chips djtk-cabin-chips">${chipsHtml()}</div>
-          <div class="djtk-log" data-djtk-log aria-live="polite"></div>
-          <form class="djtk-form" data-djtk-form>
-            ${cabinFormActionsHtml()}
-          </form>
-          <p class="djtk-status" data-djtk-status hidden></p>
+          <div class="djtk-cabin-chip-block">
+            <p class="djtk-cabin-sec-label">演示剧本</p>
+            <div class="djtk-chips djtk-cabin-chips is-demo">${demoChipsHtml()}</div>
+          </div>
+          <div class="djtk-cabin-chip-block">
+            <p class="djtk-cabin-sec-label">业务快问</p>
+            <div class="djtk-chips djtk-cabin-chips is-biz">${businessChipsHtml()}</div>
+          </div>
+          <div class="djtk-cabin-log-wrap">
+            <div class="djtk-log" data-djtk-log aria-live="polite">
+              <p class="djtk-cabin-empty" data-djtk-empty>展台请先点金色『开头·风险排查』；也可问从哪来、安不安全、下一步。</p>
+            </div>
+            <form class="djtk-form djtk-cabin-form" data-djtk-form>
+              ${cabinFormActionsHtml()}
+            </form>
+            <p class="djtk-status" data-djtk-status hidden></p>
+          </div>
         </section>
         <aside class="djtk-cabin-side">
           <article class="djtk-cabin-card">
@@ -447,10 +458,10 @@ function cabinMarkup() {
           <article class="djtk-cabin-card">
             <h3>风险 / 下一步</h3>
             <nav class="djtk-cabin-links">
-              <a href="#/screen">安全检测</a>
-              <a href="#/eval">健康评价</a>
-              <a href="#/dashboard">总览看板</a>
-              <a href="#/stage">指挥舱大屏</a>
+              <a href="#/screen" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">安全检测</span><span class="djtk-cabin-link-go">打开 →</span></a>
+              <a href="#/eval" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">健康评价</span><span class="djtk-cabin-link-go">打开 →</span></a>
+              <a href="#/dashboard" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">总览看板</span><span class="djtk-cabin-link-go">打开 →</span></a>
+              <a href="#/stage" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">指挥舱大屏</span><span class="djtk-cabin-link-go">打开 →</span></a>
             </nav>
           </article>
         </aside>
@@ -623,6 +634,10 @@ export function bindDjtkHuman(root, opts = {}) {
   const setThinking = (on) => {
     box.classList.toggle('is-thinking', on)
     cabin.classList.toggle('is-thinking', on)
+    const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
+    if (hint && !cabin.classList.contains('is-speaking')) {
+      hint.textContent = on ? '思考中…' : (asking ? '思考中…' : '待命')
+    }
   }
 
   const setSpeaking = (on) => {
@@ -659,8 +674,13 @@ export function bindDjtkHuman(root, opts = {}) {
     }, ms)
   }
 
+  const clearEmptyState = (log) => {
+    log.querySelectorAll('[data-djtk-empty]').forEach((el) => el.remove())
+  }
+
   const pushBubble = (role, text) => {
     allLogs().forEach((log) => {
+      clearEmptyState(log)
       const art = document.createElement('article')
       const degraded = role === 'bot' && String(text || '').startsWith('【降级')
       const demo = role === 'bot' && /【演示·非真实】/.test(String(text || ''))
@@ -678,6 +698,7 @@ export function bindDjtkHuman(root, opts = {}) {
 
   const pushTip = (msg) => {
     allLogs().forEach((log) => {
+      clearEmptyState(log)
       const tip = document.createElement('p')
       tip.className = 'djtk-log-tip'
       tip.textContent = msg

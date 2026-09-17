@@ -733,7 +733,8 @@
 .djtk-human.is-embedded .djtk-chip:nth-child(n+7) { display: none; }
 .djtk-human.is-embedded .djtk-chip.is-primary { border-color: rgba(227, 199, 119, .3); background: rgba(227, 199, 119, .07); color: #e6d59f; }
 .djtk-human.is-embedded .djtk-log {
-  min-height: 62px;
+  flex: 1 1 62px;
+  min-height: 0;
   max-height: none;
   padding: 7px 8px;
   border: 1px solid rgba(127, 231, 189, .1);
@@ -756,7 +757,10 @@
 }
 .djtk-human.is-embedded .djtk-bubble { border-radius: 6px; }
 .djtk-human.is-embedded .djtk-bubble p { font-size: 11px; line-height: 1.55; }
-.djtk-human.is-embedded .djtk-form { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.djtk-human.is-embedded .djtk-form {
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
 .djtk-human.is-embedded .djtk-form input {
   min-height: 36px;
   border-radius: 6px;
@@ -949,7 +953,7 @@
   .path-ico { width: 42px; height: 42px; flex-basis: 42px; }
   .path-rail { top: 23px; }
   .djtk-human.is-embedded .djtk-tip { display: none; }
-  .djtk-human.is-embedded .djtk-log { min-height: 45px; }
+  .djtk-human.is-embedded .djtk-log { min-height: 0; }
   .env-strip { display: none; }
   .wall-left { grid-template-rows: 1fr auto; }
 }

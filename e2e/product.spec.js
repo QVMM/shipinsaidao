@@ -100,6 +100,30 @@ test('短宽屏完整展示底部证据卡片', async ({ page }) => {
   expect(regions.spot.overflow).toBeLessThanOrEqual(1)
   expect(regions.house.overflow).toBeLessThanOrEqual(1)
 
+  const assistantLayout = await page.evaluate(() => {
+    const panel = document.querySelector('.djtk-human.is-embedded .djtk-panel')
+    const form = document.querySelector('.djtk-human.is-embedded .djtk-form')
+    const status = document.querySelector('.djtk-human.is-embedded .djtk-status')
+    status.hidden = false
+    status.textContent = '本地语音播报中…'
+    const panelRect = panel.getBoundingClientRect()
+    const formRect = form.getBoundingClientRect()
+    const statusRect = status.getBoundingClientRect()
+    return {
+      panelBottom: panelRect.bottom,
+      panelOverflow: panel.scrollHeight - panel.clientHeight,
+      formTop: formRect.top,
+      formBottom: formRect.bottom,
+      statusBottom: statusRect.bottom,
+    }
+  })
+
+  expect(assistantLayout.panelBottom).toBeLessThanOrEqual(821)
+  expect(assistantLayout.panelOverflow, JSON.stringify(assistantLayout)).toBeLessThanOrEqual(1)
+  expect(assistantLayout.formTop).toBeGreaterThan(0)
+  expect(assistantLayout.formBottom).toBeLessThanOrEqual(821)
+  expect(assistantLayout.statusBottom).toBeLessThanOrEqual(821)
+
   const processLayout = await page.evaluate(() => {
     const measure = (selector) => {
       const node = document.querySelector(selector)

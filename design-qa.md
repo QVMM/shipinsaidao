@@ -21,6 +21,7 @@
 5. **P2 — Height fixes were breakpoint-specific rather than fluid.** Replaced the short-wide fixed values with bounded fractional tracks so the composition scales between `761px` and `900px` tall instead of matching only one screenshot.
 6. **P1 — Detection details were hidden inside a non-overflowing outer card.** The inner grid auto-created a third row for the verdict and collapsed its second column to `0px`; the conditions row then extended `13px` past the hidden dock. Explicitly placed sample and verdict in row one, assay steps in row two, and conditions below. All internal regions now report zero overflow.
 7. **P1 — The speaking avatar jumped between two independently generated faces.** Replaced the exaggerated open-mouth frame with a restrained lip-parting frame, limited the blend to a feathered mouth oval, added RMS hysteresis for real audio, and replaced the fixed `350ms` blink-like toggle with a syllabic short/long rhythm for browser speech.
+8. **P1 — The embedded assistant clipped its composer at a 1512 × 829 browser viewport.** The panel exceeded its available height by `13px` because the scrollable conversation log retained a `62px` minimum while every following control remained in the same hidden-overflow flex column. The log is now the shrinkable/scrollable region and the composer is explicitly non-shrinking; the form and visible voice-status line remain inside the panel.
 
 ## Required fidelity surfaces
 
@@ -50,6 +51,7 @@
 - Focus record overflow: `0px`; chicken-house overflow: `0px`; center-region overflow: `0px`.
 - Detection dock overflow: `0px`; detection bay overflow: `0px`; conditions remain `13px` above the dock bottom.
 - Speaking-avatar regression passes at both `1440 × 900` and `1041 × 1001`: local lip frame loaded, radial mask active, `110ms` crossfade active, and the closed portrait transform remains `none` while speaking.
+- At `1512 × 829`, the embedded assistant panel reports zero overflow and keeps both the `36px` composer and a visible voice-status line above the viewport edge.
 - Automated result: `24` unit tests, `14` functional/component/browser tests, and `4` visual regression tests passed; lint and production build passed.
 - The final source/implementation comparison is recorded in `stage-reference-vs-final.png`.
 

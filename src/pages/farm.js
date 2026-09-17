@@ -47,7 +47,7 @@ function renderHouseEnv(houseEnv, listed) {
       <div class="card-head">
         <div>
           <h3>鸡舍实况</h3>
-          <p class="sub">演示传感器，待接物联网</p>
+          <p class="sub">本地采集数据 · 外部物联网尚未接入</p>
         </div>
       </div>
       <div class="env-tiles">${tiles}</div>

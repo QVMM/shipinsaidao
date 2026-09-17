@@ -82,14 +82,17 @@ export function renderShell(state, route, inner) {
               `).join('')}
             </div>
           </details>
-          <p class="demo-note">现场完成检测。本系统用于录入、出报告、出追溯码。各岗可查看全部页面，仅能改本岗数据。</p>
+          <p class="product-note">现场完成检测。本系统用于录入、出报告、出追溯码。各岗可查看全部页面，仅能改本岗数据。</p>
           <button type="button" class="ghost" data-action="open-stage">打开数据大屏</button>
-          ${canWrite('reset') ? '<button type="button" class="ghost" data-action="reset">恢复预填数据</button>' : ''}
+          ${canWrite('reset') ? '<button type="button" class="ghost" data-action="reset">恢复基准数据</button>' : ''}
         </div>
       </aside>
       <div class="main">
         <header class="topbar">
-          <div class="crumb">替抗蓟化 · 当前：<b data-crumb-title>${route.title}</b></div>
+          <div class="top-context">
+            <span class="local-badge"><i></i>本地运行 · 断网可用</span>
+            <div class="crumb">替抗蓟化 / <b data-crumb-title>${route.title}</b></div>
+          </div>
           <div class="top-actions">
             <button type="button" class="batch-pill" data-batch-pill title="更换批次">${esc(state.batchId || '选择批次')}</button>
           </div>

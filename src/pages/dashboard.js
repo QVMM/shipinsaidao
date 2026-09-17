@@ -89,7 +89,7 @@ export function render(state) {
             <img data-gallery-main src="${first.src}" alt="${first.alt}" width="880" height="560">
             <figcaption data-gallery-cap>${first.cap}</figcaption>
           </figure>
-          <div class="dash-thumbs" role="list">
+          <div class="dash-thumbs" role="group" aria-label="现场图像选择">
             ${photos.map((p, i) => `
               <button type="button" data-thumb data-src="${p.src}" data-cap="${p.cap}" data-alt="${p.alt}" aria-current="${i === 0 ? 'true' : 'false'}">
                 <img src="${p.src}" alt="" width="160" height="100">

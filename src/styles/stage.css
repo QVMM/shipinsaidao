@@ -594,7 +594,7 @@ body:has(.wall) {
 .queue-view {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 .queue {
   list-style: none;
@@ -1689,12 +1689,12 @@ body:has(.wall) {
   border-radius: 999px;
 }
 .djtk-chip:hover { border-color: #27e0d0; color: #fff; }
-.djtk-chip.is-demo {
+.djtk-chip.is-primary {
   border-color: rgba(228, 197, 106, 0.55);
   background: rgba(228, 197, 106, 0.12);
   color: #f0e0a8;
 }
-.djtk-chip.is-demo:hover {
+.djtk-chip.is-primary:hover {
   border-color: #e4c56a;
   color: #fff8dc;
 }
@@ -1865,30 +1865,26 @@ body:has(.wall) {
 .djtk-face-img.is-open {
   z-index: 1;
   opacity: 0;
-  /* Only lower-mid face (mouth band) can show through */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 48%,
-    #000 58%,
-    #000 78%,
-    transparent 88%,
+  /* Feather only the lips into the fixed portrait so the jaw and cheeks never jump. */
+  -webkit-mask-image: radial-gradient(
+    ellipse 12% 5.5% at 50% 54%,
+    #000 0%,
+    #000 28%,
+    rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 48%,
-    #000 58%,
-    #000 78%,
-    transparent 88%,
+  mask-image: radial-gradient(
+    ellipse 12% 5.5% at 50% 54%,
+    #000 0%,
+    #000 28%,
+    rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
-  transition: opacity 150ms ease;
+  transition: opacity 110ms cubic-bezier(0.22, 0.72, 0.32, 1);
 }
 .djtk-human.is-speaking.is-mouth-open .djtk-face-img.is-open,
 .djtk-cabin.is-speaking.is-mouth-open .djtk-face-img.is-open {
-  opacity: 1;
+  opacity: 0.9;
 }
 .djtk-face-glow {
   position: absolute;
@@ -1923,10 +1919,6 @@ body:has(.wall) {
 .djtk-cabin.is-thinking .djtk-face-glow {
   animation: djtk-think-glow 1.4s ease-in-out infinite alternate;
 }
-.djtk-human.is-speaking .djtk-face-img.is-closed,
-.djtk-cabin.is-speaking .djtk-face-img.is-closed {
-  animation: djtk-breathe 1.6s ease-in-out infinite;
-}
 .djtk-human.is-speaking .djtk-face-glow,
 .djtk-cabin.is-speaking .djtk-face-glow {
   animation: djtk-glow 1.2s ease-in-out infinite alternate;
@@ -1943,10 +1935,6 @@ body:has(.wall) {
 .djtk-cabin.is-speaking .djtk-face-wave i:nth-child(3) { animation: djtk-bar 0.5s ease-in-out infinite alternate; animation-delay: 0.16s; }
 .djtk-human.is-speaking .djtk-face-wave i:nth-child(4),
 .djtk-cabin.is-speaking .djtk-face-wave i:nth-child(4) { animation: djtk-bar 0.4s ease-in-out infinite alternate; animation-delay: 0.04s; }
-@keyframes djtk-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.028); }
-}
 @keyframes djtk-bar {
   from { height: 3px; opacity: 0.55; }
   to { height: 11px; opacity: 1; }
@@ -1990,6 +1978,16 @@ body:has(.wall) {
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
+.djtk-clear {
+  border: 1px solid rgba(39, 224, 208, 0.28);
+  background: rgba(39, 224, 208, 0.06);
+  color: #a9c8c1;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.djtk-clear:hover { border-color: #27e0d0; color: #fff; }
 .djtk-cabin-open:hover {
   border-color: #e4c56a;
   color: #fff8e0;
@@ -2000,14 +1998,6 @@ body:has(.wall) {
   cursor: wait;
   pointer-events: none;
 }
-.djtk-badge.is-demo {
-  border-color: rgba(232, 90, 90, 0.55);
-  color: #f0a0a0;
-}
-.djtk-bubble.is-demo {
-  border-color: rgba(232, 90, 90, 0.35);
-}
-
 /* —— DJTK 全屏 AI 指挥舱（挂到 body，避开 wall-board scale） —— */
 .djtk-cabin {
   position: fixed;
@@ -2093,6 +2083,13 @@ body:has(.wall) {
   letter-spacing: 0.1em;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
+.djtk-cabin-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.djtk-cabin-top-actions .djtk-cabin-exit { margin-left: 0; }
 .djtk-cabin-exit:hover {
   border-color: #27e0d0;
   color: #fff;
@@ -2247,6 +2244,12 @@ body:has(.wall) {
   border: 1px dashed rgba(39, 224, 208, 0.28);
   background: rgba(39, 224, 208, 0.04);
 }
+.djtk-cabin-empty strong,
+.djtk-cabin-empty span,
+.djtk-cabin-empty small { display: block; }
+.djtk-cabin-empty strong { color: #e8fff8; font-size: 17px; letter-spacing: .08em; }
+.djtk-cabin-empty span { margin-top: 8px; }
+.djtk-cabin-empty small { margin-top: 12px; color: #6d948c; font-size: 11px; }
 .djtk-cabin-form {
   flex: 0 0 auto;
   position: sticky;

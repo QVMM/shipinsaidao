@@ -12,9 +12,14 @@
 
 import { post } from '../api.js'
 import { chosenBatchId, getState } from '../store.js'
-import { DEMO_ACTS, DEMO_CHIP_LABELS, DEMO_SCRIPT } from './demo-script.js'
 
-/** 展台快捷问：一律走 grounded ask，禁止本地臆造合格/用药。 */
+const ANALYSIS_QUERIES = [
+  { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。' },
+  { label: '说明上市判定', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
+  { label: '列出待复核项', ask: '当前焦点批次有哪些待复核项？' },
+]
+
+/** 业务快捷问：一律走 grounded ask，禁止本地臆造合格/用药。 */
 const STARTERS = [
   '这批鸡从哪来？',
   '安不安全？能上桌吗？',
@@ -22,11 +27,15 @@ const STARTERS = [
   '当前焦点批次风险？',
   '氟苯尼考筛查结果？',
   '有哪些待复核 / 下一步点哪？',
-  '解释海关演示预警',
+  '当前法规与监管数据状态？',
 ]
 
 const SS_KEY = 'djtk_stage_token'
-const MOUTH_RMS_THRESHOLD = 0.018
+const MOUTH_RMS_OPEN_THRESHOLD = 0.021
+const MOUTH_RMS_CLOSE_THRESHOLD = 0.012
+const CLOSING_SPEECH = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
+const CLOSING_SPEECH_START = '屏幕之外可能是素未谋面的陌生人'
+const CLOSING_SPEECH_END = '护航中国高品质鸡肉走向世界餐桌'
 
 let activeAudio = null
 /** @type {null | ((ok: boolean) => void)} */
@@ -37,7 +46,7 @@ let sharedAudioCtx = null
 const mediaSources = typeof WeakMap !== 'undefined' ? new WeakMap() : null
 /** @type {number | null} */
 let mouthRaf = null
-/** @type {ReturnType<typeof setInterval> | null} */
+/** @type {ReturnType<typeof setTimeout> | null} */
 let mouthTimer = null
 
 /** @type {null | { destroy: () => void, exitCabin: () => void }} */
@@ -134,7 +143,7 @@ function stopMouthAnim() {
     mouthRaf = null
   }
   if (mouthTimer != null) {
-    clearInterval(mouthTimer)
+    clearTimeout(mouthTimer)
     mouthTimer = null
   }
   clearMouthClasses()
@@ -148,6 +157,8 @@ function stopMouthAnim() {
 function startAnalyserMouth(analyser, stillActive) {
   stopMouthAnim()
   const data = new Uint8Array(analyser.fftSize)
+  let smoothedRms = 0
+  let open = false
   const tick = () => {
     if (!stillActive()) {
       clearMouthClasses()
@@ -161,24 +172,38 @@ function startAnalyserMouth(analyser, stillActive) {
       sum += v * v
     }
     const rms = Math.sqrt(sum / data.length)
-    setMouthOpen(rms > MOUTH_RMS_THRESHOLD)
+    smoothedRms = smoothedRms * 0.72 + rms * 0.28
+    if (!open && smoothedRms > MOUTH_RMS_OPEN_THRESHOLD) open = true
+    if (open && smoothedRms < MOUTH_RMS_CLOSE_THRESHOLD) open = false
+    setMouthOpen(open)
     mouthRaf = requestAnimationFrame(tick)
   }
   mouthRaf = requestAnimationFrame(tick)
 }
 
-/** Gentle timed mouth for browser TTS (no analyser). ~0.35s toggle. */
+/** Gentle syllabic mouth rhythm for browser TTS (no analyser). */
 function startTimedMouth(stillActive) {
   stopMouthAnim()
-  let open = false
-  mouthTimer = setInterval(() => {
+  const phases = [
+    { open: true, duration: 120 },
+    { open: false, duration: 72 },
+    { open: true, duration: 156 },
+    { open: false, duration: 104 },
+    { open: true, duration: 92 },
+    { open: false, duration: 208 },
+  ]
+  let phase = 0
+  const tick = () => {
     if (!stillActive()) {
       stopMouthAnim()
       return
     }
-    open = !open
-    setMouthOpen(open)
-  }, 350)
+    const current = phases[phase]
+    setMouthOpen(current.open)
+    phase = (phase + 1) % phases.length
+    mouthTimer = setTimeout(tick, current.duration)
+  }
+  tick()
 }
 
 export function stopDjtkAudio() {
@@ -293,7 +318,7 @@ export function speakBrowser(text, hooks = {}) {
     stopMouthAnim()
     const u = new SpeechSynthesisUtterance(String(text).trim())
     u.lang = 'zh-CN'
-    u.rate = 1.02
+    u.rate = 1.18
     const list = window.speechSynthesis.getVoices?.() || []
     const voice = list.find((v) => /zh(-|_)CN/i.test(v.lang)) || list.find((v) => /^zh/i.test(v.lang))
     if (voice) u.voice = voice
@@ -324,6 +349,9 @@ export function speakBrowser(text, hooks = {}) {
  */
 export function speakPreview(text, maxChars = 120) {
   const s = String(text || '').trim()
+  const closingStart = s.indexOf(CLOSING_SPEECH_START)
+  const closingEnd = closingStart >= 0 ? s.indexOf(CLOSING_SPEECH_END, closingStart) : -1
+  if (closingStart >= 0 && closingEnd >= closingStart) return CLOSING_SPEECH
   if (s.length <= maxChars) return s
   const head = s.slice(0, maxChars)
   const m = head.match(/^[\s\S]*[。！？]/)
@@ -333,7 +361,7 @@ export function speakPreview(text, maxChars = 120) {
 /**
  * Prefer MIMO TTS API, else browser.
  * @param {string} text
- * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
+ * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void, skipMimo?: boolean }} [opts]
  * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
  */
 export async function speakWithMimoOrBrowser(text, opts = {}) {
@@ -342,6 +370,10 @@ export async function speakWithMimoOrBrowser(text, opts = {}) {
   if (!say) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
+  }
+  if (opts.skipMimo) {
+    const ok = await speakBrowser(say, opts)
+    return { ok, via: ok ? 'browser' : 'none' }
   }
   try {
     const data = await post('/api/djtk/tts', {
@@ -371,18 +403,17 @@ function avatarHtml(suffix = 'panel') {
   return `
     <span class="djtk-face djtk-face-photo" data-djtk-face data-djtk-face-ctx="${suffix}" aria-hidden="true">
       <img class="djtk-face-img is-closed" src="/djtk-avatar-closed.png" alt="" decoding="async" />
-      <img class="djtk-face-img is-open" src="/djtk-avatar-open.png" alt="" decoding="async" />
+      <img class="djtk-face-img is-open" src="/djtk-avatar-speak-v2.png" alt="" decoding="async" />
       <i class="djtk-face-glow" aria-hidden="true"></i>
       <span class="djtk-face-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>
   `
 }
 
-function demoChipsHtml() {
-  return DEMO_ACTS.map((id) => {
-    const label = DEMO_CHIP_LABELS[id]
-    const ask = DEMO_SCRIPT[id].engineer.say
-    return `<button type="button" class="djtk-chip is-demo" data-djtk-chip data-djtk-ask="${esc(ask)}">${esc(label)}</button>`
+function analysisChipsHtml() {
+  return ANALYSIS_QUERIES.map((item, index) => {
+    const primary = index === 0 ? ' data-primary-query' : ''
+    return `<button type="button" class="djtk-chip is-primary" data-djtk-chip${primary} data-djtk-ask="${esc(item.ask)}">${esc(item.label)}</button>`
   }).join('')
 }
 
@@ -391,13 +422,13 @@ function businessChipsHtml() {
 }
 
 function chipsHtml() {
-  return `${demoChipsHtml()}${businessChipsHtml()}`
+  return `${analysisChipsHtml()}${businessChipsHtml()}`
 }
 
 function formActionsHtml() {
   return `
     <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：这批鸡从哪来？" autocomplete="off" />
-    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">🎤</button>
+    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">语音</button>
     <button type="submit" class="djtk-send" data-djtk-send>发送</button>
     <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
   `
@@ -406,7 +437,7 @@ function formActionsHtml() {
 function cabinFormActionsHtml() {
   return `
     <input type="text" name="q" data-djtk-input maxlength="200" placeholder="输入问题，例如：当前焦点批次风险？" autocomplete="off" />
-    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">🎤</button>
+    <button type="button" class="djtk-mic" data-djtk-mic title="语音输入" aria-label="语音输入" aria-pressed="false">语音</button>
     <button type="submit" class="djtk-send" data-djtk-send>发送</button>
     <button type="button" class="djtk-stop" data-djtk-stop hidden>停止</button>
   `
@@ -418,22 +449,25 @@ function cabinMarkup() {
       <div class="djtk-cabin-glow" aria-hidden="true"></div>
       <header class="djtk-cabin-top">
         <div class="djtk-cabin-brand">
-          <b>DJTK · AI 指挥舱</b>
-          <span>替抗蓟化 · 质控溯源 · 证据问答</span>
+          <b>DJTK · 食品安全研判舱</b>
+          <span>从养殖记录到检测结论，全程有据可查</span>
         </div>
-        <p class="djtk-cabin-first">展台固定词：开头 → 中间 → 升华；回答只依据平台记录，不做用药处方。</p>
-        <button type="button" class="djtk-cabin-exit" data-djtk-cabin-exit title="退出全屏指挥舱（Esc）">退出</button>
+        <p class="djtk-cabin-first"><span>本地运行</span><span>证据约束</span><span>断网可用</span>回答仅依据当前批次平台记录，不做用药处方。</p>
+        <div class="djtk-cabin-top-actions">
+          <button type="button" class="djtk-clear" data-djtk-clear>新建会话</button>
+          <button type="button" class="djtk-cabin-exit" data-djtk-cabin-exit title="退出全屏指挥舱（Esc）">退出</button>
+        </div>
       </header>
       <div class="djtk-cabin-main">
         <section class="djtk-cabin-hero">
           <div class="djtk-cabin-avatar" data-djtk-avatar>${avatarHtml('cabin')}</div>
-          <p class="djtk-cabin-hero-name">DJTK智控助手</p>
-          <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>待命</p>
+          <p class="djtk-cabin-hero-name">DJTK 智控助手</p>
+          <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>本地证据已就绪</p>
         </section>
         <section class="djtk-cabin-chat">
           <div class="djtk-cabin-chip-block">
-            <p class="djtk-cabin-sec-label">演示剧本</p>
-            <div class="djtk-chips djtk-cabin-chips is-demo">${demoChipsHtml()}</div>
+            <p class="djtk-cabin-sec-label">快捷研判</p>
+            <div class="djtk-chips djtk-cabin-chips is-analysis">${analysisChipsHtml()}</div>
           </div>
           <div class="djtk-cabin-chip-block">
             <p class="djtk-cabin-sec-label">业务快问</p>
@@ -441,7 +475,7 @@ function cabinMarkup() {
           </div>
           <div class="djtk-cabin-log-wrap">
             <div class="djtk-log" data-djtk-log aria-live="polite">
-              <p class="djtk-cabin-empty" data-djtk-empty>展台请先点金色『开头·风险排查』；也可问从哪来、安不安全、下一步。</p>
+              <p class="djtk-cabin-empty" data-djtk-empty><strong>开始批次研判</strong><span>选择上方问题，或直接询问来源、安全状态与上市依据。</span><small>回答只引用平台内可核验记录</small></p>
             </div>
             <form class="djtk-form djtk-cabin-form" data-djtk-form>
               ${cabinFormActionsHtml()}
@@ -471,32 +505,52 @@ function cabinMarkup() {
 }
 
 /**
- * @param {{ compact?: boolean }} [opts]
+ * @param {{ compact?: boolean, embedded?: boolean }} [opts]
  */
 export function renderDjtkHuman(opts = {}) {
   const compact = !!opts.compact
+  const embedded = !!opts.embedded
   const starters = chipsHtml()
   return `
-    <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}" data-djtk-human data-collapsed="${compact ? '0' : '1'}">
-      ${compact ? '' : `
+    <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}${embedded ? ' is-embedded' : ''}" data-djtk-human data-collapsed="${compact || embedded ? '0' : '1'}">
+      ${compact || embedded ? '' : `
       <button type="button" class="djtk-fab" data-djtk-toggle aria-expanded="false" title="打开 DJTK 智控助手" aria-label="打开 DJTK 智控助手">
         <span class="djtk-fab-face">${avatarHtml('fab')}</span>
       </button>`}
-      <div class="djtk-panel${compact ? ' is-open' : ''}" ${compact ? '' : 'hidden'} data-djtk-panel>
+      <div class="djtk-panel${compact || embedded ? ' is-open' : ''}" ${compact || embedded ? '' : 'hidden'} data-djtk-panel>
         <header class="djtk-hd">
           <div class="djtk-avatar" data-djtk-avatar>${avatarHtml('panel')}</div>
           <div class="djtk-hd-copy">
             <b>DJTK智控助手</b>
-            <span>替抗蓟化 · 质控溯源</span>
+            <span>${embedded ? '您的食品安全 AI 搭档' : '替抗蓟化 · 质控溯源'}</span>
+            ${embedded ? '<em class="djtk-stage-state" data-djtk-stage-state>待命 · 本地证据已就绪</em>' : ''}
           </div>
           <div class="djtk-hd-actions">
-            <button type="button" class="djtk-cabin-open" data-djtk-cabin-open title="进入全屏 AI 指挥舱">全屏指挥舱</button>
-            ${compact ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
+            <button type="button" class="djtk-clear" data-djtk-clear>新建会话</button>
+            <button type="button" class="djtk-cabin-open" data-djtk-cabin-open title="进入全屏 AI 研判舱">全屏研判</button>
+            ${compact || embedded ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
           </div>
         </header>
-        <p class="djtk-tip">展台固定词：先点开头，再中间，再升华。业务问：从哪来、安不安全、下一步、焦点风险、氟苯尼考筛查、待复核、海关演示预警。点「全屏指挥舱」可进入大屏问答。</p>
+        <p class="djtk-tip">${embedded
+    ? '只依据平台记录回答，结论均可回到检测、报告和追溯证据。'
+    : compact
+      ? '围绕当前批次提问：来源、安全、健康、风险与下一步。回答仅引用本地平台记录，可进入全屏研判。'
+      : '从来源、安全、健康、风险和下一步开始提问；回答只引用平台证据，不做用药处方。'}</p>
+        ${embedded ? `
+          <div class="djtk-proof-list" aria-label="本次结论的主要依据">
+            <a href="#/screen"><b>氟苯尼考检测报告</b><span>检测记录 · 未检出</span></a>
+            <a href="#/farm"><b>养殖过程记录</b><span>基地-A07 · 全周期</span></a>
+            <a href="#/report"><b>产品合规证明</b><span>权威报告 · 可核验</span></a>
+          </div>
+        ` : ''}
         <div class="djtk-chips">${starters}</div>
-        <div class="djtk-log" data-djtk-log aria-live="polite"></div>
+        <div class="djtk-log" data-djtk-log aria-live="polite">
+          ${embedded
+    ? '<p class="djtk-embedded-empty" data-djtk-empty>可以直接问我：这批鸡从哪来、安不安全、能不能上市。<span>答案只引用当前批次证据。</span></p>'
+    : compact
+      ? '<p class="djtk-compact-empty" data-djtk-empty><strong>等待研判问题</strong><span>选择左侧快捷问题，或在下方输入。</span></p>'
+      : ''}
+        </div>
         <form class="djtk-form" data-djtk-form>
           ${formActionsHtml()}
         </form>
@@ -519,7 +573,7 @@ export function unbindDjtkHuman() {
 
 /**
  * @param {ParentNode} root
- * @param {{ compact?: boolean, batchId?: string }} [opts]
+ * @param {{ compact?: boolean, embedded?: boolean, batchId?: string }} [opts]
  */
 export function bindDjtkHuman(root, opts = {}) {
   unbindDjtkHuman()
@@ -529,7 +583,7 @@ export function bindDjtkHuman(root, opts = {}) {
   box.dataset.bound = '1'
 
   // Stage float lives on body (like cabin) so wall-board CSS scale cannot skew hit-testing.
-  const floatOnBody = !opts.compact
+  const floatOnBody = !opts.compact && !opts.embedded
   if (floatOnBody && box.parentElement !== document.body) {
     box.classList.add('is-body-float')
     document.body.appendChild(box)
@@ -611,6 +665,12 @@ export function bindDjtkHuman(root, opts = {}) {
       btn.setAttribute('aria-pressed', on ? 'true' : 'false')
       btn.title = on ? '停止语音输入' : (btn.dataset.micOk === '0' ? '当前浏览器不支持语音输入' : '语音输入')
     })
+    if (on) setEmbeddedState('聆听中 · 请说出问题')
+    else if (!asking) setEmbeddedState('待命 · 本地证据已就绪')
+  }
+
+  const setEmbeddedState = (text) => {
+    box.querySelectorAll('[data-djtk-stage-state]').forEach((el) => { el.textContent = text })
   }
 
   const stopMic = () => {
@@ -638,6 +698,8 @@ export function bindDjtkHuman(root, opts = {}) {
     if (hint && !cabin.classList.contains('is-speaking')) {
       hint.textContent = on ? '思考中…' : (asking ? '思考中…' : '待命')
     }
+    if (on) setEmbeddedState('核对证据中…')
+    else if (!asking && !listening) setEmbeddedState('待命 · 本地证据已就绪')
   }
 
   const setSpeaking = (on) => {
@@ -647,6 +709,7 @@ export function bindDjtkHuman(root, opts = {}) {
     else clearMouthClasses()
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
     if (hint) hint.textContent = on ? '播报中…' : (asking ? '思考中…' : '待命')
+    setEmbeddedState(on ? '播报中 · 正在引用平台记录' : (asking ? '核对证据中…' : '待命 · 本地证据已就绪'))
     allStop().forEach((btn) => {
       btn.hidden = !on && !asking
       if (on) btn.hidden = false
@@ -683,12 +746,10 @@ export function bindDjtkHuman(root, opts = {}) {
       clearEmptyState(log)
       const art = document.createElement('article')
       const degraded = role === 'bot' && String(text || '').startsWith('【降级')
-      const demo = role === 'bot' && /【演示·非真实】/.test(String(text || ''))
-      art.className = `djtk-bubble is-${role}${degraded ? ' is-degraded' : ''}${demo ? ' is-demo' : ''}`
+      art.className = `djtk-bubble is-${role}${degraded ? ' is-degraded' : ''}`
       const title = role === 'user' ? '你' : 'DJTK智控助手'
       const badges = []
       if (degraded) badges.push('<span class="djtk-badge">降级</span>')
-      if (demo) badges.push('<span class="djtk-badge is-demo">演示·非真实</span>')
       art.innerHTML = `<header>${title}${badges.join('')}</header><p></p>`
       art.querySelector('p').textContent = text
       log.appendChild(art)
@@ -708,7 +769,7 @@ export function bindDjtkHuman(root, opts = {}) {
   }
 
   const setCollapsed = (collapsed) => {
-    if (opts.compact) return
+    if (opts.compact || opts.embedded) return
     const panel = box.querySelector('[data-djtk-panel]')
     const fab = box.querySelector('.djtk-fab')
     box.dataset.collapsed = collapsed ? '1' : '0'
@@ -739,9 +800,28 @@ export function bindDjtkHuman(root, opts = {}) {
     askSeq += 1
     stopMic()
     stopDjtkAudio()
-    setSpeaking(false)
     setBusy(false)
+    setThinking(false)
+    setSpeaking(false)
     setStatus('已停止')
+  }
+
+  const resetConversation = () => {
+    abortAsk()
+    history.length = 0
+    allInputs().forEach((input) => { input.value = '' })
+    panelLogs().forEach((log) => {
+      log.innerHTML = opts.embedded
+        ? '<p class="djtk-embedded-empty" data-djtk-empty>可以直接问我：这批鸡从哪来、安不安全、能不能上市。<span>答案只引用当前批次证据。</span></p>'
+        : opts.compact
+          ? '<p class="djtk-compact-empty" data-djtk-empty><strong>等待研判问题</strong><span>选择左侧快捷问题，或在下方输入。</span></p>'
+          : ''
+    })
+    cabinLogs().forEach((log) => {
+      log.innerHTML = '<p class="djtk-cabin-empty" data-djtk-empty><strong>开始批次研判</strong><span>选择上方问题，或直接询问来源、安全状态与上市依据。</span><small>回答只引用平台内可核验记录</small></p>'
+    })
+    setStatus('')
+    setEmbeddedState('待命 · 本地证据已就绪')
   }
 
   const exitCabin = () => {
@@ -786,6 +866,8 @@ export function bindDjtkHuman(root, opts = {}) {
     let answer
     /** @type {boolean} */
     let authFail = false
+    /** Local evidence answers should start speaking immediately without a failed cloud TTS round-trip. */
+    let preferBrowserSpeech = false
     try {
       const data = await post('/api/djtk/ask', {
         question: q,
@@ -796,6 +878,7 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
+      preferBrowserSpeech = data?.fast === true || data?.degraded === true
       if (data?.degraded) {
         setStatus('【降级·未连模型】已用平台记录简答')
       } else if (data?.fast) {
@@ -812,6 +895,7 @@ export function bindDjtkHuman(root, opts = {}) {
       } else {
         setStatus('云端暂不可用，请看左侧焦点档案与判定条')
         answer = localFallback(q)
+        preferBrowserSpeech = true
       }
     }
 
@@ -831,7 +915,7 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('正在播报…')
+    setStatus(preferBrowserSpeech ? '本地语音播报中…' : '正在播报…')
 
     let browserFallbackNoted = false
     const hooks = {
@@ -852,7 +936,7 @@ export function bindDjtkHuman(root, opts = {}) {
     }
 
     try {
-      await speakWithMimoOrBrowser(answer, { ...hooks, signal })
+      await speakWithMimoOrBrowser(answer, { ...hooks, signal, skipMimo: preferBrowserSpeech })
     } catch {
       if (seq === askSeq) {
         hooks.onFallback?.()
@@ -944,6 +1028,12 @@ export function bindDjtkHuman(root, opts = {}) {
     if (exitBtn && host.contains(exitBtn)) {
       ev.preventDefault()
       exitCabin()
+      return
+    }
+    const clearBtn = t.closest?.('[data-djtk-clear]')
+    if (clearBtn && host.contains(clearBtn)) {
+      ev.preventDefault()
+      resetConversation()
       return
     }
     const micBtn = t.closest?.('[data-djtk-mic]')
@@ -1050,8 +1140,8 @@ export function bindDjtkHuman(root, opts = {}) {
 function localFallback(q) {
   const s = String(q || '')
   // 降级简答禁止默认合格/未检出/用药结论；引导看平台只读证据。
-  if (/海关|演示预警|政务公开/.test(s)) {
-    return '【降级·未连模型】【演示·非真实】海关演示预警是展台剧本场景，不是真实海关通报。请打开指挥舱 DJTK 演示话术或海关演示链接核对原文。'
+  if (/海关|监管|法规|政务公开/.test(s)) {
+    return '【降级·未连模型】当前离线实例未接入实时外部监管数据。可查看“法规与风险”页确认数据源状态；本批次结论只依据平台内的养殖、检测、报告与追溯记录。'
   }
   if (/氟苯|兽药|用药|剂量|处方|能不能用|可以用|合规使用|休药/.test(s)) {
     if (/筛查|结果|检出|残留|阴性|阳性/.test(s) && !/怎么用|如何用|剂量|处方|合规使用|能不能用|可以用/.test(s)) {
@@ -1071,5 +1161,5 @@ function localFallback(q) {
   if (/下一步|点哪|怎么|操作|去哪/.test(s)) {
     return '【降级·未连模型】云端暂不可用。可先点传送带上的检测或评价节点，或打开安全检测/健康评价页查看记录。'
   }
-  return '【降级·未连模型】云端暂不可用。请先查看左侧焦点档案与判定条；恢复后可再问鸡从哪来、安不安全、下一步、焦点风险或海关演示预警。'
+  return '【降级·未连模型】云端暂不可用。请先查看焦点档案与判定条；恢复后可再问批次来源、安全状态、下一步或待复核项。'
 }

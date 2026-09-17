@@ -179,22 +179,7 @@ export async function createBatch() {
 export async function loadPublic(batchId = DEFAULT_BATCH_ID) {
   return busy(async () => {
   const data = await get(`/api/public/trace/${enc(batchId)}`)
-  const seed = cloneSeed()
-  state = {
-    ...seed,
-    ...data,
-    farm: { ...seed.farm, ...(data.farm || {}) },
-    screen: {
-      ...seed.screen,
-      ...(data.screen || {}),
-      samples: Array.isArray(data.screen?.samples) ? data.screen.samples : [],
-      extra: data.screen?.extra || {},
-    },
-    eval: { ...seed.eval, ...(data.eval || {}) },
-    report: { ...seed.report, ...(data.report || {}) },
-    trace: { ...seed.trace, ...(data.trace || {}) },
-    review: { ...seed.review, ...(data.review || {}) },
-  }
+  state = publicStateFromApi(data)
   loadedId = state.batchId
   snapshot = structuredClone(state)
   dirty.clear()
@@ -202,6 +187,48 @@ export async function loadPublic(batchId = DEFAULT_BATCH_ID) {
   emit()
   return state
   })
+}
+
+/**
+ * 公开数据采用 fail-closed：缺什么就显示空，不得拿演示种子补成“合格”。
+ * @param {object} data
+ * @returns {object}
+ */
+export function publicStateFromApi(data = {}) {
+  return {
+    batchId: data.batchId || '',
+    productName: data.productName || '',
+    brand: data.brand || '',
+    platform: data.platform || '',
+    team: data.team || '',
+    program: { ...(data.program || {}) },
+    farm: {
+      name: '', partners: '', location: '', house: '', flockId: '', breed: '',
+      stockDate: '', count: '', additive: '', dose: '', plannedSlaughter: '',
+      ...(data.farm || {}),
+      medLog: Array.isArray(data.farm?.medLog) ? data.farm.medLog : [],
+    },
+    screen: {
+      qualitative: '', result: '', target: '', mdspeMin: '', goldMin: '', instrument: '',
+      curveR: '', lod: '', valueText: '', valueNum: '', unit: '', hplcDate: '',
+      hplcOperator: '',
+      ...(data.screen || {}),
+      samples: Array.isArray(data.screen?.samples) ? data.screen.samples : [],
+      extra: data.screen?.extra && typeof data.screen.extra === 'object' ? data.screen.extra : {},
+    },
+    eval: {
+      valueText: '', valueNum: '', lod: '', unit: '', IL1b: '', IL1bCtrl: '',
+      IL6: '', IL6Ctrl: '', TNFa: '', TNFaCtrl: '', CRP: '', CRPCtrl: '',
+      ...(data.eval || {}),
+    },
+    report: { generated: false, no: '', generatedAt: '', ...(data.report || {}) },
+    trace: { generated: false, verifyId: '', generatedAt: '', ...(data.trace || {}) },
+    review: {
+      sampleAccept: false, dataReview: false, reportIssue: false, reviewed: false,
+      reviewer: '', reviewedAt: '', ...(data.review || {}),
+    },
+    seal: data.seal || null,
+  }
 }
 
 export async function generateReport(force = false) {

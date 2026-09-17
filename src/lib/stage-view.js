@@ -10,6 +10,7 @@ import {
   lowInflammation,
   noFeedAntibiotic,
   residueClear,
+  screenStatus,
 } from './verdict.js'
 
 export const STAGE_SCENES = [
@@ -28,9 +29,7 @@ export const STAGE_SCENES = [
  * @returns {boolean}
  */
 export function screenSceneDone(state) {
-  const q = state.screen?.qualitative === '阴性'
-  const text = String(state.screen?.result || '').includes('未检出')
-  return q || text
+  return screenStatus(state) === 'clear'
 }
 
 /**
@@ -63,7 +62,7 @@ export function nodeMetric(id, data) {
     case 'trace':
       return data.trace?.generated ? '可扫码' : '未出码'
     case 'market':
-      return data.report?.generated && data.trace?.generated ? '准予上市' : '待放行'
+      return data.report?.generated && data.trace?.generated && computeVerdict(data).pass ? '准予上市' : '待放行'
     default:
       return '—'
   }

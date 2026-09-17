@@ -4,7 +4,8 @@
  */
 
 import { DEFAULT_BATCH_ID, getBatch } from './db.js'
-import { matchDemoAct, demoReply } from './demo-script.js'
+import { offlineMode } from './runtime.js'
+import { computeVerdict, issuanceGate } from '../src/lib/verdict.js'
 
 const DEFAULT_BASE = 'https://token-plan-cn.xiaomimimo.com/v1'
 const CHAT_MODELS = [String(process.env.MIMO_CHAT_MODEL || 'mimo-v2.5').trim() || 'mimo-v2.5']
@@ -27,8 +28,8 @@ export const DJTK_SYSTEM_PROMPT = [
   'If unsure / no evidence: refuse clearly — do not guess.',
   'Cover origin/safety/next step when relevant.',
   'Guide next clicks: 指挥舱焦点档案、检测、评价、出证、溯源；do not invent shopping buttons.',
-  'First answers should help: 鸡从哪来、安不安全、下一步点哪里、焦点批次风险、氟苯尼考筛查结果、待复核、海关演示预警.',
-  '【海关演示】If asked about 海关演示预警 / customs demo alert / 出口鸡肉兽药残留预警: ALWAYS include 【演示·非真实】; it is booth script, not a real customs notice.',
+  'First answers should help: 鸡从哪来、安不安全、下一步点哪里、焦点批次风险、氟苯尼考筛查结果、待复核、法规与监管数据状态.',
+  '【外部监管数据】当前离线实例没有实时海关或市场监管数据源。If asked about customs, regulation or public notices, state that no live external source is connected and never invent a notice.',
   '【筛查问法】For 氟苯尼考筛查结果: cite only evidence screen.qualitative / screen.result / report.no; never invent 阴性/合格; never give medication advice.',
 ].join(' ')
 
@@ -51,6 +52,11 @@ export function sanitizeDjtkAnswer(answer, evidence) {
   if (DJTK_RX_BAN.test(raw)) {
     const prefix = raw.startsWith('【降级·未连模型】') ? '【降级·未连模型】' : ''
     return `${prefix}${DJTK_SAFE_REFUSE}`
+  }
+  if (/合格|准予上市|可以上桌|可上桌/.test(raw) && evidence?.verdict?.pass !== true) {
+    const reasons = Array.isArray(evidence?.verdict?.reasons) ? evidence.verdict.reasons.filter(Boolean) : []
+    const why = reasons.length ? `：${reasons.join('；')}` : ''
+    return `当前批次尚未达到出证条件${why}。请以平台判定条和原始记录为准。`
   }
   // Bare unqualified safety claim without citing evidence fields → soften if no evidence
   const hasCite =
@@ -80,9 +86,9 @@ export function buildDegradedAnswer(question, evidence) {
   const feedNote = String(ev?.farm?.feedAntibioticNote || '').trim()
   const prefix = '【降级·未连模型】'
 
-  if (/海关|演示预警|政务公开/.test(q)) {
+  if (/海关|监管|法规|政务公开/.test(q)) {
     return {
-      answer: `${prefix}【演示·非真实】海关演示预警是展台剧本场景，不是真实海关通报。请打开指挥舱 DJTK 演示话术或海关演示链接核对。`,
+      answer: `${prefix}当前离线实例未接入实时外部监管数据。请在“法规与风险”页确认数据源状态；本批判断只依据平台内可核验记录。`,
       degraded: true,
     }
   }
@@ -177,15 +183,6 @@ export function buildFastAnswer(question, evidence) {
   const q = String(question || '').trim()
   if (!q) return null
 
-  // Booth fixed script (3 acts) — exact lines, not degraded
-  const demoAct = matchDemoAct(q)
-  if (demoAct) {
-    const reply = demoReply(demoAct)
-    if (reply?.assistantSay) {
-      return { answer: reply.assistantSay, fast: true }
-    }
-  }
-
   const ev = evidence && typeof evidence === 'object' ? evidence : {}
   const qualitative = String(ev?.screen?.qualitative || '').trim()
   const result = String(ev?.screen?.result || '').trim()
@@ -200,9 +197,8 @@ export function buildFastAnswer(question, evidence) {
 
   const ok = (answer) => ({ answer, fast: true })
 
-  // 海关演示预警 — always demo disclaimer
-  if (/海关|演示预警|政务公开/.test(q)) {
-    return ok('【演示·非真实】海关演示预警是展台剧本场景，不是真实海关通报。请打开指挥舱演示话术或海关演示链接核对。')
+  if (/海关|监管|法规|政务公开/.test(q)) {
+    return ok('当前离线实例未接入实时外部监管数据。请在“法规与风险”页确认数据源状态；本批判断只依据平台内可核验记录。')
   }
 
   // Medication how-to → refuse (do not invent 合格/用药处方)
@@ -311,6 +307,7 @@ export function trimEvidenceForPrompt(pack) {
 
 
 export function mimoConfigured() {
+  if (offlineMode()) return false
   const key = process.env.MIMO_API_KEY
   return Boolean(key && String(key).trim())
 }
@@ -337,6 +334,8 @@ export function buildDjtkEvidence(batchId) {
   const farm = full.farm || {}
   const screen = full.screen || {}
   const ev = full.eval || {}
+  const verdict = computeVerdict(full)
+  const gate = issuanceGate(full)
   const samples = Array.isArray(screen.samples)
     ? screen.samples.slice(0, 6).map((s) => ({
       id: s.id,
@@ -375,6 +374,14 @@ export function buildDjtkEvidence(batchId) {
       lod: ev.lod ?? '',
       unit: ev.unit || '',
       testDate: ev.testDate || '',
+      IL1b: ev.IL1b ?? '',
+      IL1bCtrl: ev.IL1bCtrl ?? '',
+      IL6: ev.IL6 ?? '',
+      IL6Ctrl: ev.IL6Ctrl ?? '',
+      TNFa: ev.TNFa ?? '',
+      TNFaCtrl: ev.TNFaCtrl ?? '',
+      CRP: ev.CRP ?? '',
+      CRPCtrl: ev.CRPCtrl ?? '',
     },
     report: {
       generated: !!full.report?.generated,
@@ -383,6 +390,17 @@ export function buildDjtkEvidence(batchId) {
     trace: {
       generated: !!full.trace?.generated,
       verifyId: full.trace?.verifyId || '',
+    },
+    review: {
+      reviewed: !!full.review?.reviewed,
+      reviewer: full.review?.reviewer || '',
+      reviewedAt: full.review?.reviewedAt || '',
+    },
+    verdict: {
+      pass: verdict.pass,
+      label: verdict.label,
+      stamp: verdict.stamp,
+      reasons: gate.reasons,
     },
     nextStepHint: '指挥舱焦点档案 → 检测 → 评价 → 出证 → 溯源',
   }

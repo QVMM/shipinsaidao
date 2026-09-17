@@ -1,11 +1,10 @@
 import QRCode from 'qrcode'
-import { getVerdict, getState, loadSeal, demoTamper, demoRestore } from '../store.js'
+import { getVerdict, getState, loadSeal } from '../store.js'
 import { humanHeadline } from '../lib/verdict.js'
 import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { ensureTrace } from '../lib/actions.js'
 import { armButton } from '../lib/busy.js'
 import { val } from '../bind-fields.js'
-import { canWrite } from '../auth.js'
 import {
   SEAL_CHAIN_BAD,
   SEAL_CHAIN_OK,
@@ -67,19 +66,12 @@ export function render(state) {
  * @returns {string}
  */
 function renderSealCard() {
-  const writable = canWrite('trace')
   return `
     <div class="card mt-14" data-seal-card>
       <h3>封存验真</h3>
       <div data-seal-body>
         <p class="sub">正在读取…</p>
       </div>
-      ${writable ? `
-        <div class="seal-actions">
-          <button type="button" class="btn line" data-action="seal-tamper">演示改数</button>
-          <button type="button" class="btn" data-action="seal-restore">恢复</button>
-        </div>
-      ` : ''}
     </div>
   `
 }
@@ -162,34 +154,4 @@ async function bindSeal(root, state) {
   } catch (ex) {
     if (sealBody) sealBody.innerHTML = `<p class="sub">${val(ex.message || '读取失败')}</p>`
   }
-  async function runDemo(fn) {
-    const tamper = root.querySelector('[data-action="seal-tamper"]')
-    const restore = root.querySelector('[data-action="seal-restore"]')
-    const pair = [tamper, restore]
-    if (pair.some((el) => el && el.classList.contains('is-busy'))) return
-    pair.forEach((el) => {
-      if (!el) return
-      el.classList.add('is-busy')
-      el.disabled = true
-    })
-    try {
-      const data = await fn()
-      if (data?.seal) await paintSeal(data.seal)
-    } catch (ex) {
-      if (sealBody) {
-        const p = document.createElement('p')
-        p.className = 'login-error'
-        p.textContent = ex.message || '操作失败。'
-        sealBody.prepend(p)
-      }
-    } finally {
-      pair.forEach((el) => {
-        if (!el) return
-        el.classList.remove('is-busy')
-        el.disabled = false
-      })
-    }
-  }
-  root.querySelector('[data-action="seal-tamper"]')?.addEventListener('click', () => runDemo(demoTamper))
-  root.querySelector('[data-action="seal-restore"]')?.addEventListener('click', () => runDemo(demoRestore))
 }

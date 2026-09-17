@@ -600,7 +600,7 @@ a.text-link { color: var(--gold); }
 .roles-fold summary::before { content: "▸ "; }
 .roles-fold[open] summary::before { content: "▾ "; }
 .roles-fold .role-list { margin-top: 6px; }
-.demo-note { margin: 0; font-size: 11px; color: #8ea396; line-height: 1.5; padding: 0 4px; }
+.product-note { margin: 0; font-size: 11px; color: #8ea396; line-height: 1.5; padding: 0 4px; }
 
 .verdict-panel {
   padding: 26px 26px 22px;
@@ -985,7 +985,7 @@ a.text-link { color: var(--gold); }
   color: var(--forest, #1a6b5c);
   border-color: #c5d6d1;
 }
-.djtk-human.is-compact .djtk-chip.is-demo {
+.djtk-human.is-compact .djtk-chip.is-primary {
   background: #fff8ea;
   color: #8a6a1a;
   border-color: rgba(200, 160, 40, 0.55);
@@ -1017,30 +1017,26 @@ a.text-link { color: var(--gold); }
 .djtk-face-img.is-open {
   z-index: 1;
   opacity: 0;
-  /* Only lower-mid face (mouth band) can show through */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 48%,
-    #000 58%,
-    #000 78%,
-    transparent 88%,
+  /* Feather only the lips into the fixed portrait so the jaw and cheeks never jump. */
+  -webkit-mask-image: radial-gradient(
+    ellipse 12% 5.5% at 50% 54%,
+    #000 0%,
+    #000 28%,
+    rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 48%,
-    #000 58%,
-    #000 78%,
-    transparent 88%,
+  mask-image: radial-gradient(
+    ellipse 12% 5.5% at 50% 54%,
+    #000 0%,
+    #000 28%,
+    rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
-  transition: opacity 150ms ease;
+  transition: opacity 110ms cubic-bezier(0.22, 0.72, 0.32, 1);
 }
 .djtk-human.is-speaking.is-mouth-open .djtk-face-img.is-open,
 .djtk-cabin.is-speaking.is-mouth-open .djtk-face-img.is-open {
-  opacity: 1;
+  opacity: 0.9;
 }
 .djtk-face-glow {
   position: absolute;
@@ -1075,10 +1071,6 @@ a.text-link { color: var(--gold); }
 .djtk-cabin.is-thinking .djtk-face-glow {
   animation: djtk-think-glow 1.4s ease-in-out infinite alternate;
 }
-.djtk-human.is-speaking .djtk-face-img.is-closed,
-.djtk-cabin.is-speaking .djtk-face-img.is-closed {
-  animation: djtk-breathe 1.6s ease-in-out infinite;
-}
 .djtk-human.is-speaking .djtk-face-glow,
 .djtk-cabin.is-speaking .djtk-face-glow {
   animation: djtk-glow 1.2s ease-in-out infinite alternate;
@@ -1095,10 +1087,6 @@ a.text-link { color: var(--gold); }
 .djtk-cabin.is-speaking .djtk-face-wave i:nth-child(3) { animation: djtk-bar 0.5s ease-in-out infinite alternate; animation-delay: 0.16s; }
 .djtk-human.is-speaking .djtk-face-wave i:nth-child(4),
 .djtk-cabin.is-speaking .djtk-face-wave i:nth-child(4) { animation: djtk-bar 0.4s ease-in-out infinite alternate; animation-delay: 0.04s; }
-@keyframes djtk-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.028); }
-}
 @keyframes djtk-bar {
   from { height: 3px; opacity: 0.55; }
   to { height: 11px; opacity: 1; }
@@ -1456,7 +1444,7 @@ a.text-link { color: var(--gold); }
   cursor: pointer;
   border-radius: 999px;
 }
-.djtk-cabin-chat .djtk-chip.is-demo {
+.djtk-cabin-chat .djtk-chip.is-primary {
   border-color: rgba(228, 197, 106, 0.55);
   background: rgba(228, 197, 106, 0.12);
   color: #f0e0a8;
@@ -1567,10 +1555,6 @@ a.text-link { color: var(--gold); }
   font-weight: 600;
   letter-spacing: 0.08em;
   vertical-align: middle;
-}
-.djtk-cabin .djtk-badge.is-demo {
-  border-color: rgba(232, 90, 90, 0.55);
-  color: #f0a0a0;
 }
 .djtk-cabin .djtk-log-tip {
   margin: 4px 0;

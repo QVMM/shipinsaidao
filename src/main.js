@@ -1,4 +1,5 @@
 import './styles/app.css'
+import './styles/refined.css'
 import { getState, subscribe, loadBatch, loadPublic, generateReport, generateTrace, chosenBatchId, setChosenBatchId } from './store.js'
 import { renderShell, renderPublicShell, renderSkeleton, bindShell, updateChrome, slideNav } from './components/shell.js'
 import { parseHash } from './pages/index.js'
@@ -138,12 +139,13 @@ async function draw() {
       if (!user && publicRoute) {
         releaseStaffPage()
         const batchId = route.batchFromUrl || getState().batchId
+        let inner
         try {
           await loadPublic(batchId)
-        } catch {
-          /* keep last known / seed */
+          inner = route.page.render(getState(), { publicView: true })
+        } catch (err) {
+          inner = renderPublicLoadError(batchId, err)
         }
-        const inner = route.page.render(getState(), { publicView: true })
         if (mode !== 'public') {
           root.innerHTML = renderPublicShell(inner)
           mode = 'public'
@@ -204,6 +206,22 @@ async function draw() {
   } finally {
     drawing = false
   }
+}
+
+function renderPublicLoadError(batchId, err) {
+  const esc = (value) => String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+  const notFound = err?.status === 404
+  return `
+    <div class="card empty" role="alert">
+      <h2>${notFound ? '没有找到这个追溯批次' : '追溯信息暂时无法读取'}</h2>
+      <p>批次 ${esc(batchId || '—')}</p>
+      <p class="sub">为避免误导，系统不会用预置内容替代查询结果。请检查批次号或本机服务后重试。</p>
+    </div>
+  `
 }
 
 window.addEventListener('hashchange', draw)

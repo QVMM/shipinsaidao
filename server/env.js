@@ -35,12 +35,8 @@ export function assertProductionSecrets() {
   }
 }
 
-/**
- * Demo fallback is intentional for the competition booth.
- * Never log the value.
- * @returns {string}
- */
+/** Never log the value. @returns {string} */
 export function sealSecret() {
-  const v = process.env.SEAL_SECRET
-  return v && String(v).length ? String(v) : 'tihua-demo-seal'
+  const v = process.env.SEAL_SECRET || process.env.SESSION_SECRET
+  return v && String(v).length ? String(v) : 'local-only-change-me'
 }

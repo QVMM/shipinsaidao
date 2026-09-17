@@ -5,8 +5,6 @@ import { renderNextBar, bindJourneyActions } from '../components/journey-ui.js'
 import { renderVerdictStrip } from '../components/verdict-strip.js'
 import { isEditing, renderEditToggle, bindEditToggle } from '../components/page-edit.js'
 import { canWrite } from '../auth.js'
-import { QUALITY_METRICS } from '../lib/quality-metrics.js'
-import { bindMonitorAssistant, renderMonitorAssistant } from '../lib/monitor-assistant.js'
 import { bindDjtkHuman, renderDjtkHuman, unbindDjtkHuman } from '../lib/djtk-human.js'
 
 export const meta = { id: 'eval', title: '健康评价' }
@@ -29,15 +27,9 @@ function qualityBlock() {
   return `
     <section class="health-block health-quality">
       <h3>品质指标</h3>
-      <p class="sub">本批次鸡肉实测演示值。只读。</p>
-      <div class="quality-grid">
-        ${QUALITY_METRICS.map((m) => `
-          <article class="quality-tile">
-            <h4>${m.label}</h4>
-            <p><b>${m.value}</b><small>${m.unit}</small></p>
-            ${m.note ? `<span>${m.note}</span>` : ''}
-          </article>
-        `).join('')}
+      <div class="card inflam-empty">
+        <p>当前批次尚未录入品质检测结果。</p>
+        <span class="sub">录入检测数据后，此处将显示对应指标与单位。</span>
       </div>
     </section>
   `
@@ -63,7 +55,6 @@ export function render(state) {
       <h2>健康评价</h2>
       ${renderEditToggle('eval', 'eval', state.batchId)}
     </div>
-    ${renderMonitorAssistant('staff')}
     ${renderDjtkHuman({ compact: true })}
     ${renderVerdictStrip(state)}
     ${renderNextBar('eval')}
@@ -167,11 +158,9 @@ export function bind(root, state) {
   bindFields(root)
   bindEditToggle(root, 'eval', 'eval', state.batchId)
   bindJourneyActions(root, state)
-  bindMonitorAssistant(root)
   bindDjtkHuman(root, { compact: true, batchId: state.batchId })
 }
 
 export function unbind() {
   unbindDjtkHuman()
 }
-

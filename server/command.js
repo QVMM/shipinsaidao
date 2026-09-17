@@ -15,7 +15,7 @@ import {
   resultOf,
   stationOf,
 } from '../src/lib/pipeline.js'
-import { residueClear } from '../src/lib/verdict.js'
+import { computeVerdict, residueClear } from '../src/lib/verdict.js'
 import { resolveHouseEnv, shanghaiYmd } from '../src/lib/house-env.js'
 
 function birdsOf(batch) {
@@ -35,7 +35,7 @@ function eventAt(v, fallbackHour = '08:00') {
  * @param {object} batch
  * @param {string} stage
  */
-function eventsOf(batch, stage) {
+export function eventsOf(batch, stage) {
   const id = batch.batchId
   const out = []
   const stock = eventAt(batch.farm?.stockDate, '07:30')
@@ -66,12 +66,6 @@ function eventsOf(batch, stage) {
   if (stage === 'market') {
     const at = eventAt(batch.trace?.generatedAt || batch.farm?.plannedSlaughter, '18:00')
     out.push({ at, line: `${id} 已上市` })
-  }
-  if (batch.batchId === SPOTLIGHT_ID) {
-    out.push({
-      at: eventAt(batch.eval?.testDate || batch.updatedAt, '14:40'),
-      line: `${id} 焦点批次 合格准予上市`,
-    })
   }
   return out.filter((e) => e.at && e.line)
 }
@@ -120,7 +114,6 @@ function trendFrom(rows) {
     if (row.stage === 'alert') bucket.alerts += 1
   }
   return {
-    demo: false,
     label: '近七日筛查',
     note: '按入库批次日期滚动',
     days: days.map((d) => map.get(d)),
@@ -263,9 +256,9 @@ export function getPublicCommand() {
       positive: screened.length - cleared.length,
       ...detectOf(spotlightFull),
     },
-    listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated),
+    listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated && computeVerdict(spotlightFull).pass),
     houseEnv: resolveHouseEnv(spotlightFull?.farm?.houseEnv, new Date(), {
-      listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated),
+      listed: !!(spotlightFull?.report?.generated && spotlightFull?.trace?.generated && computeVerdict(spotlightFull).pass),
     }),
     trend: trendFrom(rows),
   }
@@ -291,4 +284,3 @@ function detectOf(batch) {
     showFix: batch?.batchId === SPOTLIGHT_ID,
   }
 }
-

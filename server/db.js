@@ -7,6 +7,7 @@ import { DEMO_SEED, makeReportNo, makeVerifyId, blankBatchFromSpotlight } from '
 import { makeDemoHouseEnv, shanghaiYmd, resolveHouseEnv, looksLikeOldHouseEnv } from '../src/lib/house-env.js'
 import { FLEET_SEEDS, SEED_BATCH_IDS } from '../src/data-fleet.js'
 import { buildStageView } from '../src/lib/stage-view.js'
+import { computeVerdict, issuanceGate } from '../src/lib/verdict.js'
 import { ACCOUNTS, DEFAULT_PASSWORD } from './roles.js'
 import {
   appendSeal,
@@ -22,6 +23,17 @@ import {
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
 export const DEFAULT_BATCH_ID = DEMO_SEED.batchId
+
+export class IssuanceBlockedError extends Error {
+  constructor(reasons) {
+    const list = Array.isArray(reasons) ? reasons.filter(Boolean) : []
+    super(list.length ? `暂不能签发：${list.join('；')}。` : '当前批次暂不能签发。')
+    this.name = 'IssuanceBlockedError'
+    this.code = 'issuance_blocked'
+    this.statusCode = 409
+    this.reasons = list
+  }
+}
 
 let db
 
@@ -588,7 +600,7 @@ export function getBatch(batchId) {
 
 export function getPublicTrace(batchId) {
   const full = getBatch(batchId)
-  if (!full) return null
+  if (!full || !full.trace?.generated || !computeVerdict(full).pass) return null
   return {
     batchId: full.batchId,
     productName: full.productName,
@@ -789,7 +801,12 @@ export function patchBatch(batchId, patch, user) {
     return id
   })
   const id = tx()
-  const after = getBatch(id)
+  let after = getBatch(id)
+  const evidenceTouched = !!(patch.farm || patch.screen || patch.eval)
+  if (evidenceTouched && evidenceJson(before) !== evidenceJson(after)) {
+    revokeIssuance(d, id)
+    after = getBatch(id)
+  }
   audit(user, 'update', 'batch', id, before, after)
   if (canonicalJson(snapshotOf(before)) !== canonicalJson(snapshotOf(after))) {
     const meta = sealMetaForPatch(patch)
@@ -801,6 +818,37 @@ export function patchBatch(batchId, patch, user) {
     refreshSeal(after)
   }
   return after
+}
+
+function evidenceJson(batch) {
+  return JSON.stringify({
+    farm: batch?.farm || {},
+    screen: batch?.screen || {},
+    eval: batch?.eval || {},
+  })
+}
+
+function revokeIssuance(d, batchId) {
+  d.transaction(() => {
+    d.prepare(`
+      UPDATE reports
+      SET generated=0, no='', generated_at='', generated_by=NULL
+      WHERE batch_id=?
+    `).run(batchId)
+    d.prepare(`
+      UPDATE traces
+      SET generated=0, verify_id='', generated_at='', generated_by=NULL
+      WHERE batch_id=?
+    `).run(batchId)
+    upsertReview(d, batchId, {
+      sampleAccept: false,
+      dataReview: false,
+      reportIssue: false,
+      reviewed: false,
+      reviewer: '',
+      reviewedAt: '',
+    })
+  })()
 }
 
 function refreshSeal(batch) {
@@ -820,6 +868,8 @@ export function generateReport(batchId, user, force = false) {
   const d = getDb()
   const before = getBatch(batchId)
   if (!before) return null
+  const gate = issuanceGate(before)
+  if (!gate.ok) throw new IssuanceBlockedError(gate.reasons)
   if (before.report.generated && !force) return before
   const at = formatNow()
   const no = makeReportNo(batchId)
@@ -852,9 +902,9 @@ export function generateTrace(batchId, user, force = false) {
   const d = getDb()
   let current = getBatch(batchId)
   if (!current) return null
-  if (!current.report.generated || force) {
-    current = generateReport(batchId, user, false) || current
-  }
+  const gate = issuanceGate(current)
+  if (!gate.ok) throw new IssuanceBlockedError(gate.reasons)
+  if (!current.report.generated) throw new IssuanceBlockedError(['请先生成检测报告'])
   if (current.trace.generated && !force) return current
   const at = formatNow()
   const verifyId = makeVerifyId(batchId)

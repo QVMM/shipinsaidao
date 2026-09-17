@@ -39,7 +39,8 @@ import {
 } from './auth.js'
 import { mimoAsk, mimoConfigured, mimoTts, buildDjtkEvidence, buildDegradedAnswer, buildFastAnswer, sanitizeDjtkAnswer } from './mimo.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
-import { getSeal, demoTamper, demoRestore } from './seal.js'
+import { getSeal } from './seal.js'
+import { offlineMode } from './runtime.js'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
@@ -86,7 +87,7 @@ export async function buildApp() {
   ensureSeeded()
 
   const app = Fastify({
-    trustProxy: true,
+    trustProxy: process.env.TRUST_PROXY === '1',
     logger: {
       serializers: {
         req(req) {
@@ -179,7 +180,15 @@ export async function buildApp() {
     if (!canWrite(req.user.role, 'report')) {
       return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'report') })
     }
-    const data = generateReport(decodeParam(req.params.batchId), req.user, !!req.body?.force)
+    let data
+    try {
+      data = generateReport(decodeParam(req.params.batchId), req.user, !!req.body?.force)
+    } catch (err) {
+      if (err?.code === 'issuance_blocked') {
+        return reply.code(409).send({ error: err.code, message: err.message, reasons: err.reasons })
+      }
+      throw err
+    }
     if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
     return data
   })
@@ -188,7 +197,15 @@ export async function buildApp() {
     if (!canWrite(req.user.role, 'trace')) {
       return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'trace') })
     }
-    const data = generateTrace(decodeParam(req.params.batchId), req.user, !!req.body?.force)
+    let data
+    try {
+      data = generateTrace(decodeParam(req.params.batchId), req.user, !!req.body?.force)
+    } catch (err) {
+      if (err?.code === 'issuance_blocked') {
+        return reply.code(409).send({ error: err.code, message: err.message, reasons: err.reasons })
+      }
+      throw err
+    }
     if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
     return data
   })
@@ -216,29 +233,10 @@ export async function buildApp() {
     return { items: listAudit(batchId || undefined) }
   })
 
-  app.post('/api/batches/:batchId/seal/tamper', { preHandler: requireStaff }, async (req, reply) => {
-    if (!canWrite(req.user.role, 'trace')) {
-      return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'trace') })
-    }
-    const batchId = decodeParam(req.params.batchId)
-    const data = demoTamper(batchId, req.user)
-    if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
-    return { ok: data.ok, seal: data.seal, batch: getBatch(batchId) }
-  })
-
-  app.post('/api/batches/:batchId/seal/restore', { preHandler: requireStaff }, async (req, reply) => {
-    if (!canWrite(req.user.role, 'trace')) {
-      return reply.code(403).send({ error: 'forbidden', message: denyMessage(req.user.role, 'trace') })
-    }
-    const batchId = decodeParam(req.params.batchId)
-    const data = demoRestore(batchId, req.user)
-    if (!data) return reply.code(404).send({ error: 'not_found', message: '没有这个批次。' })
-    return { ok: data.ok, seal: data.seal, batch: getBatch(batchId) }
-  })
-
   app.get('/api/djtk/status', async () => ({
     ok: true,
     mimoConfigured: mimoConfigured(),
+    offlineMode: offlineMode(),
     stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
     stageBooth: stageBoothEnabled(),
   }))
@@ -353,8 +351,8 @@ export async function buildApp() {
     }
     if (!mimoConfigured()) {
       return reply.code(503).send({
-        error: 'mimo_unconfigured',
-        message: '服务端未配置 MIMO_API_KEY，请用浏览器朗读。',
+        error: offlineMode() ? 'offline_mode' : 'mimo_unconfigured',
+        message: offlineMode() ? '当前为离线模式，请使用本机浏览器朗读。' : '服务端未配置 MIMO_API_KEY，请用浏览器朗读。',
         fallback: true,
       })
     }
@@ -374,7 +372,11 @@ export async function buildApp() {
     }
   })
 
-  app.get('/api/health', async () => ({ ok: true, defaultBatchId: DEFAULT_BATCH_ID }))
+  app.get('/api/health', async () => ({
+    ok: true,
+    defaultBatchId: DEFAULT_BATCH_ID,
+    mode: offlineMode() ? 'offline-local' : 'online-capable',
+  }))
 
   const dist = resolve(root, 'dist')
   if (existsSync(dist)) {

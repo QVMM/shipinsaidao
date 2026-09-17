@@ -9,24 +9,32 @@
     "dev:api": "node --watch server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
+    "offline": "node server/offline-start.js",
     "preview": "node server/index.js",
     "seed": "node server/seed.js",
-    "lint": "eslint src server"
+    "lint": "eslint src server test e2e playwright.config.js",
+    "test": "npm run test:unit",
+    "test:unit": "node --test",
+    "test:e2e": "playwright test --grep-invert @visual",
+    "test:visual": "playwright test --grep @visual",
+    "test:all": "npm run lint && npm run test:unit && npm run build && npm run test:e2e && npm run test:visual"
   },
   "dependencies": {
     "@fastify/cookie": "11.0.2",
-    "@fastify/static": "8.0.4",
+    "@fastify/static": "^10.1.3",
     "bcryptjs": "2.4.3",
     "better-sqlite3": "11.10.0",
     "echarts": "^6.1.0",
-    "fastify": "5.2.1",
+    "fastify": "^5.12.5",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
-    "vite": "^5.4.11"
+    "vite": "^8.3.0"
   },
   "engines": {
     "node": "22.x"

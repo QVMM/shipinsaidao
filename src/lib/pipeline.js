@@ -1,7 +1,7 @@
 /**
  * 体系管线：每批只有一个 currentStage。指挥舱看体系，操作台看焦点。
  */
-import { lowInflammation, residueClear } from './verdict.js'
+import { computeVerdict, lowInflammation, noFeedAntibiotic, residueClear, sealIntegrityClear } from './verdict.js'
 
 export const PIPELINE = [
   { stage: 'farming', label: '养殖中', short: '在养', kpi: 'inFarm' },
@@ -59,9 +59,12 @@ export function hasEvalData(batch) {
 export function isAlert(batch) {
   if (batch.screen?.qualitative === '无效') return true
   if (hasScreenResult(batch) && !residueClear(batch)) return true
+  const antibioticRows = (batch.farm?.medLog || []).filter((row) => /抗生素/.test(row.item || ''))
+  if (antibioticRows.length && !noFeedAntibiotic(batch)) return true
   if (hasEvalData(batch) && filled(batch.eval?.IL6) && filled(batch.eval?.IL6Ctrl) && !lowInflammation(batch)) {
     return true
   }
+  if ((batch.report?.generated || batch.trace?.generated) && !computeVerdict(batch).pass) return true
   return false
 }
 
@@ -71,11 +74,8 @@ export function isAlert(batch) {
  */
 export function deriveStage(batch) {
   if (isAlert(batch)) return 'alert'
-  const forced = batch.program?.pipelineStage
-  if (forced && (forced === 'alert' || PIPELINE.some((p) => p.stage === forced))) return forced
   if (batch.trace?.generated && batch.report?.generated) {
-    if (batch.program?.listed) return 'market'
-    if (batch.batchId === SPOTLIGHT_ID) return 'market'
+    if (computeVerdict(batch).pass && (batch.program?.listed || batch.batchId === SPOTLIGHT_ID)) return 'market'
     return 'tracing'
   }
   if (hasEvalData(batch) || batch.report?.generated) return 'reporting'
@@ -93,6 +93,7 @@ export function deriveStage(batch) {
 export function stationOf(batch, stage) {
   const st = stage || deriveStage(batch)
   if (st !== 'alert') return st
+  if (!sealIntegrityClear(batch)) return 'tracing'
   if (hasScreenResult(batch) && !residueClear(batch)) return 'screening'
   return 'evaluating'
 }
@@ -114,6 +115,7 @@ export function stageLabel(stage) {
  */
 export function resultOf(batch, stage) {
   if (stage === 'alert') {
+    if (!sealIntegrityClear(batch)) return '证据封存待核验'
     if (batch.screen?.qualitative === '无效') return '筛查无效'
     if (hasScreenResult(batch) && !residueClear(batch)) return '氟苯尼考阳性'
     return '炎症偏高'

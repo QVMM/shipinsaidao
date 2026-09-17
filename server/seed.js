@@ -10,4 +10,4 @@ for (const id of FLEET_IDS) console.log('  ', id)
 for (const a of ACCOUNTS) {
   console.log(`  ${a.username}  ${a.role}  ${a.displayName}  默认密码见 README`)
 }
-console.log('默认密码必须改（现在是演示口令）。口令本身不打印。')
+console.log('初始口令仅用于本机初始化，交付前必须修改。口令本身不打印。')

@@ -1,4 +1,5 @@
 import '../styles/stage.css'
+import '../styles/stage-v2.css'
 import { PIPELINE, stageLabel } from '../lib/pipeline.js'
 import { STAGE_SCENES } from '../lib/stage-view.js'
 import { threeFacts } from '../lib/verdict.js'
@@ -13,9 +14,6 @@ import { renderInkStamp } from '../components/ink-stamp.js'
 export const meta = { id: 'stage', title: '指挥舱' }
 
 const POLL_MS = 1500
-const DESIGN_W = 1920
-const DESIGN_H = 1080
-
 const CYAN = '#27e0d0'
 const BAR_CYAN = 'rgba(39, 224, 208, 0.88)'
 const BAR_GOLD = 'rgba(228, 197, 106, 0.78)'
@@ -33,8 +31,6 @@ const KPI_CHIPS = [
 
 let pollTimer = 0
 let clockTimer = 0
-let queueTimer = 0
-let queueIndex = 0
 let rootEl = null
 let lastSig = ''
 let echartsMod = null
@@ -298,22 +294,27 @@ export function render() {
       <div class="wall-board" data-board>
         <div class="wall-scan" aria-hidden="true"></div>
         <div class="wall-grid" aria-hidden="true"></div>
-        ${renderDjtkHuman()}
+        ${renderDjtkHuman({ embedded: true })}
         <header class="wall-hd">
-          <div class="hd-wing hd-left">
-            <span class="hd-live"><i></i>LIVE</span>
-            <span class="hd-sys">FLEET QC / TRACE COMMAND</span>
-          </div>
-          <div class="hd-title">
-            <p class="hd-kicker">FOOD SAFETY · LIVESTOCK TRACEABILITY</p>
-            <h1>替抗蓟化 全链条质控与溯源指挥舱</h1>
-          </div>
-          <div class="hd-wing hd-right">
-            <time class="hd-clock dig" data-clock></time>
-            <div class="hd-meta">
-              <span class="hd-stamp" data-stamp>体系</span>
-              <button type="button" class="hd-fs" data-fs title="F11 全屏">全屏</button>
+          <div class="hd-brand">
+            <img src="/evidence/thistle.jpg" alt="大蓟花">
+            <div>
+              <p>以东方草本 · 守护国人餐桌</p>
+              <h1>替抗蓟化 <span>全链条质控与溯源指挥舱</span></h1>
             </div>
+          </div>
+          <div class="hd-trust" aria-label="系统运行状态">
+            <span class="hd-local"><i></i>本地部署 · 离线运行正常</span>
+            <span>数据安全</span>
+            <span>隐私可控</span>
+            <span>证据可核验</span>
+          </div>
+          <div class="hd-actions">
+            <time class="hd-clock dig" data-clock></time>
+            <span class="hd-stamp" data-stamp>体系</span>
+            <button type="button" class="hd-insights" data-insights aria-pressed="false">数据洞察</button>
+            <button type="button" class="hd-fs" data-fs title="进入全屏">全屏</button>
+            <button type="button" class="hd-assess" data-assess>研判当前批次</button>
           </div>
           <div class="hd-kpis">${chips}</div>
         </header>
@@ -330,7 +331,7 @@ export function render() {
             ${corners()}
             <div class="dv-hd"><i></i><h2>鸡舍实况</h2><span>HOUSE</span></div>
             <ol class="env-nums" data-house-env></ol>
-            <div class="cam-bay" aria-label="鸡舍监控，演示画面">
+            <div class="cam-bay" aria-label="鸡舍影像档案">
               <article class="cam">
                 <div class="cam-view">
                   <img src="./evidence/house.jpg" alt="鸡舍监控">
@@ -350,7 +351,7 @@ export function render() {
                 </div>
               </article>
             </div>
-            <p class="cam-note">演示画面，待接摄像头</p>
+            <p class="cam-note">视频通道未接入 · 当前显示本地档案图像</p>
           </div>
           <div class="dv-box spot-box">
             ${corners()}
@@ -376,18 +377,40 @@ export function render() {
               <ol class="stations">${stations}</ol>
             </div>
           </div>
-          <div class="dv-box process-box" data-lab-layer>
-            ${corners()}
-            <div class="dv-hd"><i></i><h2>检测过程</h2><span>正在过检</span></div>
-            ${renderLabDock()}
-          </div>
           <div class="dv-box path-box">
             ${corners()}
-            <div class="dv-hd"><i></i><h2>焦点路径</h2><span data-path-tag>从饲料到上市</span></div>
+            <div class="dv-hd"><i></i><h2>从源头到餐桌 · 七步全链条溯源</h2><span data-path-tag>从饲料到上市</span></div>
             <div class="path-flow">
               <div class="path-rail" aria-hidden="true"><i data-rail></i></div>
               <ol class="path-nodes">${path}</ol>
             </div>
+          </div>
+          <div class="stage-evidence-grid">
+            <article class="dv-box stage-farm-card">
+              ${corners()}
+              <div class="dv-hd"><i></i><h2>养殖现场</h2><span>FARM</span></div>
+              <img src="/evidence/flock.jpg" alt="焦点批次鸡群档案图像">
+              <p data-stage-farm-summary>正在读取焦点批次档案</p>
+              <dl>
+                <div><dt>品种</dt><dd data-stage-breed>—</dd></div>
+                <div><dt>饲喂</dt><dd data-stage-feed>—</dd></div>
+              </dl>
+            </article>
+            <div class="dv-box process-box" data-lab-layer>
+              ${corners()}
+              <div class="dv-hd"><i></i><h2>检测过程</h2><span>PROCESS</span></div>
+              ${renderLabDock()}
+            </div>
+            <article class="dv-box stage-evidence-card">
+              ${corners()}
+              <div class="dv-hd"><i></i><h2>关键证据</h2><span>EVIDENCE</span></div>
+              <nav aria-label="焦点批次关键证据">
+                <a href="#/screen"><img src="/evidence/lab.jpg" alt=""><b>安全检测记录</b><span data-stage-screen-evidence>等待记录</span></a>
+                <a href="#/farm"><img src="/evidence/flock.jpg" alt=""><b>养殖过程记录</b><span data-stage-farm-evidence>等待记录</span></a>
+                <a href="#/report"><img src="/stamp-qualified.png" alt=""><b>产品合规证明</b><span data-stage-report-evidence>等待记录</span></a>
+                <a href="#/qr"><img src="/evidence/thistle.jpg" alt=""><b>追溯码核验</b><span data-stage-trace-evidence>等待记录</span></a>
+              </nav>
+            </article>
           </div>
         </section>
 
@@ -443,7 +466,9 @@ export async function bind(root) {
   initCharts()
   tickClock()
   root.querySelector('[data-fs]')?.addEventListener('click', toggleFs)
-  bindDjtkHuman(root, { batchId: chosenBatchId() })
+  root.querySelector('[data-assess]')?.addEventListener('click', startBatchAssessment)
+  root.querySelector('[data-insights]')?.addEventListener('click', toggleInsights)
+  bindDjtkHuman(root, { batchId: chosenBatchId(), embedded: true })
   window.addEventListener('resize', onResize)
   clockTimer = window.setInterval(tickClock, 1000)
   await tick()
@@ -469,7 +494,6 @@ function teardown() {
     clearInterval(clockTimer)
     clockTimer = 0
   }
-  stopQueueRoll()
   window.removeEventListener('resize', onResize)
   Object.keys(charts).forEach((k) => {
     charts[k]?.dispose()
@@ -488,59 +512,28 @@ function onResize() {
 function applyScale() {
   const board = rootEl?.querySelector('[data-board]')
   if (!board) return
-  const s = Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H)
-  const x = (window.innerWidth - DESIGN_W * s) / 2
-  const y = (window.innerHeight - DESIGN_H * s) / 2
-  board.style.transform = `translate(${x}px, ${y}px) scale(${s})`
+  board.style.transform = ''
+  board.style.setProperty('--stage-height', `${window.innerHeight}px`)
+}
+
+function startBatchAssessment() {
+  const chip = rootEl?.querySelector('.djtk-human.is-embedded [data-primary-query]')
+  chip?.click()
+}
+
+function toggleInsights(event) {
+  const wall = rootEl?.querySelector('[data-wall]')
+  if (!wall) return
+  const open = !wall.classList.contains('show-insights')
+  wall.classList.toggle('show-insights', open)
+  event?.currentTarget?.setAttribute('aria-pressed', open ? 'true' : 'false')
+  event.currentTarget.textContent = open ? '收起洞察' : '数据洞察'
+  requestAnimationFrame(() => Object.values(charts).forEach((chart) => chart?.resize()))
 }
 
 function toggleFs() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()
   else document.exitFullscreen?.()
-}
-
-function stopQueueRoll() {
-  if (queueTimer) {
-    clearInterval(queueTimer)
-    queueTimer = 0
-  }
-  queueIndex = 0
-}
-
-/**
- * 队列一次滚一整行，2 秒一条，顶边对齐，不切字。
- * @param {HTMLElement} queue
- * @param {number} count
- */
-function startQueueRoll(queue, count) {
-  stopQueueRoll()
-  queue.style.transition = 'none'
-  queue.style.transform = 'translate3d(0, 0, 0)'
-  if (reducedMotion() || count < 2) return
-  const row = queue.querySelector('.q-row')
-  const view = queue.parentElement
-  if (!row || !view) return
-  const rowH = row.offsetHeight
-  if (!rowH) return
-  if (count * rowH <= view.clientHeight + 1) return
-  queueTimer = window.setInterval(() => {
-    if (!queue.isConnected) {
-      stopQueueRoll()
-      return
-    }
-    const h = queue.querySelector('.q-row')?.offsetHeight || rowH
-    queueIndex += 1
-    queue.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
-    queue.style.transform = `translate3d(0, ${-queueIndex * h}px, 0)`
-    if (queueIndex >= count) {
-      window.setTimeout(() => {
-        if (!queue.isConnected) return
-        queue.style.transition = 'none'
-        queue.style.transform = 'translate3d(0, 0, 0)'
-        queueIndex = 0
-      }, 440)
-    }
-  }, 2000)
 }
 
 function tickClock() {
@@ -742,11 +735,7 @@ function apply(root, data) {
         </div>
         <em>${esc(stageLabel(b.stage))}</em>
       </li>`).join('')
-    const next = batches.length > 1 ? rows + rows : rows
-    if (queue.innerHTML !== next) {
-      queue.innerHTML = next
-      startQueueRoll(queue, batches.length)
-    }
+    if (queue.innerHTML !== rows) queue.innerHTML = rows
   }
 
   PIPELINE.forEach((p) => {
@@ -774,12 +763,35 @@ function apply(root, data) {
   })
   const call = el.querySelector('[data-callout]')
   if (call) {
+    const proofFacts = facts.slice(-3)
     call.innerHTML = `
-      <p class="co-kicker">焦点批次判定 · ${esc(spot.batchId || data.spotlightId || '')}</p>
-      <h3>${esc(spot.verdict?.headline || '—')}</h3>
-      <p class="co-why">${esc(spot.verdict?.why || '')}</p>
-      <ul class="co-facts">${facts.map((f) => `<li class="${f.wait ? 'wait' : f.ok ? 'ok' : 'bad'}">${esc(f.text)}</li>`).join('')}</ul>`
+      <div class="co-summary">
+        <p class="co-kicker">${esc(spot.batchId || data.spotlightId || '焦点批次')}</p>
+        <p class="co-base">${esc(farm.name || '基地记录待完善')}</p>
+        <dl class="co-meta">
+          <div><dt>品种</dt><dd>${esc(dash(farm.breed))}</dd></div>
+          <div><dt>出栏日期</dt><dd>${esc(dash(farm.plannedSlaughter))}</dd></div>
+          <div><dt>出栏数量</dt><dd>${esc(farm.count != null && farm.count !== '' ? `${farm.count} 羽` : '—')}</dd></div>
+        </dl>
+      </div>
+      <div class="co-verdict">
+        <h3>${esc(spot.verdict?.headline || '—')}</h3>
+        <p class="co-why">${esc(spot.verdict?.why || '')}</p>
+      </div>
+      <ul class="co-facts">${proofFacts.map((f) => `<li class="${f.wait ? 'wait' : f.ok ? 'ok' : 'bad'}">${esc(f.text)}</li>`).join('')}</ul>`
   }
+
+  const stageText = (selector, value) => {
+    const node = el.querySelector(selector)
+    if (node) node.textContent = value
+  }
+  stageText('[data-stage-farm-summary]', `${farm.name || '基地记录待完善'} · ${farm.count != null && farm.count !== '' ? `${farm.count} 羽` : '数量待录入'}`)
+  stageText('[data-stage-breed]', dash(farm.breed))
+  stageText('[data-stage-feed]', dash(farm.dose || farm.additive))
+  stageText('[data-stage-screen-evidence]', `${spot.screen?.target || '安全检测'} · ${spot.screen?.result || spot.screen?.qualitative || '待检测'}`)
+  stageText('[data-stage-farm-evidence]', `饲用抗生素 · ${farm.feedAntibiotic || '记录待完善'}`)
+  stageText('[data-stage-report-evidence]', spot.report?.generated ? (spot.report.no || '已出证') : '尚未出证')
+  stageText('[data-stage-trace-evidence]', spot.trace?.generated ? (spot.trace.verifyId || '已出码') : '尚未出码')
 
   const card = el.querySelector('[data-spot-card]')
   if (card) {

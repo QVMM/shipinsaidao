@@ -23,14 +23,53 @@ function show(v) {
   return s === '' ? '—' : s
 }
 
-function qualityBlock() {
+const QUALITY_METRICS = [
+  { field: 'moisture', label: '水分', unit: '%', note: '水分含量' },
+  { field: 'tenderness', label: '嫩度', unit: 'N', note: '剪切力，数值越低越嫩' },
+  { field: 'pH', label: 'pH 值', unit: '', note: '宰后 24 h' },
+  { field: 'waterHolding', label: '保水性', unit: '%', note: '加压法测定' },
+]
+
+/**
+ * @param {object} e
+ * @param {{ editing?: boolean }} [options]
+ */
+export function renderQualityBlock(e = {}, { editing = false } = {}) {
+  if (editing) {
+    return `
+      <section class="health-block health-quality">
+        <h3>肉质品质指标</h3>
+        <p class="sub">录入水分、剪切力、宰后 24 h pH 与保水性实测值。</p>
+        <div class="form two">
+          ${QUALITY_METRICS.map((metric) => `
+            <div class="field">
+              <label>${metric.label}${metric.unit ? `（${metric.unit}）` : ''}</label>
+              <input type="number" step="any" inputmode="decimal" data-field="eval.${metric.field}" value="${val(e[metric.field])}">
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `
+  }
+  const hasQuality = QUALITY_METRICS.some((metric) => e[metric.field] !== '' && e[metric.field] != null)
   return `
     <section class="health-block health-quality">
-      <h3>品质指标</h3>
-      <div class="card inflam-empty">
+      <h3>肉质品质指标</h3>
+      ${hasQuality ? `
+      <div class="quality-grid">
+        ${QUALITY_METRICS.map((metric) => `
+          <article class="quality-tile">
+            <h4>${metric.label}</h4>
+            <p><b>${show(e[metric.field])}</b>${metric.unit ? `<small>${metric.unit}</small>` : ''}</p>
+            <span>${metric.note}</span>
+          </article>
+        `).join('')}
+      </div>
+      <p class="quality-note">以上为当前批次实测值，与炎症、菌群结果共同构成三维评价证据，不单独作为放行结论。</p>
+      ` : `<div class="card inflam-empty">
         <p>当前批次尚未录入品质检测结果。</p>
         <span class="sub">录入检测数据后，此处将显示对应指标与单位。</span>
-      </div>
+      </div>`}
     </section>
   `
 }
@@ -111,7 +150,7 @@ export function render(state) {
                 </article>
               </div>
             </section>
-            ${qualityBlock()}
+            ${renderQualityBlock(e)}
           </div>
         </div>
       </div>
@@ -142,7 +181,7 @@ export function render(state) {
                 <div class="field"><label>大肠杆菌变化 %</label><input data-field="eval.ecoliChange" value="${val(e.ecoliChange)}"></div>
               </div>
             </div>
-            ${qualityBlock()}
+            ${renderQualityBlock(e, { editing: true })}
           </div>
         </div>
       </div>

@@ -17,6 +17,12 @@ const ANALYSIS_QUERIES = [
   { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。' },
   { label: '说明上市判定', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
   { label: '列出待复核项', ask: '当前焦点批次有哪些待复核项？' },
+  {
+    label: '出口风险排查',
+    ask: '我是某出口鸡肉企业的质量工程师，我联动自主开发的大蓟替抗智控平台，对近期我国出口鸡肉安全进行风险排查。请DJTK智控助手结合大数据平台进行安全风险排查。',
+  },
+  { label: '样品结果判定', ask: '质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。' },
+  { label: '安全使命收束', ask: '大蓟替抗 高品质鸡肉解决方案 技能展示完成' },
 ]
 
 /** 业务快捷问：一律走 grounded ask，禁止本地臆造合格/用药。 */
@@ -348,7 +354,11 @@ export function speakBrowser(text, hooks = {}) {
  * @param {number} [maxChars]
  */
 export function speakPreview(text, maxChars = 120) {
-  const s = String(text || '').trim()
+  const raw = String(text || '').trim()
+  const assistantMarked = raw.match(/DJTK\s*智能助手\s*[:：]\s*([\s\S]*)/i)
+  const s = (assistantMarked ? assistantMarked[1] : raw)
+    .replace(/(?:^|\n)\s*4\s*号\s*[:：][^\n]*(?:\n|$)/g, '\n')
+    .trim()
   const closingStart = s.indexOf(CLOSING_SPEECH_START)
   const closingEnd = closingStart >= 0 ? s.indexOf(CLOSING_SPEECH_END, closingStart) : -1
   if (closingStart >= 0 && closingEnd >= closingStart) return CLOSING_SPEECH

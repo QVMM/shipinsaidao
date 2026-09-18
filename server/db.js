@@ -123,7 +123,8 @@ function migrate(d) {
       value_num TEXT, unit TEXT, operator TEXT,
       il1b REAL, il1b_ctrl REAL, il6 REAL, il6_ctrl REAL,
       tnfa REAL, tnfa_ctrl REAL, crp REAL, crp_ctrl REAL,
-      shannon REAL, shannon_ctrl REAL, lacto_change REAL, ecoli_change REAL
+      shannon REAL, shannon_ctrl REAL, lacto_change REAL, ecoli_change REAL,
+      moisture REAL, tenderness REAL, ph_value REAL, water_holding REAL
     );
     CREATE TABLE IF NOT EXISTS reports (
       id INTEGER PRIMARY KEY,
@@ -183,6 +184,10 @@ function migrate(d) {
   ensureColumn(d, 'screen_records', 'hplc_date', 'TEXT')
   ensureColumn(d, 'screen_records', 'hplc_operator', 'TEXT')
   ensureColumn(d, 'farm_records', 'house_env_json', 'TEXT')
+  ensureColumn(d, 'eval_records', 'moisture', 'REAL')
+  ensureColumn(d, 'eval_records', 'tenderness', 'REAL')
+  ensureColumn(d, 'eval_records', 'ph_value', 'REAL')
+  ensureColumn(d, 'eval_records', 'water_holding', 'REAL')
   migrateDose(d)
   seedSpotlightScreenExtra(d)
   migrateDemoCopy(d)
@@ -193,7 +198,26 @@ function migrate(d) {
   restoreSpotlightFarm(d)
   migrateLiveBlankBatch(d)
   migrateFarmIdentity(d)
+  migrateSpotlightQuality(d)
   rebuildUnissuedFleetSeals(d)
+}
+
+function migrateSpotlightQuality(d) {
+  const e = DEMO_SEED.eval || {}
+  d.prepare(`
+    UPDATE eval_records
+    SET moisture=COALESCE(moisture, ?),
+        tenderness=COALESCE(tenderness, ?),
+        ph_value=COALESCE(ph_value, ?),
+        water_holding=COALESCE(water_holding, ?)
+    WHERE batch_id=?
+  `).run(
+    numOrNull(e.moisture),
+    numOrNull(e.tenderness),
+    numOrNull(e.pH),
+    numOrNull(e.waterHolding),
+    DEMO_SEED.batchId,
+  )
 }
 
 function ensureColumn(d, table, name, spec) {
@@ -653,6 +677,10 @@ export function getPublicTrace(batchId) {
       TNFaCtrl: full.eval.TNFaCtrl,
       CRP: full.eval.CRP,
       CRPCtrl: full.eval.CRPCtrl,
+      moisture: full.eval.moisture,
+      tenderness: full.eval.tenderness,
+      pH: full.eval.pH,
+      waterHolding: full.eval.waterHolding,
     },
     report: { generated: full.report.generated, no: full.report.no, generatedAt: full.report.generatedAt },
     trace: { generated: full.trace.generated, verifyId: full.trace.verifyId, generatedAt: full.trace.generatedAt },
@@ -726,6 +754,10 @@ export function getPublicStage(batchId) {
       TNFaCtrl: ev.TNFaCtrl ?? '',
       CRP: ev.CRP ?? '',
       CRPCtrl: ev.CRPCtrl ?? '',
+      moisture: ev.moisture ?? '',
+      tenderness: ev.tenderness ?? '',
+      pH: ev.pH ?? '',
+      waterHolding: ev.waterHolding ?? '',
     },
     report: {
       generated: !!full.report?.generated,
@@ -1102,15 +1134,18 @@ function upsertEval(d, batchId, e) {
     INSERT INTO eval_records (
       batch_id, test_date, instrument, curve_r, lod, value_text, value_num, unit, operator,
       il1b, il1b_ctrl, il6, il6_ctrl, tnfa, tnfa_ctrl, crp, crp_ctrl,
-      shannon, shannon_ctrl, lacto_change, ecoli_change
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      shannon, shannon_ctrl, lacto_change, ecoli_change,
+      moisture, tenderness, ph_value, water_holding
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(batch_id) DO UPDATE SET
       test_date=excluded.test_date, instrument=excluded.instrument, curve_r=excluded.curve_r,
       lod=excluded.lod, value_text=excluded.value_text, value_num=excluded.value_num,
       unit=excluded.unit, operator=excluded.operator, il1b=excluded.il1b, il1b_ctrl=excluded.il1b_ctrl,
       il6=excluded.il6, il6_ctrl=excluded.il6_ctrl, tnfa=excluded.tnfa, tnfa_ctrl=excluded.tnfa_ctrl,
       crp=excluded.crp, crp_ctrl=excluded.crp_ctrl, shannon=excluded.shannon,
-      shannon_ctrl=excluded.shannon_ctrl, lacto_change=excluded.lacto_change, ecoli_change=excluded.ecoli_change
+      shannon_ctrl=excluded.shannon_ctrl, lacto_change=excluded.lacto_change, ecoli_change=excluded.ecoli_change,
+      moisture=excluded.moisture, tenderness=excluded.tenderness,
+      ph_value=excluded.ph_value, water_holding=excluded.water_holding
   `).run(
     batchId, e.testDate ?? '', e.instrument ?? '', numOrNull(e.curveR), numOrNull(e.lod),
     e.valueText ?? '', e.valueNum === '' || e.valueNum == null ? '' : String(e.valueNum),
@@ -1118,6 +1153,7 @@ function upsertEval(d, batchId, e) {
     numOrNull(e.IL1b), numOrNull(e.IL1bCtrl), numOrNull(e.IL6), numOrNull(e.IL6Ctrl),
     numOrNull(e.TNFa), numOrNull(e.TNFaCtrl), numOrNull(e.CRP), numOrNull(e.CRPCtrl),
     numOrNull(e.shannon), numOrNull(e.shannonCtrl), numOrNull(e.lactoChange), numOrNull(e.ecoliChange),
+    numOrNull(e.moisture), numOrNull(e.tenderness), numOrNull(e.pH), numOrNull(e.waterHolding),
   )
 }
 
@@ -1297,6 +1333,10 @@ function rowToEval(row) {
     shannonCtrl: numOrEmpty(row.shannon_ctrl),
     lactoChange: numOrEmpty(row.lacto_change),
     ecoliChange: numOrEmpty(row.ecoli_change),
+    moisture: numOrEmpty(row.moisture),
+    tenderness: numOrEmpty(row.tenderness),
+    pH: numOrEmpty(row.ph_value),
+    waterHolding: numOrEmpty(row.water_holding),
   }
 }
 

@@ -16,6 +16,9 @@ const TTS_TIMEOUT_MS = 10_000
 const CHAT_ATTEMPTS = 2
 const RETRY_DELAY_MS = 120
 const MAX_COMPLETION_TOKENS = 256
+const REQUIRED_OPENING_REPLY = '对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标问题，相关产品依法退市，造成约 10 万吨订单缺口。'
+const REQUIRED_RESULT_REPLY = '已完成结果审核，并对标高品质鸡肉三维评价体系做出判定，大蓟替抗鸡肉抽检样品全部合格。'
+const REQUIRED_CLOSING_REPLY = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 
 export const DJTK_SYSTEM_PROMPT = [
   'You are DJTK智控助手 for 替抗蓟化减抗鸡肉全链条质控与溯源平台.',
@@ -34,6 +37,7 @@ export const DJTK_SYSTEM_PROMPT = [
   'First answers should help: 鸡从哪来、安不安全、下一步点哪里、焦点批次风险、氟苯尼考筛查结果、待复核、法规与监管数据状态.',
   '【外部监管数据】当前离线实例没有实时海关或市场监管数据源。If asked about customs, regulation or public notices, state that no live external source is connected and never invent a notice.',
   '【筛查问法】For 氟苯尼考筛查结果: cite only evidence screen.qualitative / screen.result / report.no; never invent 阴性/合格; never give medication advice.',
+  '【三维评价】肉质品质指标只引用 evidence.eval.moisture（水分%）、tenderness（剪切力N）、pH、waterHolding（保水性%）；与炎症、菌群共同构成评价证据，不可单项臆断放行。',
 ].join(' ')
 
 const DJTK_RX_BAN =
@@ -199,6 +203,20 @@ export function buildFastAnswer(question, evidence) {
   const nextHint = String(ev?.nextStepHint || '指挥舱焦点档案 → 检测 → 评价 → 出证 → 溯源').trim()
 
   const ok = (answer) => ({ answer, fast: true })
+
+  if (/出口鸡肉安全/.test(q) && /大数据平台/.test(q) && /风险排查/.test(q)) {
+    return ok(REQUIRED_OPENING_REPLY)
+  }
+
+  if (/质检结果已出/.test(q) && /样品结果判定/.test(q)) {
+    if (ev?.verdict?.pass === true) return ok(REQUIRED_RESULT_REPLY)
+    const reasons = Array.isArray(ev?.verdict?.reasons) ? ev.verdict.reasons.filter(Boolean) : []
+    return ok(`已完成结果审核，当前批次尚未达到出证条件${reasons.length ? `：${reasons.join('；')}` : ''}。请完成复核后再作最终判定。`)
+  }
+
+  if (/大蓟替抗\s*高品质鸡肉解决方案\s*技能展示完成/.test(q)) {
+    return ok(REQUIRED_CLOSING_REPLY)
+  }
 
   if (/海关|监管|法规|政务公开/.test(q)) {
     return ok('当前离线实例未接入实时外部监管数据。请在“法规与风险”页确认数据源状态；本批判断只依据平台内可核验记录。')
@@ -385,6 +403,10 @@ export function buildDjtkEvidence(batchId) {
       TNFaCtrl: ev.TNFaCtrl ?? '',
       CRP: ev.CRP ?? '',
       CRPCtrl: ev.CRPCtrl ?? '',
+      moisture: ev.moisture ?? '',
+      tenderness: ev.tenderness ?? '',
+      pH: ev.pH ?? '',
+      waterHolding: ev.waterHolding ?? '',
     },
     report: {
       generated: !!full.report?.generated,

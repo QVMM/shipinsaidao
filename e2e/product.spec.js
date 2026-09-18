@@ -201,6 +201,30 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
 })
 
+test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ page }) => {
+  await page.goto('/#/stage')
+  await page.getByRole('button', { name: '全屏研判' }).click()
+  const cabin = page.getByRole('dialog', { name: 'DJTK 全屏指挥舱' })
+  await cabin.getByRole('button', { name: '样品结果判定' }).click()
+  const answer = cabin.locator('.djtk-bubble.is-bot').last()
+  await expect(answer).toContainText(/高品质鸡肉三维评价体系|尚未达到出证条件/)
+  await expect(answer).not.toContainText('4 号')
+})
+
+test('健康评价展示水分、嫩度、pH 与保水性实测指标', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/eval')
+  const quality = page.locator('[data-evidence-view] .health-quality')
+  await expect(quality).toBeVisible()
+  for (const label of ['水分', '嫩度', 'pH 值', '保水性']) {
+    await expect(quality.getByText(label, { exact: true })).toBeVisible()
+  }
+  await expect(quality).toContainText('73.8')
+  await expect(quality).toContainText('24.6')
+  await expect(quality).toContainText('5.78')
+  await expect(quality).toContainText('79.2')
+})
+
 test('AI 助手说话口型只在嘴唇区域柔和切换', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/#/stage')

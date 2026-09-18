@@ -42,6 +42,10 @@ const EMPTY_EVAL = {
   shannonCtrl: '',
   lactoChange: '',
   ecoliChange: '',
+  moisture: '',
+  tenderness: '',
+  pH: '',
+  waterHolding: '',
 }
 
 /**
@@ -127,6 +131,10 @@ function goodEval(testDate, tweak = {}) {
     shannonCtrl: 2.71,
     lactoChange: 24,
     ecoliChange: -36,
+    moisture: 73.6,
+    tenderness: 25.1,
+    pH: 5.8,
+    waterHolding: 78.8,
     ...tweak,
   }
 }

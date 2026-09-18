@@ -72,6 +72,19 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   expect(bodyText).not.toMatch(forbiddenCopy)
 })
 
+test('经典可视化焦点判定区紧凑呈现且不留下大块空白', async ({ page }) => {
+  await page.setViewportSize({ width: 1512, height: 829 })
+  await page.goto('/?view=classic#/stage')
+  await expect(page.locator('.wall.is-legacy')).toBeVisible()
+
+  const callout = await page.locator('.conveyor-box .callout').boundingBox()
+  const verdict = await page.locator('.conveyor-box .co-verdict').boundingBox()
+  expect(callout).not.toBeNull()
+  expect(verdict).not.toBeNull()
+  expect(callout.height).toBeLessThanOrEqual(130)
+  expect(verdict.height).toBeLessThanOrEqual(90)
+})
+
 test('短宽屏完整展示底部证据卡片', async ({ page }) => {
   await page.setViewportSize({ width: 1512, height: 829 })
   await page.goto('/#/stage')

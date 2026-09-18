@@ -38,6 +38,7 @@ import {
   verifyPassword,
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
+import { mimoVoiceConfigured, synthesizeMimoVoice } from './mimo-voice.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -240,7 +241,7 @@ export async function buildApp() {
     mode: 'local-voice',
     cloudModel: false,
     voiceInput: 'browser-speech-recognition',
-    voiceOutput: 'system-speech-synthesis',
+    voiceOutput: mimoVoiceConfigured() ? 'mimo-tts-with-system-fallback' : 'system-speech-synthesis',
     offlineMode: offlineMode(),
     stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
     stageBooth: stageBoothEnabled(),
@@ -314,11 +315,16 @@ export async function buildApp() {
     if (text.length > DJTK_TTS_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
-    return reply.code(410).send({
-      error: 'browser_voice_only',
-      message: '语音输出已改用本机浏览器系统音色。',
-      fallback: true,
-    })
+    const voice = await synthesizeMimoVoice(text)
+    if (!voice.ok) {
+      req.log.warn({ status: voice.status, error: voice.error }, 'djtk mimo voice fallback')
+      return reply.code(voice.status).send({
+        error: 'mimo_voice_unavailable',
+        message: voice.error,
+        fallback: true,
+      })
+    }
+    return voice
   })
 
   app.get('/api/health', async () => ({

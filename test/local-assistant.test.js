@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-test('智能助手在配置旧云端密钥时仍只使用本地证据且不发起外部请求', async () => {
+test('配置 MiMo 语音密钥后，问答仍只使用本地证据且不发起外部请求', async () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'djtk-local-assistant-'))
   const originalDatabase = process.env.DATABASE_PATH
   const originalStageToken = process.env.DJTK_STAGE_TOKEN
@@ -31,7 +31,7 @@ test('智能助手在配置旧云端密钥时仍只使用本地证据且不发�
     assert.equal(status.mode, 'local-voice')
     assert.equal(status.cloudModel, false)
     assert.equal(status.voiceInput, 'browser-speech-recognition')
-    assert.equal(status.voiceOutput, 'system-speech-synthesis')
+    assert.equal(status.voiceOutput, 'mimo-tts-with-system-fallback')
 
     const response = await app.inject({
       method: 'POST',

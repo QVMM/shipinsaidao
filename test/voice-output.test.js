@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { speakPreview, speakWithSystemVoice } from '../src/lib/djtk-human.js'
+import { speakPreview, speakWithPreferredVoice } from '../src/lib/djtk-human.js'
 
 const requiredClosing = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 
@@ -23,7 +23,7 @@ test('4 号现场人员台词不进入助手播报', () => {
   )
 })
 
-test('语音输出只调用本机浏览器能力，不请求云端语音接口', async () => {
+test('语音输出先请求专用语音接口，失败后回退本机浏览器能力', async () => {
   const originalFetch = globalThis.fetch
   let fetchCalls = 0
   globalThis.fetch = async () => {
@@ -32,8 +32,8 @@ test('语音输出只调用本机浏览器能力，不请求云端语音接口',
   }
 
   try {
-    const result = await speakWithSystemVoice('本地播报测试。')
-    assert.equal(fetchCalls, 0)
+    const result = await speakWithPreferredVoice('本地播报测试。')
+    assert.equal(fetchCalls, 1)
     assert.equal(result.via, 'none')
   } finally {
     globalThis.fetch = originalFetch

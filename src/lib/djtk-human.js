@@ -369,18 +369,34 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Speak through the device browser only. No audio is sent to an application TTS API.
+ * Prefer MiMo text-to-speech for the final local answer, with system speech fallback.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'browser' | 'none' }>}
+ * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
  */
-export async function speakWithSystemVoice(text, opts = {}) {
+export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
   const say = speakPreview(full, 120)
   if (!say) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
   }
+  try {
+    const data = await post('/api/djtk/tts', {
+      text: say.slice(0, 300),
+      ...stageBody(),
+    }, { silent: true, signal: opts.signal, headers: stageHeaders() })
+    if (data?.audioBase64) {
+      const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
+      return { ok, via: 'mimo' }
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      opts.onEnd?.()
+      return { ok: false, via: 'none' }
+    }
+  }
+  opts.onFallback?.()
   const ok = await speakBrowser(say, opts)
   return { ok, via: ok ? 'browser' : 'none' }
 }
@@ -895,7 +911,7 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('本机语音播报中…')
+    setStatus('正在生成 MiMo 语音…')
 
     const hooks = {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
@@ -906,10 +922,13 @@ export function bindDjtkHuman(root, opts = {}) {
         setBusy(false)
         allStop().forEach((b) => { b.hidden = true })
       },
+      onFallback: () => {
+        if (seq === askSeq) setStatus('MiMo 语音暂不可用，已切换系统音色')
+      },
     }
 
     try {
-      const spoken = await speakWithSystemVoice(answer, { ...hooks, signal })
+      const spoken = await speakWithPreferredVoice(answer, { ...hooks, signal })
       if (!spoken.ok && seq === askSeq) setStatus('当前设备语音不可用，请查看文字回答')
     } catch {
       if (seq === askSeq) {

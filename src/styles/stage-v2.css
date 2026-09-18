@@ -935,6 +935,7 @@
   .co-meta dt,
   .co-meta dd { font-size: 9px; }
   .wall-mid { grid-template-rows: minmax(300px, 1fr) 200px 170px; }
+  .wall-left { grid-template-rows: minmax(250px, 1fr) 198px 226px; }
   .stage-evidence-grid { grid-template-columns: 1fr; }
   .stage-farm-card,
   .stage-evidence-card { display: none; }

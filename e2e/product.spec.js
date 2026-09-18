@@ -182,6 +182,38 @@ test('短宽屏完整展示底部证据卡片', async ({ page }) => {
   expect(processLayout.conditions.bottom).toBeLessThanOrEqual(processLayout.dock.bottom + 1)
 })
 
+test('1185×802 窗口下左侧卡片互不遮挡且页面不被裁切', async ({ page }) => {
+  await page.setViewportSize({ width: 1185, height: 802 })
+  await page.goto('/#/stage')
+  const layout = await page.evaluate(() => {
+    const measure = (selector) => {
+      const node = document.querySelector(selector)
+      const rect = node.getBoundingClientRect()
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        overflow: node.scrollHeight - node.clientHeight,
+      }
+    }
+    return {
+      wall: measure('.wall'),
+      left: measure('.wall-left'),
+      queue: measure('.queue-box'),
+      spot: measure('.spot-box'),
+      house: measure('.env-strip'),
+    }
+  })
+
+  expect(layout.wall.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1)
+  expect(layout.left.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1)
+  expect(layout.queue.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1)
+  expect(layout.spot.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1)
+  expect(layout.house.overflow, JSON.stringify(layout)).toBeLessThanOrEqual(1)
+  expect(layout.queue.bottom).toBeLessThanOrEqual(layout.spot.top)
+  expect(layout.spot.bottom).toBeLessThanOrEqual(layout.house.top)
+  expect(layout.house.bottom).toBeLessThanOrEqual(802)
+})
+
 test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => {
   let ttsRequests = 0
   page.on('request', (request) => {
@@ -194,7 +226,7 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   expect(answer).not.toMatch(forbiddenCopy)
   expect(answer).toMatch(/批次|检测|筛查|报告|证据/)
   await page.waitForTimeout(100)
-  expect(ttsRequests).toBe(0)
+  expect(ttsRequests).toBe(1)
 
   await page.getByRole('button', { name: '新建会话' }).click()
   await expect(page.locator('.djtk-human.is-embedded .djtk-bubble')).toHaveCount(0)
@@ -249,7 +281,7 @@ test('语音输入可直接发起本地研判并由设备系统语音播报', as
   await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText(/批次|基地|鸡舍|品种/)
   await expect.poll(() => page.evaluate(() => window.__djtkSpokenText)).toMatch(/批次|基地|鸡舍|品种/)
   expect(await page.evaluate(() => window.__djtkRecognitionConfig)).toEqual({ lang: 'zh-CN', processLocally: true })
-  expect(ttsRequests).toBe(0)
+  expect(ttsRequests).toBe(1)
 })
 
 test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ page }) => {

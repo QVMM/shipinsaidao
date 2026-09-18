@@ -230,6 +230,17 @@ function isBrowserSpeechOk() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window
 }
 
+const FEMALE_CHINESE_VOICE = /(?:female|woman|girl|xiaoxiao|xiaoyi|xiaohan|xiaomeng|xiaomo|xiaoqiu|xiaorui|xiaoshuang|xiaoxuan|xiaoyan|xiaoyou|xiaozhen|yunxia|huihui|yaoyao|hanhan|ting[- ]?ting|mei[- ]?jia|sin[- ]?ji|晓晓|晓伊|晓涵|晓梦|晓墨|晓秋|晓睿|晓双|晓萱|晓颜|晓悠|晓甄|云霞|慧慧|瑶瑶|涵涵|婷婷|美佳|善怡|女声)/i
+const GOOGLE_CHINESE_VOICE = /google.*(?:普通话|中文|mandarin|chinese)/i
+
+/** Never silently fall back to a Chinese male system voice. */
+export function selectFemaleChineseVoice(voices = []) {
+  const chinese = Array.from(voices).filter((voice) => /^zh(?:[-_]|$)/i.test(String(voice?.lang || '')))
+  return chinese.find((voice) => FEMALE_CHINESE_VOICE.test(String(voice?.name || '')))
+    || chinese.find((voice) => GOOGLE_CHINESE_VOICE.test(String(voice?.name || '')))
+    || null
+}
+
 function speechRecognitionCtor() {
   if (typeof window === 'undefined') return null
   return window.SpeechRecognition || window.webkitSpeechRecognition || null
@@ -325,9 +336,15 @@ export function speakBrowser(text, hooks = {}) {
     const u = new SpeechSynthesisUtterance(String(text).trim())
     u.lang = 'zh-CN'
     u.rate = 1.18
+    u.pitch = 1.04
     const list = window.speechSynthesis.getVoices?.() || []
-    const voice = list.find((v) => /zh(-|_)CN/i.test(v.lang)) || list.find((v) => /^zh/i.test(v.lang))
-    if (voice) u.voice = voice
+    const voice = selectFemaleChineseVoice(list)
+    if (!voice) {
+      hooks.onEnd?.()
+      resolve(false)
+      return
+    }
+    u.voice = voice
     let active = true
     const finish = (ok) => {
       active = false
@@ -911,7 +928,7 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('正在生成 MiMo 语音…')
+    setStatus('正在生成 MiMo 女声…')
 
     const hooks = {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
@@ -923,7 +940,7 @@ export function bindDjtkHuman(root, opts = {}) {
         allStop().forEach((b) => { b.hidden = true })
       },
       onFallback: () => {
-        if (seq === askSeq) setStatus('MiMo 语音暂不可用，已切换系统音色')
+        if (seq === askSeq) setStatus('MiMo 女声暂不可用，正在切换本机女声')
       },
     }
 

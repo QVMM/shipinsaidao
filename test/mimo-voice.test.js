@@ -50,10 +50,12 @@ test('MiMo 只合成最终语音，不参与本地证据问答', async () => {
     })
     assert.equal(voice.statusCode, 200)
     assert.equal(voice.json().voice, '茉莉')
+    assert.equal(voice.json().voiceGender, 'female')
     assert.equal(voice.json().audioBase64, 'UklGRg==')
     assert.equal(requests.length, 1)
     assert.equal(requests[0].url, 'https://voice.test/v1/chat/completions')
     assert.equal(requests[0].body.model, 'mimo-v2.5-tts')
+    assert.equal(requests[0].body.audio.voice, '茉莉')
   } finally {
     if (app) await app.close()
     globalThis.fetch = originalFetch

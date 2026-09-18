@@ -32,6 +32,8 @@ test('配置 MiMo 语音密钥后，问答仍只使用本地证据且不发起�
     assert.equal(status.cloudModel, false)
     assert.equal(status.voiceInput, 'browser-speech-recognition')
     assert.equal(status.voiceOutput, 'mimo-tts-with-system-fallback')
+    assert.equal(status.voiceName, '茉莉')
+    assert.equal(status.voiceGender, 'female')
 
     const response = await app.inject({
       method: 'POST',

@@ -2,7 +2,8 @@
 
 const DEFAULT_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 const TTS_MODEL = 'mimo-v2.5-tts'
-const TTS_VOICE = '茉莉'
+const DEFAULT_TTS_VOICE = '茉莉'
+const TTS_VOICE_GENDER = 'female'
 const TTS_TIMEOUT_MS = 8_000
 
 function apiKey() {
@@ -11,6 +12,14 @@ function apiKey() {
 
 function baseUrl() {
   return String(process.env.MIMO_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '')
+}
+
+function ttsVoice() {
+  return String(process.env.MIMO_TTS_VOICE || DEFAULT_TTS_VOICE).trim() || DEFAULT_TTS_VOICE
+}
+
+export function mimoVoiceProfile() {
+  return { voice: ttsVoice(), voiceGender: TTS_VOICE_GENDER }
 }
 
 export function mimoVoiceConfigured() {
@@ -24,6 +33,7 @@ export function mimoVoiceConfigured() {
 export async function synthesizeMimoVoice(text) {
   const say = String(text || '').trim()
   const key = apiKey()
+  const voice = ttsVoice()
   if (!say) return { ok: false, status: 400, error: '没有要播报的文字。' }
   if (!key) return { ok: false, status: 503, error: 'MiMo 语音服务未配置。' }
 
@@ -39,7 +49,7 @@ export async function synthesizeMimoVoice(text) {
       body: JSON.stringify({
         model: TTS_MODEL,
         messages: [{ role: 'assistant', content: say.slice(0, 300) }],
-        audio: { format: 'wav', voice: TTS_VOICE },
+        audio: { format: 'wav', voice },
       }),
       signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
     })
@@ -61,5 +71,5 @@ export async function synthesizeMimoVoice(text) {
   const audioBase64 = String(payload?.choices?.[0]?.message?.audio?.data || '').trim()
   if (!audioBase64) return { ok: false, status: 502, error: 'MiMo 语音响应没有音频。' }
 
-  return { ok: true, audioBase64, mime: 'audio/wav', voice: TTS_VOICE }
+  return { ok: true, audioBase64, mime: 'audio/wav', voice, voiceGender: TTS_VOICE_GENDER }
 }

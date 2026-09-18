@@ -25,6 +25,8 @@ services:
         sync: false
       - key: MIMO_BASE_URL
         value: https://token-plan-cn.xiaomimimo.com/v1
+      - key: MIMO_TTS_VOICE
+        value: 茉莉
       # Rotate in Render Dashboard if this blueprint value was ever public.
       # Prefer sync:false + Dashboard secret for long-lived deploys.
       - key: DJTK_STAGE_TOKEN

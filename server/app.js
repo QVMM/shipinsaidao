@@ -38,7 +38,7 @@ import {
   verifyPassword,
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
-import { mimoVoiceConfigured, synthesizeMimoVoice } from './mimo-voice.js'
+import { mimoVoiceConfigured, mimoVoiceProfile, synthesizeMimoVoice } from './mimo-voice.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -236,16 +236,21 @@ export async function buildApp() {
     return { items: listAudit(batchId || undefined) }
   })
 
-  app.get('/api/djtk/status', async () => ({
-    ok: true,
-    mode: 'local-voice',
-    cloudModel: false,
-    voiceInput: 'browser-speech-recognition',
-    voiceOutput: mimoVoiceConfigured() ? 'mimo-tts-with-system-fallback' : 'system-speech-synthesis',
-    offlineMode: offlineMode(),
-    stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
-    stageBooth: stageBoothEnabled(),
-  }))
+  app.get('/api/djtk/status', async () => {
+    const voiceProfile = mimoVoiceProfile()
+    return {
+      ok: true,
+      mode: 'local-voice',
+      cloudModel: false,
+      voiceInput: 'browser-speech-recognition',
+      voiceOutput: mimoVoiceConfigured() ? 'mimo-tts-with-system-fallback' : 'system-speech-synthesis',
+      voiceName: voiceProfile.voice,
+      voiceGender: voiceProfile.voiceGender,
+      offlineMode: offlineMode(),
+      stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
+      stageBooth: stageBoothEnabled(),
+    }
+  })
 
   /**
    * Mint httpOnly booth cookie for anonymous #/stage.

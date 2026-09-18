@@ -233,9 +233,10 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
 })
 
-test('语音输入可直接发起本地研判并由设备系统语音播报', async ({ page }) => {
+test('语音输入可直接发起本地研判并由设备中文女声播报', async ({ page }) => {
   await page.addInitScript(() => {
     window.__djtkSpokenText = ''
+    window.__djtkSelectedVoice = ''
     window.SpeechSynthesisUtterance = class {
       constructor(text) {
         this.text = text
@@ -245,9 +246,15 @@ test('语音输入可直接发起本地研判并由设备系统语音播报', as
       configurable: true,
       value: {
         cancel() {},
-        getVoices() { return [] },
+        getVoices() {
+          return [
+            { name: 'Microsoft Yunxi Online', lang: 'zh-CN' },
+            { name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' },
+          ]
+        },
         speak(utterance) {
           window.__djtkSpokenText = utterance.text
+          window.__djtkSelectedVoice = utterance.voice?.name || ''
           setTimeout(() => utterance.onend?.(), 0)
         },
       },
@@ -280,6 +287,7 @@ test('语音输入可直接发起本地研判并由设备系统语音播报', as
   await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('这批鸡从哪来？')
   await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText(/批次|基地|鸡舍|品种/)
   await expect.poll(() => page.evaluate(() => window.__djtkSpokenText)).toMatch(/批次|基地|鸡舍|品种/)
+  expect(await page.evaluate(() => window.__djtkSelectedVoice)).toBe('Microsoft Xiaoxiao Online')
   expect(await page.evaluate(() => window.__djtkRecognitionConfig)).toEqual({ lang: 'zh-CN', processLocally: true })
   expect(ttsRequests).toBe(1)
 })

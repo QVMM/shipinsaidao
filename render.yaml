@@ -18,10 +18,6 @@ services:
         generateValue: true
       - key: SEAL_SECRET
         generateValue: true
-      - key: MIMO_API_KEY
-        sync: false
-      - key: MIMO_BASE_URL
-        value: https://token-plan-cn.xiaomimimo.com/v1
       # Rotate in Render Dashboard if this blueprint value was ever public.
       # Prefer sync:false + Dashboard secret for long-lived deploys.
       - key: DJTK_STAGE_TOKEN

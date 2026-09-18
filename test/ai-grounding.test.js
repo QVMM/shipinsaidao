@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildFastAnswer, sanitizeDjtkAnswer } from '../server/mimo.js'
+import { buildFastAnswer, sanitizeDjtkAnswer } from '../server/local-assistant.js'
 
 const blockedEvidence = {
   batchId: 'TEST-FAIL',

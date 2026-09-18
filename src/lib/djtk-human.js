@@ -1,5 +1,5 @@
 /**
- * DJTK 数字人：指挥舱浮动面板 + 全屏 AI 指挥舱，问答 + MIMO 语音（失败则浏览器 TTS）。
+ * DJTK 数字人：指挥舱浮动面板 + 全屏研判舱，本地证据问答 + 设备系统语音。
  * Auth: staff session cookie preferred; anonymous booth uses httpOnly djtk_stage
  * cookie from POST /api/djtk/stage-session (no secret in client JS).
  * Optional legacy x-stage-token only if injected (window.__DJTK_STAGE_TOKEN__ or
@@ -156,7 +156,7 @@ function stopMouthAnim() {
 }
 
 /**
- * RAF loop: toggle is-mouth-open from analyser RMS while MIMO wav plays.
+ * RAF loop: toggle is-mouth-open from analyser RMS while audio plays.
  * @param {AnalyserNode} analyser
  * @param {() => boolean} stillActive
  */
@@ -369,38 +369,18 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Prefer MIMO TTS API, else browser.
+ * Speak through the device browser only. No audio is sent to an application TTS API.
  * @param {string} text
- * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void, skipMimo?: boolean }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
+ * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
+ * @returns {Promise<{ ok: boolean, via: 'browser' | 'none' }>}
  */
-export async function speakWithMimoOrBrowser(text, opts = {}) {
+export async function speakWithSystemVoice(text, opts = {}) {
   const full = String(text || '').trim()
   const say = speakPreview(full, 120)
   if (!say) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
   }
-  if (opts.skipMimo) {
-    const ok = await speakBrowser(say, opts)
-    return { ok, via: ok ? 'browser' : 'none' }
-  }
-  try {
-    const data = await post('/api/djtk/tts', {
-      text: say.slice(0, 300),
-      ...stageBody(),
-    }, { silent: true, signal: opts.signal, headers: stageHeaders() })
-    if (data?.audioBase64) {
-      const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
-      return { ok, via: 'mimo' }
-    }
-  } catch (err) {
-    if (err?.name === 'AbortError') {
-      opts.onEnd?.()
-      return { ok: false, via: 'none' }
-    }
-  }
-  opts.onFallback?.()
   const ok = await speakBrowser(say, opts)
   return { ok, via: ok ? 'browser' : 'none' }
 }
@@ -631,7 +611,7 @@ export function bindDjtkHuman(root, opts = {}) {
   /** @type {SpeechRecognition | null} */
   let recognition = null
   let listening = false
-  let mimoStatusTimer = 0
+  let statusTimer = 0
 
   // Resume AudioContext on first user gesture (autoplay policies).
   const unlockAudio = () => {
@@ -740,10 +720,10 @@ export function bindDjtkHuman(root, opts = {}) {
 
   const flashStatus = (msg, ms = 2200) => {
     setStatus(msg)
-    if (mimoStatusTimer) clearTimeout(mimoStatusTimer)
-    mimoStatusTimer = window.setTimeout(() => {
+    if (statusTimer) clearTimeout(statusTimer)
+    statusTimer = window.setTimeout(() => {
       setStatus('')
-      mimoStatusTimer = 0
+      statusTimer = 0
     }, ms)
   }
 
@@ -876,8 +856,6 @@ export function bindDjtkHuman(root, opts = {}) {
     let answer
     /** @type {boolean} */
     let authFail = false
-    /** Local evidence answers should start speaking immediately without a failed cloud TTS round-trip. */
-    let preferBrowserSpeech = false
     try {
       const data = await post('/api/djtk/ask', {
         question: q,
@@ -888,14 +866,7 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
-      preferBrowserSpeech = data?.fast === true || data?.degraded === true
-      if (data?.degraded) {
-        setStatus('【降级·未连模型】已用平台记录简答')
-      } else if (data?.fast) {
-        flashStatus('平台证据速答', 1800)
-      } else {
-        flashStatus('MIMO 已回答', 1800)
-      }
+      flashStatus(data?.fast ? '平台证据速答' : '本地证据已回答', 1800)
     } catch (err) {
       if (seq !== askSeq || err?.name === 'AbortError') return
       if (err?.status === 401) {
@@ -903,9 +874,8 @@ export function bindDjtkHuman(root, opts = {}) {
         setStatus('请重新登录工作人员账号')
         answer = '请先登录工作人员账号后再提问。展台大屏若仍无会话，请刷新页面重试。'
       } else {
-        setStatus('云端暂不可用，请看左侧焦点档案与判定条')
+        setStatus('当前请求未完成，请看左侧焦点档案与判定条')
         answer = localFallback(q)
-        preferBrowserSpeech = true
       }
     }
 
@@ -925,9 +895,8 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus(preferBrowserSpeech ? '本地语音播报中…' : '正在播报…')
+    setStatus('本机语音播报中…')
 
-    let browserFallbackNoted = false
     const hooks = {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
       onEnd: () => {
@@ -937,20 +906,14 @@ export function bindDjtkHuman(root, opts = {}) {
         setBusy(false)
         allStop().forEach((b) => { b.hidden = true })
       },
-      onFallback: () => {
-        if (seq === askSeq && !browserFallbackNoted) {
-          browserFallbackNoted = true
-          setStatus('已用浏览器朗读（MIMO 语音暂不可用）')
-        }
-      },
     }
 
     try {
-      await speakWithMimoOrBrowser(answer, { ...hooks, signal, skipMimo: preferBrowserSpeech })
+      const spoken = await speakWithSystemVoice(answer, { ...hooks, signal })
+      if (!spoken.ok && seq === askSeq) setStatus('当前设备语音不可用，请查看文字回答')
     } catch {
       if (seq === askSeq) {
-        hooks.onFallback?.()
-        await speakBrowser(speakPreview(answer, 120), hooks)
+        setStatus('当前设备语音不可用，请查看文字回答')
       }
     } finally {
       if (seq === askSeq) {
@@ -971,6 +934,9 @@ export function bindDjtkHuman(root, opts = {}) {
     const rec = new Ctor()
     recognition = rec
     rec.lang = 'zh-CN'
+    // Newer Chromium builds can keep recognition on-device when the language
+    // pack is installed; older engines safely ignore this property.
+    rec.processLocally = true
     rec.interimResults = true
     rec.continuous = false
     rec.onstart = () => setMicUi(true)
@@ -1125,7 +1091,7 @@ export function bindDjtkHuman(root, opts = {}) {
     askSeq += 1
     stopMic()
     recognition = null
-    if (mimoStatusTimer) clearTimeout(mimoStatusTimer)
+    if (statusTimer) clearTimeout(statusTimer)
     stopDjtkAudio()
     window.removeEventListener('keydown', onKey)
     exitCabin()

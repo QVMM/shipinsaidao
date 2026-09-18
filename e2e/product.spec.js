@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
-/* global document, getComputedStyle */
+/* global document, getComputedStyle, window, setTimeout */
 
 const forbiddenCopy = /演示|非真实|\bDemo\b/i
 
@@ -199,6 +199,57 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await page.getByRole('button', { name: '新建会话' }).click()
   await expect(page.locator('.djtk-human.is-embedded .djtk-bubble')).toHaveCount(0)
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
+})
+
+test('语音输入可直接发起本地研判并由设备系统语音播报', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__djtkSpokenText = ''
+    window.SpeechSynthesisUtterance = class {
+      constructor(text) {
+        this.text = text
+      }
+    }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() { return [] },
+        speak(utterance) {
+          window.__djtkSpokenText = utterance.text
+          setTimeout(() => utterance.onend?.(), 0)
+        },
+      },
+    })
+    window.SpeechRecognition = class {
+      start() {
+        window.__djtkRecognitionConfig = { lang: this.lang, processLocally: this.processLocally }
+        this.onstart?.()
+        setTimeout(() => {
+          const result = [{ transcript: '这批鸡从哪来？' }]
+          result.isFinal = true
+          this.onresult?.({ resultIndex: 0, results: [result] })
+        }, 0)
+      }
+      stop() { this.onend?.() }
+      abort() {}
+    }
+  })
+
+  let ttsRequests = 0
+  page.on('request', (request) => {
+    if (request.url().includes('/api/djtk/tts')) ttsRequests += 1
+  })
+  await page.goto('/#/stage')
+  const assistant = page.locator('.djtk-human.is-embedded')
+  const mic = assistant.getByRole('button', { name: '语音输入' })
+  await expect(mic).toBeEnabled()
+  await mic.click()
+
+  await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('这批鸡从哪来？')
+  await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText(/批次|基地|鸡舍|品种/)
+  await expect.poll(() => page.evaluate(() => window.__djtkSpokenText)).toMatch(/批次|基地|鸡舍|品种/)
+  expect(await page.evaluate(() => window.__djtkRecognitionConfig)).toEqual({ lang: 'zh-CN', processLocally: true })
+  expect(ttsRequests).toBe(0)
 })
 
 test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ page }) => {

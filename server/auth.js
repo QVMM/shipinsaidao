@@ -97,7 +97,7 @@ export { publicUser }
  * Booth / stage: logged-in staff OR x-stage-token matching env DJTK_STAGE_TOKEN
  * OR valid httpOnly djtk_stage cookie minted by /api/djtk/stage-session.
  * No published default — unset env means header/body stage-token auth is disabled,
- * but booth cookie can still mint when MIMO_API_KEY is configured.
+ * but booth cookie can still mint when SESSION_SECRET is configured.
  */
 export function stageDemoToken() {
   return String(process.env.DJTK_STAGE_TOKEN || process.env.STAGE_DEMO_TOKEN || '').trim()
@@ -105,18 +105,14 @@ export function stageDemoToken() {
 
 /**
  * Server-only material used to HMAC-sign the booth cookie.
- * Prefers DJTK_STAGE_TOKEN; else SESSION_SECRET; else a hash of MIMO_API_KEY
- * (never returned to clients). Empty → booth cookie minting disabled.
+ * Prefers DJTK_STAGE_TOKEN; otherwise uses SESSION_SECRET.
+ * Empty → booth cookie minting disabled.
  */
 export function stageCookieSigningKey() {
   const stage = stageDemoToken()
   if (stage) return stage
   const sess = String(process.env.SESSION_SECRET || '').trim()
   if (sess && sess !== 'dev-only-change-me') return sess
-  const mimo = String(process.env.MIMO_API_KEY || '').trim()
-  if (mimo) {
-    return createHmac('sha256', 'djtk-booth-v1').update(mimo).digest('hex')
-  }
   // Dev fallback only when SESSION_SECRET is the placeholder
   if (sess) return sess
   return ''

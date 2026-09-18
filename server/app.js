@@ -37,7 +37,7 @@ import {
   userFromToken,
   verifyPassword,
 } from './auth.js'
-import { mimoAsk, mimoConfigured, mimoTts, buildDjtkEvidence, buildDegradedAnswer, buildFastAnswer, sanitizeDjtkAnswer } from './mimo.js'
+import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -72,7 +72,9 @@ function makeRateLimiter({ windowMs, max }) {
 
 const askLimiter = makeRateLimiter(ASK_LIMIT)
 const ttsLimiter = makeRateLimiter(TTS_LIMIT)
-const STAGE_SESSION_LIMIT = { windowMs: 60_000, max: 20 }
+// A wall display, operator console and test/inspection tabs may share one NAT IP.
+// This endpoint only mints a signed httpOnly booth cookie; Q&A keeps its own tighter limit.
+const STAGE_SESSION_LIMIT = { windowMs: 60_000, max: 120 }
 const stageSessionLimiter = makeRateLimiter(STAGE_SESSION_LIMIT)
 
 function clientKey(req) {
@@ -235,7 +237,10 @@ export async function buildApp() {
 
   app.get('/api/djtk/status', async () => ({
     ok: true,
-    mimoConfigured: mimoConfigured(),
+    mode: 'local-voice',
+    cloudModel: false,
+    voiceInput: 'browser-speech-recognition',
+    voiceOutput: 'system-speech-synthesis',
     offlineMode: offlineMode(),
     stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
     stageBooth: stageBoothEnabled(),
@@ -253,7 +258,7 @@ export async function buildApp() {
     if (!stageBoothEnabled()) {
       return reply.code(503).send({
         error: 'stage_booth_disabled',
-        message: '展台会话未启用（需配置 DJTK_STAGE_TOKEN / SESSION_SECRET 或 MIMO_API_KEY）。',
+        message: '展台会话未启用（需配置 DJTK_STAGE_TOKEN 或 SESSION_SECRET）。',
         ok: false,
       })
     }
@@ -276,9 +281,7 @@ export async function buildApp() {
       return reply.code(429).send({ error: 'rate_limited', message: '提问太频繁，请稍后再试。' })
     }
     const question = String(req.body?.question || '').trim()
-    const history = Array.isArray(req.body?.history) ? req.body.history : []
     const batchId = String(req.body?.batchId || DEFAULT_BATCH_ID || '').trim() || DEFAULT_BATCH_ID
-    const speak = req.body?.speak === true
     if (!question) {
       return reply.code(400).send({ error: 'invalid', message: '请先输入问题。' })
     }
@@ -286,69 +289,17 @@ export async function buildApp() {
       return reply.code(400).send({ error: 'invalid', message: `问题请控制在 ${DJTK_Q_MAX} 字以内。` })
     }
     const evidence = buildDjtkEvidence(batchId)
-    const modelStartedAt = Date.now()
-    const sendDegraded = (reason, meta = {}) => {
-      const deg = buildDegradedAnswer(question, evidence)
-      req.log.warn({
-        err: reason,
-        status: meta.status || undefined,
-        attempts: meta.attempts || undefined,
-        durationMs: Date.now() - modelStartedAt,
-      }, 'djtk ask degraded')
-      return {
-        answer: sanitizeDjtkAnswer(deg.answer, evidence),
-        audioBase64: null,
-        mime: 'audio/wav',
-        voice: null,
-        model: null,
-        degraded: true,
-        ttsFallback: true,
-        fallback: true,
-      }
-    }
-    const fast = buildFastAnswer(question, evidence)
-    if (fast?.answer) {
-      return {
-        answer: sanitizeDjtkAnswer(fast.answer, evidence),
-        audioBase64: null,
-        mime: 'audio/wav',
-        voice: null,
-        model: 'local-evidence',
-        degraded: false,
-        fast: true,
-        ttsFallback: true,
-      }
-    }
-    if (!mimoConfigured()) {
-      return sendDegraded('mimo_unconfigured')
-    }
-    const result = await mimoAsk({ question, history, batchId, speak, evidence })
-    if (!result.ok) {
-      // Booth keeps working: 200 + degraded answer instead of 500 when possible
-      if (result.status === 400) {
-        return reply.code(400).send({
-          error: result.error || 'invalid',
-          message: result.body || '请先输入问题。',
-        })
-      }
-      return sendDegraded(result.error || 'mimo_failed', {
-        status: result.status,
-        attempts: result.attempts,
-      })
-    }
-    req.log.info({
-      model: result.model,
-      attempts: result.attempts,
-      durationMs: Date.now() - modelStartedAt,
-    }, 'djtk ask model ok')
+    const result = buildLocalAnswer(question, evidence)
     return {
       answer: sanitizeDjtkAnswer(result.answer, evidence),
-      audioBase64: speak ? (result.audioBase64 || null) : null,
-      mime: result.mime || 'audio/wav',
-      voice: speak ? result.voice : null,
-      model: result.model,
+      audioBase64: null,
+      mime: null,
+      voice: 'system',
+      model: 'local-evidence',
       degraded: false,
-      ttsFallback: speak ? !result.audioBase64 : true,
+      fast: result.fast,
+      local: true,
+      ttsFallback: true,
     }
   })
 
@@ -363,27 +314,11 @@ export async function buildApp() {
     if (text.length > DJTK_TTS_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
-    if (!mimoConfigured()) {
-      return reply.code(503).send({
-        error: offlineMode() ? 'offline_mode' : 'mimo_unconfigured',
-        message: offlineMode() ? '当前为离线模式，请使用本机浏览器朗读。' : '服务端未配置 MIMO_API_KEY，请用浏览器朗读。',
-        fallback: true,
-      })
-    }
-    const result = await mimoTts(text)
-    if (!result.ok) {
-      req.log.warn({ err: result.error, detail: result.body }, 'djtk tts failed')
-      return reply.code(result.status >= 400 ? result.status : 502).send({
-        error: result.error || 'mimo_tts_failed',
-        message: '语音合成失败，请用浏览器朗读。',
-        fallback: true,
-      })
-    }
-    return {
-      audioBase64: result.audioBase64,
-      mime: result.mime,
-      voice: result.voice,
-    }
+    return reply.code(410).send({
+      error: 'browser_voice_only',
+      message: '语音输出已改用本机浏览器系统音色。',
+      fallback: true,
+    })
   })
 
   app.get('/api/health', async () => ({

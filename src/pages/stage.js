@@ -14,6 +14,8 @@ import { renderInkStamp } from '../components/ink-stamp.js'
 export const meta = { id: 'stage', title: '指挥舱' }
 
 const POLL_MS = 1500
+const DESIGN_W = 1920
+const DESIGN_H = 1080
 const CYAN = '#27e0d0'
 const BAR_CYAN = 'rgba(39, 224, 208, 0.88)'
 const BAR_GOLD = 'rgba(228, 197, 106, 0.78)'
@@ -31,6 +33,8 @@ const KPI_CHIPS = [
 
 let pollTimer = 0
 let clockTimer = 0
+let queueTimer = 0
+let queueIndex = 0
 let rootEl = null
 let lastSig = ''
 let echartsMod = null
@@ -39,6 +43,18 @@ const kpiFrom = { inFarm: 0, inLab: 0, certified: 0, onMarket: 0, alerts: 0 }
 
 function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function isLegacyView() {
+  return new URLSearchParams(location.search).get('view') === 'classic'
+}
+
+function stageViewHref(classic) {
+  const params = new URLSearchParams(location.search)
+  if (classic) params.set('view', 'classic')
+  else params.delete('view')
+  const query = params.toString()
+  return `${location.pathname}${query ? `?${query}` : ''}#/stage`
 }
 
 function esc(v) {
@@ -262,6 +278,8 @@ function birdsOfFunnel(funnel, keys) {
  * @returns {string}
  */
 export function render() {
+  const legacy = isLegacyView()
+  const switchHref = stageViewHref(!legacy)
   const chips = KPI_CHIPS.map((c) => `
     <div class="kpi ${c.danger ? 'is-alert' : ''}" data-kpi="${c.key}">
       <b class="dig" data-kpi-n="${c.key}">0</b>
@@ -290,11 +308,32 @@ export function render() {
     </li>`).join('')
 
   return `
-    <div class="wall" data-wall data-pass="">
+    <div class="wall${legacy ? ' is-legacy' : ''}" data-wall data-pass="" data-view="${legacy ? 'classic' : 'current'}">
       <div class="wall-board" data-board>
         <div class="wall-scan" aria-hidden="true"></div>
         <div class="wall-grid" aria-hidden="true"></div>
-        ${renderDjtkHuman({ embedded: true })}
+        ${renderDjtkHuman(legacy ? {} : { embedded: true })}
+        ${legacy ? `
+        <header class="wall-hd">
+          <div class="hd-wing hd-left">
+            <span class="hd-live"><i></i>LIVE</span>
+            <span class="hd-sys">FLEET QC / TRACE COMMAND</span>
+          </div>
+          <div class="hd-title">
+            <p class="hd-kicker">FOOD SAFETY · LIVESTOCK TRACEABILITY</p>
+            <h1>替抗蓟化 全链条质控与溯源指挥舱</h1>
+          </div>
+          <div class="hd-wing hd-right">
+            <time class="hd-clock dig" data-clock></time>
+            <div class="hd-meta">
+              <span class="hd-stamp" data-stamp>体系</span>
+              <a class="hd-view-switch" href="${esc(switchHref)}">新版指挥舱</a>
+              <button type="button" class="hd-fs" data-fs title="进入全屏">全屏</button>
+            </div>
+          </div>
+          <div class="hd-kpis">${chips}</div>
+        </header>
+        ` : `
         <header class="wall-hd">
           <div class="hd-brand">
             <img src="/evidence/thistle.jpg" alt="大蓟花">
@@ -312,12 +351,14 @@ export function render() {
           <div class="hd-actions">
             <time class="hd-clock dig" data-clock></time>
             <span class="hd-stamp" data-stamp>体系</span>
+            <a class="hd-view-switch" href="${esc(switchHref)}">经典可视化</a>
             <button type="button" class="hd-insights" data-insights aria-pressed="false">数据洞察</button>
             <button type="button" class="hd-fs" data-fs title="进入全屏">全屏</button>
             <button type="button" class="hd-assess" data-assess>研判当前批次</button>
           </div>
           <div class="hd-kpis">${chips}</div>
         </header>
+        `}
 
         <aside class="wall-col wall-left">
           <div class="dv-box queue-box">
@@ -377,14 +418,22 @@ export function render() {
               <ol class="stations">${stations}</ol>
             </div>
           </div>
+          ${legacy ? `
+          <div class="dv-box process-box" data-lab-layer>
+            ${corners()}
+            <div class="dv-hd"><i></i><h2>检测过程</h2><span>PROCESS</span></div>
+            ${renderLabDock()}
+          </div>
+          ` : ''}
           <div class="dv-box path-box">
             ${corners()}
-            <div class="dv-hd"><i></i><h2>从源头到餐桌 · 七步全链条溯源</h2><span data-path-tag>从饲料到上市</span></div>
+            <div class="dv-hd"><i></i><h2>${legacy ? '焦点路径' : '从源头到餐桌 · 七步全链条溯源'}</h2><span data-path-tag>从饲料到上市</span></div>
             <div class="path-flow">
               <div class="path-rail" aria-hidden="true"><i data-rail></i></div>
               <ol class="path-nodes">${path}</ol>
             </div>
           </div>
+          ${legacy ? '' : `
           <div class="stage-evidence-grid">
             <article class="dv-box stage-farm-card">
               ${corners()}
@@ -412,6 +461,7 @@ export function render() {
               </nav>
             </article>
           </div>
+          `}
         </section>
 
         <aside class="wall-col wall-right">
@@ -468,7 +518,7 @@ export async function bind(root) {
   root.querySelector('[data-fs]')?.addEventListener('click', toggleFs)
   root.querySelector('[data-assess]')?.addEventListener('click', startBatchAssessment)
   root.querySelector('[data-insights]')?.addEventListener('click', toggleInsights)
-  bindDjtkHuman(root, { batchId: chosenBatchId(), embedded: true })
+  bindDjtkHuman(root, { batchId: chosenBatchId(), embedded: !isLegacyView() })
   window.addEventListener('resize', onResize)
   clockTimer = window.setInterval(tickClock, 1000)
   await tick()
@@ -486,6 +536,7 @@ export function unbind() {
 
 function teardown() {
   unbindDjtkHuman()
+  stopQueueRoll()
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = 0
@@ -512,8 +563,54 @@ function onResize() {
 function applyScale() {
   const board = rootEl?.querySelector('[data-board]')
   if (!board) return
+  if (isLegacyView()) {
+    const scale = Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H)
+    const x = (window.innerWidth - DESIGN_W * scale) / 2
+    const y = (window.innerHeight - DESIGN_H * scale) / 2
+    board.style.removeProperty('--stage-height')
+    board.style.transform = `translate(${x}px, ${y}px) scale(${scale})`
+    return
+  }
   board.style.transform = ''
   board.style.setProperty('--stage-height', `${window.innerHeight}px`)
+}
+
+function stopQueueRoll() {
+  if (queueTimer) {
+    clearInterval(queueTimer)
+    queueTimer = 0
+  }
+  queueIndex = 0
+}
+
+function startQueueRoll(queue, count) {
+  stopQueueRoll()
+  queue.style.transition = 'none'
+  queue.style.transform = 'translate3d(0, 0, 0)'
+  if (reducedMotion() || count < 2) return
+  const row = queue.querySelector('.q-row')
+  const view = queue.parentElement
+  if (!row || !view) return
+  const rowH = row.offsetHeight
+  if (!rowH || count * rowH <= view.clientHeight + 1) return
+  queueTimer = window.setInterval(() => {
+    if (!queue.isConnected) {
+      stopQueueRoll()
+      return
+    }
+    const h = queue.querySelector('.q-row')?.offsetHeight || rowH
+    queueIndex += 1
+    queue.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
+    queue.style.transform = `translate3d(0, ${-queueIndex * h}px, 0)`
+    if (queueIndex >= count) {
+      window.setTimeout(() => {
+        if (!queue.isConnected) return
+        queue.style.transition = 'none'
+        queue.style.transform = 'translate3d(0, 0, 0)'
+        queueIndex = 0
+      }, 440)
+    }
+  }, 2000)
 }
 
 function startBatchAssessment() {
@@ -735,7 +832,15 @@ function apply(root, data) {
         </div>
         <em>${esc(stageLabel(b.stage))}</em>
       </li>`).join('')
-    if (queue.innerHTML !== rows) queue.innerHTML = rows
+    if (isLegacyView()) {
+      const rollingRows = batches.length > 1 ? rows + rows : rows
+      if (queue.innerHTML !== rollingRows) {
+        queue.innerHTML = rollingRows
+        startQueueRoll(queue, batches.length)
+      }
+    } else if (queue.innerHTML !== rows) {
+      queue.innerHTML = rows
+    }
   }
 
   PIPELINE.forEach((p) => {

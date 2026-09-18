@@ -52,6 +52,26 @@ test('数据大屏符合正式产品文案与稳定布局约束', async ({ page 
   expect(errors).toEqual([])
 })
 
+test('新版与经典可视化共用同一焦点批次并可互相切换', async ({ page }) => {
+  await page.goto('/#/stage')
+  await expect(page.locator('.wall')).toBeVisible()
+  await expect(page.locator('.wall')).not.toHaveClass(/is-legacy/)
+  await expect(page.getByRole('link', { name: '经典可视化' })).toBeVisible()
+  const currentBatch = await page.locator('[data-callout]').innerText()
+  expect(currentBatch).toContain('蓟化-2026-0812')
+
+  await page.getByRole('link', { name: '经典可视化' }).click()
+  await expect(page).toHaveURL(/view=classic.*#\/stage/)
+  await expect(page.locator('.wall')).toHaveClass(/is-legacy/)
+  await expect(page.getByRole('link', { name: '新版指挥舱' })).toBeVisible()
+  await expect(page.locator('.djtk-human.is-stage:not(.is-embedded)')).toHaveCount(1)
+  await expect(page.locator('.stage-evidence-grid')).toHaveCount(0)
+  await expect(page.locator('[data-callout]')).toContainText('蓟化-2026-0812')
+
+  const bodyText = await page.locator('body').innerText()
+  expect(bodyText).not.toMatch(forbiddenCopy)
+})
+
 test('短宽屏完整展示底部证据卡片', async ({ page }) => {
   await page.setViewportSize({ width: 1512, height: 829 })
   await page.goto('/#/stage')
@@ -243,6 +263,18 @@ test('@visual 指挥舱视觉基线', async ({ page }) => {
     caret: 'hide',
     mask: [page.locator('[data-clock]'), page.locator('[data-cam-ts]')],
     maskColor: '#06231f',
+    maxDiffPixelRatio: 0.015,
+  })
+})
+
+test('@visual 经典可视化视觉基线', async ({ page }) => {
+  await page.goto('/?view=classic#/stage')
+  await expect(page.locator('.wall.is-legacy')).toBeVisible()
+  await expect(page).toHaveScreenshot('stage-classic.png', {
+    animations: 'disabled',
+    caret: 'hide',
+    mask: [page.locator('[data-clock]'), page.locator('[data-cam-ts]')],
+    maskColor: '#07141a',
     maxDiffPixelRatio: 0.015,
   })
 })

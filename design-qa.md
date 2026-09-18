@@ -25,6 +25,8 @@
 
 ## Required fidelity surfaces
 
+新版与经典可视化现作为同一产品的两种正式视图保留。新版为默认入口，经典版通过 `?view=classic#/stage` 进入；两个视图共用实时指挥舱接口、焦点批次与业务判定，并分别设置视觉回归基线。
+
 | Surface | Final result | Evidence |
 | --- | --- | --- |
 | Fonts and typography | Passed | Brand, verdict, and section hierarchy remain consistent with the selected concept; no critical copy clips or wraps unexpectedly at the target viewport. |
@@ -52,7 +54,7 @@
 - Detection dock overflow: `0px`; detection bay overflow: `0px`; conditions remain `13px` above the dock bottom.
 - Speaking-avatar regression passes at both `1440 × 900` and `1041 × 1001`: local lip frame loaded, radial mask active, `110ms` crossfade active, and the closed portrait transform remains `none` while speaking.
 - At `1512 × 829`, the embedded assistant panel reports zero overflow and keeps both the `36px` composer and a visible voice-status line above the viewport edge.
-- Automated result: `24` unit tests, `14` functional/component/browser tests, and `4` visual regression tests passed; lint and production build passed.
+- Automated result: `24` unit tests, `16` functional/component/browser tests, and `6` visual regression tests passed; lint and production build passed. The two added browser checks cover current/classic data parity, reciprocal switching, and independent classic snapshots at both supported desktop viewports.
 - The final source/implementation comparison is recorded in `stage-reference-vs-final.png`.
 
 final result: passed

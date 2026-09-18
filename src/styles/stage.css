@@ -181,7 +181,20 @@ body:has(.wall) {
   letter-spacing: 0.12em;
   font-size: 12px;
 }
-.hd-fs:hover { color: var(--c); border-color: var(--c-dim); }
+.hd-view-switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 9px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(228, 197, 106, 0.08);
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+}
+.hd-fs:hover,
+.hd-view-switch:hover { color: var(--c); border-color: var(--c-dim); }
 
 .hd-kpis {
   grid-column: 1 / -1;

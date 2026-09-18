@@ -16,7 +16,7 @@ npm run test:all
 | 单元测试 | `npm run test:unit` | 判定逻辑、报告门禁、离线模式、AI 证据约束、产品文案 | 全部通过 |
 | 生产构建 | `npm run build` | Vite 生产资源、模块依赖、样式编译 | 构建成功 |
 | 功能回归 | `npm run test:e2e` | 登录选批、全部业务页面、大屏、AI 会话、全屏研判、响应式、控制台异常 | 两种窗口尺寸全部通过 |
-| 视觉回归 | `npm run test:visual` | 指挥舱与健康评价关键页面 | 与已审核基线一致 |
+| 视觉回归 | `npm run test:visual` | 新版指挥舱、经典可视化与健康评价关键页面 | 与各自已审核基线一致 |
 
 ## 浏览器矩阵
 
@@ -48,4 +48,3 @@ npm run test:visual
 ```
 
 基线保存在 `e2e/product.spec.js-snapshots/`，测试报告保存在 `test-results/report/`。
-

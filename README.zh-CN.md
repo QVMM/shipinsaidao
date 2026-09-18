@@ -91,7 +91,7 @@ Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `s
 
 买家页 `#/consumer`、`#/trace/蓟化-2026-0812` 走 `GET /api/public/trace/:batchId`，不用 cookie。
 
-指挥舱看体系，操作台看焦点批次。裁判大屏 `#/stage/蓟化-2026-0812` (`#/wall/` 同义) 走 `GET /api/public/command`，单批仍走 `GET /api/public/stage/:batchId`。墙上是多批次体系，0812 只是焦点。每批一个阶段：养殖中 / 检测中 / 评价中 / 待出证 / 已出码 / 已上市；阳性或炎症偏高进预警。1920x1080 DataV + ECharts，顶栏 KPI，中传送带，下方才是 0812 七步。
+指挥舱看体系，操作台看焦点批次。公开大屏默认进入新版指挥舱；顶部“经典可视化”可切换到保留的 1920×1080 数据大屏，经典版顶部“新版指挥舱”可切回。两套视图共用 `GET /api/public/command` 的实时数据、焦点批次和判定规则，不是两套数据副本。单批仍走 `GET /api/public/stage/:batchId`。墙上是多批次体系，0812 只是焦点。每批一个阶段：养殖中 / 检测中 / 评价中 / 待出证 / 已出码 / 已上市；阳性或炎症偏高进预警。
 
 写操作追加 `audit_logs`，只插不改。工作人员可 `GET /api/audit?batchId=`。
 
@@ -161,4 +161,5 @@ data/tihua.db       本地库（git 忽略）
 - `#/batches` 选择批次
 - `#/farm` `#/screen`（安全检测） `#/eval` `#/report` `#/qr` `#/consumer`（客户端显示）
 - `#/trace/蓟化-2026-0812` 扫码，公开
-- `#/stage/蓟化-2026-0812` 指挥舱，公开（`#/wall/...` 同义）
+- `#/stage/蓟化-2026-0812` 新版指挥舱，公开（`#/wall/...` 同义）
+- `?view=classic#/stage/蓟化-2026-0812` 经典可视化，公开；顶部可一键切回新版

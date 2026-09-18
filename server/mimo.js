@@ -11,8 +11,11 @@ const DEFAULT_BASE = 'https://token-plan-cn.xiaomimimo.com/v1'
 const CHAT_MODELS = [String(process.env.MIMO_CHAT_MODEL || 'mimo-v2.5').trim() || 'mimo-v2.5']
 const TTS_MODEL = 'mimo-v2.5-tts'
 const TTS_VOICES = ['茉莉', 'mimo_default']
-const MIMO_TIMEOUT_MS = 8_000
-const MAX_COMPLETION_TOKENS = 160
+const CHAT_TIMEOUT_MS = 10_000
+const TTS_TIMEOUT_MS = 10_000
+const CHAT_ATTEMPTS = 2
+const RETRY_DELAY_MS = 120
+const MAX_COMPLETION_TOKENS = 256
 
 export const DJTK_SYSTEM_PROMPT = [
   'You are DJTK智控助手 for 替抗蓟化减抗鸡肉全链条质控与溯源平台.',
@@ -419,9 +422,10 @@ function redact(errBody) {
 
 /**
  * @param {object} body
+ * @param {{ timeoutMs?: number }} [options]
  * @returns {Promise<{ ok: true, status: number, json: any } | { ok: false, status: number, error: string, body: string }>}
  */
-async function postCompletions(body) {
+async function postCompletions(body, { timeoutMs = CHAT_TIMEOUT_MS } = {}) {
   const key = apiKey()
   if (!key) {
     return { ok: false, status: 503, error: 'mimo_unconfigured', body: '未配置 MIMO_API_KEY。' }
@@ -437,7 +441,7 @@ async function postCompletions(body) {
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(MIMO_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     })
   } catch (err) {
     const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError'
@@ -466,6 +470,18 @@ async function postCompletions(body) {
   return { ok: true, status: res.status, json }
 }
 
+function retryableChatFailure(result) {
+  if (!result || result.ok) return false
+  if (result.error === 'mimo_timeout' || result.error === 'mimo_network' || result.error === 'mimo_empty') {
+    return true
+  }
+  return result.error === 'mimo_http' && (result.status === 408 || result.status === 429 || result.status >= 500)
+}
+
+function wait(ms) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms))
+}
+
 /**
  * Client may forge assistant turns — only keep user lines.
  * @param {unknown} history
@@ -479,7 +495,7 @@ function sanitizeHistory(history) {
 
 /**
  * @param {{ question: string, history?: { role: string, content: string }[], batchId?: string, evidence?: object }} opts
- * @returns {Promise<{ ok: true, answer: string, model: string } | { ok: false, status: number, error: string, body: string }>}
+ * @returns {Promise<{ ok: true, answer: string, model: string, attempts: number } | { ok: false, status: number, error: string, body: string, attempts?: number }>}
  */
 export async function mimoChat({ question, history = [], batchId, evidence } = {}) {
   const q = String(question || '').trim()
@@ -501,26 +517,35 @@ export async function mimoChat({ question, history = [], batchId, evidence } = {
   ]
 
   let lastFail = null
+  let attempts = 0
   for (const model of CHAT_MODELS) {
-    const r = await postCompletions({
-      model,
-      messages,
-      temperature: 0.2,
-      max_tokens: MAX_COMPLETION_TOKENS,
-    })
-    if (!r.ok) {
-      lastFail = r
-      continue
+    for (let attempt = 1; attempt <= CHAT_ATTEMPTS; attempt += 1) {
+      attempts += 1
+      const r = await postCompletions({
+        model,
+        messages,
+        temperature: 0.2,
+        thinking: { type: 'disabled' },
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+      })
+      if (!r.ok) {
+        lastFail = { ...r, attempts }
+      } else {
+        const rawAnswer = String(r.json?.choices?.[0]?.message?.content || '')
+          .replace(/\n{2,}/g, '\n')
+          .trim()
+        if (rawAnswer) {
+          const answer = sanitizeDjtkAnswer(rawAnswer, pack)
+          return { ok: true, answer, model, evidence: pack, attempts }
+        }
+        lastFail = { ok: false, status: 502, error: 'mimo_empty', body: '模型没有返回文字。', attempts }
+      }
+      if (attempt < CHAT_ATTEMPTS && retryableChatFailure(lastFail)) {
+        await wait(RETRY_DELAY_MS)
+        continue
+      }
+      break
     }
-    const rawAnswer = String(r.json?.choices?.[0]?.message?.content || '')
-      .replace(/\n{2,}/g, '\n')
-      .trim()
-    if (!rawAnswer) {
-      lastFail = { ok: false, status: 502, error: 'mimo_empty', body: '模型没有返回文字。' }
-      continue
-    }
-    const answer = sanitizeDjtkAnswer(rawAnswer, pack)
-    return { ok: true, answer, model, evidence: pack }
   }
   return lastFail || { ok: false, status: 502, error: 'mimo_chat_failed', body: '对话失败。' }
 }
@@ -540,7 +565,7 @@ export async function mimoTts(text) {
       model: TTS_MODEL,
       messages: [{ role: 'assistant', content: say.slice(0, 400) }],
       audio: { format: 'wav', voice },
-    })
+    }, { timeoutMs: TTS_TIMEOUT_MS })
     if (!r.ok) {
       lastFail = r
       continue
@@ -577,6 +602,7 @@ export async function mimoAsk(opts = {}) {
       mime: 'audio/wav',
       voice: null,
       model: chat.model,
+      attempts: chat.attempts,
     }
   }
   const tts = await mimoTts(answer)
@@ -588,6 +614,7 @@ export async function mimoAsk(opts = {}) {
       mime: 'audio/wav',
       voice: null,
       model: chat.model,
+      attempts: chat.attempts,
       ttsError: tts.body,
     }
   }
@@ -598,5 +625,6 @@ export async function mimoAsk(opts = {}) {
     mime: tts.mime,
     voice: tts.voice,
     model: chat.model,
+    attempts: chat.attempts,
   }
 }

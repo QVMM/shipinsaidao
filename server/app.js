@@ -286,9 +286,15 @@ export async function buildApp() {
       return reply.code(400).send({ error: 'invalid', message: `问题请控制在 ${DJTK_Q_MAX} 字以内。` })
     }
     const evidence = buildDjtkEvidence(batchId)
-    const sendDegraded = (reason) => {
+    const modelStartedAt = Date.now()
+    const sendDegraded = (reason, meta = {}) => {
       const deg = buildDegradedAnswer(question, evidence)
-      req.log.warn({ err: reason }, 'djtk ask degraded')
+      req.log.warn({
+        err: reason,
+        status: meta.status || undefined,
+        attempts: meta.attempts || undefined,
+        durationMs: Date.now() - modelStartedAt,
+      }, 'djtk ask degraded')
       return {
         answer: sanitizeDjtkAnswer(deg.answer, evidence),
         audioBase64: null,
@@ -325,8 +331,16 @@ export async function buildApp() {
           message: result.body || '请先输入问题。',
         })
       }
-      return sendDegraded(result.error || 'mimo_failed')
+      return sendDegraded(result.error || 'mimo_failed', {
+        status: result.status,
+        attempts: result.attempts,
+      })
     }
+    req.log.info({
+      model: result.model,
+      attempts: result.attempts,
+      durationMs: Date.now() - modelStartedAt,
+    }, 'djtk ask model ok')
     return {
       answer: sanitizeDjtkAnswer(result.answer, evidence),
       audioBase64: speak ? (result.audioBase64 || null) : null,

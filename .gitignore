@@ -8,3 +8,7 @@ data/
 .DS_Store
 bin/cloudflared
 test-results/
+models/offline/*
+!models/offline/.gitkeep
+artifacts/
+release/

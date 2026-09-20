@@ -33,7 +33,7 @@ test('浏览器降级播报只选择中文女声，不误用排在前面的中�
   assert.equal(selectFemaleChineseVoice([voices[0]]), null)
 })
 
-test('语音输出先请求专用语音接口，失败后回退本机浏览器能力', async () => {
+test('语音输出只请求本地语音接口，默认不回退浏览器声音', async () => {
   const originalFetch = globalThis.fetch
   let fetchCalls = 0
   globalThis.fetch = async () => {

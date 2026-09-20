@@ -990,7 +990,7 @@ a.text-link { color: var(--gold); }
   color: #8a6a1a;
   border-color: rgba(200, 160, 40, 0.55);
 }
-/* Photo face: closed base + mouth-band open overlay (no full-face flicker) */
+/* Digital human: fixed portrait plus two feathered mouth poses. */
 .djtk-face-photo {
   position: relative;
   display: block;
@@ -1014,29 +1014,41 @@ a.text-link { color: var(--gold); }
   z-index: 0;
   opacity: 1;
 }
-.djtk-face-img.is-open {
+.djtk-face-img.is-mouth {
   z-index: 1;
   opacity: 0;
-  /* Feather only the lips into the fixed portrait so the jaw and cheeks never jump. */
+  /* Feather only the lips into the fixed portrait so the head and eyes never jump. */
   -webkit-mask-image: radial-gradient(
-    ellipse 12% 5.5% at 50% 54%,
+    ellipse 13% 7% at 50% 54%,
     #000 0%,
     #000 28%,
     rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 12% 5.5% at 50% 54%,
+    ellipse 13% 7% at 50% 54%,
     #000 0%,
     #000 28%,
     rgba(0, 0, 0, 0.72) 58%,
     transparent 100%
   );
-  transition: opacity 110ms cubic-bezier(0.22, 0.72, 0.32, 1);
+  transition: opacity 92ms cubic-bezier(0.22, 0.72, 0.32, 1);
 }
-.djtk-human.is-speaking.is-mouth-open .djtk-face-img.is-open,
-.djtk-cabin.is-speaking.is-mouth-open .djtk-face-img.is-open {
-  opacity: 0.9;
+.djtk-human.is-speaking.is-mouth-mid .djtk-face-img.is-mid,
+.djtk-cabin.is-speaking.is-mouth-mid .djtk-face-img.is-mid {
+  opacity: calc(0.68 + var(--djtk-mouth-energy, 0.45) * 0.2);
+}
+.djtk-human.is-speaking.is-mouth-wide .djtk-face-img.is-wide,
+.djtk-cabin.is-speaking.is-mouth-wide .djtk-face-img.is-wide {
+  opacity: calc(0.66 + var(--djtk-mouth-energy, 0.8) * 0.2);
+}
+.djtk-human:not(.is-speaking) .djtk-face-img,
+.djtk-cabin:not(.is-speaking) .djtk-face-img {
+  animation: djtk-breathe 5.8s ease-in-out infinite;
+}
+@keyframes djtk-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.006) translateY(-0.25%); }
 }
 .djtk-face-glow {
   position: absolute;
@@ -1071,6 +1083,10 @@ a.text-link { color: var(--gold); }
 .djtk-cabin.is-thinking .djtk-face-glow {
   animation: djtk-think-glow 1.4s ease-in-out infinite alternate;
 }
+.djtk-human.is-listening .djtk-face-glow,
+.djtk-cabin.is-listening .djtk-face-glow {
+  animation: djtk-listen-glow 0.82s ease-in-out infinite alternate;
+}
 .djtk-human.is-speaking .djtk-face-glow,
 .djtk-cabin.is-speaking .djtk-face-glow {
   animation: djtk-glow 1.2s ease-in-out infinite alternate;
@@ -1099,16 +1115,23 @@ a.text-link { color: var(--gold); }
   from { opacity: 0.45; }
   to { opacity: 0.9; }
 }
+@keyframes djtk-listen-glow {
+  from { box-shadow: inset 0 0 0 1.5px rgba(39, 224, 208, 0.5), 0 0 12px rgba(39, 224, 208, 0.2); }
+  to { box-shadow: inset 0 0 0 2.5px rgba(127, 245, 234, 0.85), 0 0 28px rgba(39, 224, 208, 0.5); }
+}
 @media (prefers-reduced-motion: reduce) {
+  .djtk-face-img,
   .djtk-human.is-speaking .djtk-face-img,
   .djtk-cabin.is-speaking .djtk-face-img,
   .djtk-human.is-speaking .djtk-face-glow,
   .djtk-cabin.is-speaking .djtk-face-glow,
   .djtk-human.is-thinking .djtk-face-glow,
   .djtk-cabin.is-thinking .djtk-face-glow,
+  .djtk-human.is-listening .djtk-face-glow,
+  .djtk-cabin.is-listening .djtk-face-glow,
   .djtk-human.is-speaking .djtk-face-wave i,
   .djtk-cabin.is-speaking .djtk-face-wave i { animation: none; }
-  .djtk-face-img.is-open { transition: none; }
+  .djtk-face-img.is-mouth { transition: none; }
 }
 
 .djtk-hd-actions {

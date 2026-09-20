@@ -1,17 +1,17 @@
 /**
- * DJTK 数字人：指挥舱浮动面板 + 全屏研判舱，本地证据问答 + 设备系统语音。
+ * DJTK 数字人：指挥舱浮动面板 + 全屏研判舱，本地证据问答 + 离线语音。
  * Auth: staff session cookie preferred; anonymous booth uses httpOnly djtk_stage
  * cookie from POST /api/djtk/stage-session (no secret in client JS).
  * Optional legacy x-stage-token only if injected (window.__DJTK_STAGE_TOKEN__ or
  * sessionStorage) — never hardcoded.
  *
- * Mic / STT: uses browser SpeechRecognition only (webkitSpeechRecognition).
- * Audio is NOT uploaded to our server or third-party APIs beyond the browser's
- * built-in speech engine.
+ * Mic / STT: captures PCM locally and posts only to the loopback server, where
+ * bundled SenseVoice performs recognition. No cloud speech service is used.
  */
 
 import { post } from '../api.js'
 import { chosenBatchId, getState } from '../store.js'
+import { offlineMicSupported, startOfflineRecorder } from './offline-audio.js'
 
 const ANALYSIS_QUERIES = [
   { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。' },
@@ -37,8 +37,8 @@ const STARTERS = [
 ]
 
 const SS_KEY = 'djtk_stage_token'
-const MOUTH_RMS_OPEN_THRESHOLD = 0.021
-const MOUTH_RMS_CLOSE_THRESHOLD = 0.012
+const MOUTH_RMS_MID_THRESHOLD = 0.011
+const MOUTH_RMS_WIDE_THRESHOLD = 0.032
 const CLOSING_SPEECH = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 const CLOSING_SPEECH_START = '屏幕之外可能是素未谋面的陌生人'
 const CLOSING_SPEECH_END = '护航中国高品质鸡肉走向世界餐桌'
@@ -133,13 +133,17 @@ function getAudioCtx() {
 
 function clearMouthClasses() {
   document.querySelectorAll('.djtk-human, .djtk-cabin').forEach((el) => {
-    el.classList.remove('is-mouth-open')
+    el.classList.remove('is-mouth-open', 'is-mouth-mid', 'is-mouth-wide')
+    el.style.removeProperty('--djtk-mouth-energy')
   })
 }
 
-function setMouthOpen(open) {
+function setMouthLevel(level, energy = 0) {
   document.querySelectorAll('.djtk-human, .djtk-cabin').forEach((el) => {
-    el.classList.toggle('is-mouth-open', !!open)
+    el.classList.toggle('is-mouth-open', level > 0)
+    el.classList.toggle('is-mouth-mid', level === 1)
+    el.classList.toggle('is-mouth-wide', level >= 2)
+    el.style.setProperty('--djtk-mouth-energy', String(Math.max(0, Math.min(1, energy))))
   })
 }
 
@@ -156,7 +160,8 @@ function stopMouthAnim() {
 }
 
 /**
- * RAF loop: toggle is-mouth-open from analyser RMS while audio plays.
+ * RAF loop: drive three mouth poses from actual audio energy. A short hold time
+ * prevents frame-to-frame chatter while still tracking Mandarin syllables.
  * @param {AnalyserNode} analyser
  * @param {() => boolean} stillActive
  */
@@ -164,7 +169,8 @@ function startAnalyserMouth(analyser, stillActive) {
   stopMouthAnim()
   const data = new Uint8Array(analyser.fftSize)
   let smoothedRms = 0
-  let open = false
+  let level = 0
+  let lastChangeAt = 0
   const tick = () => {
     if (!stillActive()) {
       clearMouthClasses()
@@ -178,25 +184,31 @@ function startAnalyserMouth(analyser, stillActive) {
       sum += v * v
     }
     const rms = Math.sqrt(sum / data.length)
-    smoothedRms = smoothedRms * 0.72 + rms * 0.28
-    if (!open && smoothedRms > MOUTH_RMS_OPEN_THRESHOLD) open = true
-    if (open && smoothedRms < MOUTH_RMS_CLOSE_THRESHOLD) open = false
-    setMouthOpen(open)
+    smoothedRms = smoothedRms * 0.64 + rms * 0.36
+    const now = performance.now()
+    const desired = smoothedRms >= MOUTH_RMS_WIDE_THRESHOLD
+      ? 2
+      : (smoothedRms >= MOUTH_RMS_MID_THRESHOLD ? 1 : 0)
+    if (desired !== level && (desired > level || now - lastChangeAt >= 76)) {
+      level = desired
+      lastChangeAt = now
+    }
+    setMouthLevel(level, smoothedRms / 0.065)
     mouthRaf = requestAnimationFrame(tick)
   }
   mouthRaf = requestAnimationFrame(tick)
 }
 
-/** Gentle syllabic mouth rhythm for browser TTS (no analyser). */
+/** Gentle three-pose syllabic rhythm when an analyser is unavailable. */
 function startTimedMouth(stillActive) {
   stopMouthAnim()
   const phases = [
-    { open: true, duration: 120 },
-    { open: false, duration: 72 },
-    { open: true, duration: 156 },
-    { open: false, duration: 104 },
-    { open: true, duration: 92 },
-    { open: false, duration: 208 },
+    { level: 1, duration: 132 },
+    { level: 0, duration: 78 },
+    { level: 2, duration: 118 },
+    { level: 1, duration: 96 },
+    { level: 0, duration: 184 },
+    { level: 1, duration: 146 },
   ]
   let phase = 0
   const tick = () => {
@@ -205,7 +217,7 @@ function startTimedMouth(stillActive) {
       return
     }
     const current = phases[phase]
-    setMouthOpen(current.open)
+    setMouthLevel(current.level, current.level === 2 ? 0.9 : current.level * 0.48)
     phase = (phase + 1) % phases.length
     mouthTimer = setTimeout(tick, current.duration)
   }
@@ -241,9 +253,25 @@ export function selectFemaleChineseVoice(voices = []) {
     || null
 }
 
-function speechRecognitionCtor() {
-  if (typeof window === 'undefined') return null
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null
+async function transcribeLocalPcm(pcm, sampleRate, signal) {
+  const response = await fetch('/api/djtk/transcribe', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'content-type': 'application/octet-stream',
+      'x-sample-rate': String(sampleRate || 16000),
+      ...stageHeaders(),
+    },
+    body: pcm,
+    signal,
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = new Error(payload?.message || '本地语音识别失败。')
+    error.status = response.status
+    throw error
+  }
+  return payload
 }
 
 /**
@@ -386,10 +414,10 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Prefer MiMo text-to-speech for the final local answer, with system speech fallback.
+ * Prefer bundled offline text-to-speech for the final local answer.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
+ * @returns {Promise<{ ok: boolean, via: 'offline' | 'browser' | 'none' }>}
  */
 export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
@@ -405,7 +433,7 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     }, { silent: true, signal: opts.signal, headers: stageHeaders() })
     if (data?.audioBase64) {
       const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
-      return { ok, via: 'mimo' }
+      return { ok, via: 'offline' }
     }
   } catch (error) {
     if (error?.name === 'AbortError') {
@@ -414,19 +442,25 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     }
   }
   opts.onFallback?.()
-  const ok = await speakBrowser(say, opts)
-  return { ok, via: ok ? 'browser' : 'none' }
+  if (typeof window !== 'undefined' && window.__DJTK_ALLOW_SYSTEM_VOICE_FALLBACK__ === true) {
+    const ok = await speakBrowser(say, opts)
+    return { ok, via: ok ? 'browser' : 'none' }
+  }
+  opts.onEnd?.()
+  return { ok: false, via: 'none' }
 }
 
 /**
- * Photo face: closed base + mouth-masked open overlay.
+ * Photo face: fixed neutral portrait + two mouth-only overlays. The rest of
+ * the face never swaps, which avoids the artificial head/eye jump of GIFs.
  * @param {'fab' | 'panel' | 'cabin'} suffix
  */
 function avatarHtml(suffix = 'panel') {
   return `
     <span class="djtk-face djtk-face-photo" data-djtk-face data-djtk-face-ctx="${suffix}" aria-hidden="true">
       <img class="djtk-face-img is-closed" src="/djtk-avatar-closed.png" alt="" decoding="async" />
-      <img class="djtk-face-img is-open" src="/djtk-avatar-speak-v2.png" alt="" decoding="async" />
+      <img class="djtk-face-img is-mouth is-mid" src="/djtk-avatar-speak-v2.png" alt="" decoding="async" />
+      <img class="djtk-face-img is-mouth is-wide" src="/djtk-avatar-open.png" alt="" decoding="async" />
       <i class="djtk-face-glow" aria-hidden="true"></i>
       <span class="djtk-face-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>
@@ -641,8 +675,8 @@ export function bindDjtkHuman(root, opts = {}) {
   /** @type {AbortController | null} */
   let askAbort = null
   let cabinOpen = false
-  /** @type {SpeechRecognition | null} */
-  let recognition = null
+  let micSession = null
+  let micFinishing = false
   let listening = false
   let statusTimer = 0
 
@@ -683,6 +717,8 @@ export function bindDjtkHuman(root, opts = {}) {
 
   const setMicUi = (on) => {
     listening = on
+    box.classList.toggle('is-listening', on)
+    cabin.classList.toggle('is-listening', on)
     allMics().forEach((btn) => {
       btn.classList.toggle('is-listening', on)
       btn.setAttribute('aria-pressed', on ? 'true' : 'false')
@@ -697,8 +733,9 @@ export function bindDjtkHuman(root, opts = {}) {
   }
 
   const stopMic = () => {
-    try { recognition?.stop() } catch { /* ignore */ }
-    try { recognition?.abort() } catch { /* ignore */ }
+    const current = micSession
+    micSession = null
+    try { current?.cancel?.() } catch { /* ignore */ }
     setMicUi(false)
   }
 
@@ -928,7 +965,7 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('正在生成 MiMo 女声…')
+    setStatus('正在生成本地女声…')
 
     const hooks = {
       onStart: () => { if (seq === askSeq) setSpeaking(true) },
@@ -940,7 +977,7 @@ export function bindDjtkHuman(root, opts = {}) {
         allStop().forEach((b) => { b.hidden = true })
       },
       onFallback: () => {
-        if (seq === askSeq) setStatus('MiMo 女声暂不可用，正在切换本机女声')
+        if (seq === askSeq) setStatus('本地女声暂不可用，请查看文字回答')
       },
     }
 
@@ -962,53 +999,56 @@ export function bindDjtkHuman(root, opts = {}) {
     }
   }
 
-  const startMic = () => {
-    const Ctor = speechRecognitionCtor()
-    if (!Ctor) return
+  const finishOfflineMic = async () => {
+    if (!micSession || micFinishing) return
+    micFinishing = true
+    const current = micSession
+    micSession = null
+    setMicUi(false)
+    setStatus('本地识别中…')
+    try {
+      const recording = await current.stop()
+      if (!recording.heardSpeech || recording.durationMs < 250) {
+        setStatus('没有听清，请靠近麦克风再说一遍')
+        return
+      }
+      const signal = askAbort?.signal
+      const data = await transcribeLocalPcm(recording.pcm, current.sampleRate, signal)
+      const finalText = String(data?.text || '').trim()
+      if (!finalText) {
+        setStatus('没有听清，请重新说一遍')
+        return
+      }
+      allInputs().forEach((input) => { input.value = finalText })
+      setStatus('本地识别完成')
+      if (!asking) await ask(finalText)
+    } catch (error) {
+      setStatus(error?.message || '本地语音识别失败，请使用快捷问题')
+    } finally {
+      micFinishing = false
+    }
+  }
+
+  const startMic = async () => {
+    if (!offlineMicSupported()) return
     stopMic()
     unlockAudio()
-    const rec = new Ctor()
-    recognition = rec
-    rec.lang = 'zh-CN'
-    // Newer Chromium builds can keep recognition on-device when the language
-    // pack is installed; older engines safely ignore this property.
-    rec.processLocally = true
-    rec.interimResults = true
-    rec.continuous = false
-    rec.onstart = () => setMicUi(true)
-    rec.onend = () => setMicUi(false)
-    rec.onerror = () => setMicUi(false)
-    rec.onresult = (ev) => {
-      let finalText = ''
-      let interim = ''
-      for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
-        const r = ev.results[i]
-        const t = String(r?.[0]?.transcript || '').trim()
-        if (!t) continue
-        if (r.isFinal) finalText += t
-        else interim += t
-      }
-      const fill = finalText || interim
-      if (fill) {
-        allInputs().forEach((inp) => { inp.value = fill })
-      }
-      if (finalText) {
-        stopMic()
-        if (!asking) ask(finalText)
-      }
-    }
+    stopDjtkAudio()
+    setStatus('正在启用本地麦克风…')
     try {
-      rec.start()
+      micSession = await startOfflineRecorder({ onAutoStop: () => finishOfflineMic() })
       setMicUi(true)
-    } catch {
+      setStatus('离线聆听中，说完后会自动识别')
+    } catch (error) {
       setMicUi(false)
+      setStatus(error?.message || '麦克风不可用，请检查系统权限')
     }
   }
 
   const toggleMic = () => {
     if (asking) return
     if (listening) {
-      stopMic()
+      finishOfflineMic()
       return
     }
     startMic()
@@ -1016,12 +1056,12 @@ export function bindDjtkHuman(root, opts = {}) {
 
   // Mic support probe
   {
-    const ok = !!speechRecognitionCtor()
+    const ok = offlineMicSupported()
     allMics().forEach((btn) => {
       if (!ok) {
         btn.disabled = true
         btn.dataset.micOk = '0'
-        btn.title = '当前浏览器不支持语音输入'
+        btn.title = '当前设备无法读取麦克风'
       } else {
         btn.dataset.micOk = '1'
       }
@@ -1126,7 +1166,6 @@ export function bindDjtkHuman(root, opts = {}) {
     askAbort = null
     askSeq += 1
     stopMic()
-    recognition = null
     if (statusTimer) clearTimeout(statusTimer)
     stopDjtkAudio()
     window.removeEventListener('keydown', onKey)

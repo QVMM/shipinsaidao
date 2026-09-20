@@ -1,8 +1,11 @@
 {
-  "name": "tihua-trace",
+  "name": "tihua-offline-competition",
   "private": true,
   "version": "1.0.0",
+  "description": "替抗蓟化全链条质控与溯源平台完全离线竞赛版",
+  "author": "DJTK 项目组",
   "type": "module",
+  "main": "desktop/main.js",
   "scripts": {
     "dev": "node server/dev.js",
     "dev:web": "vite --host 0.0.0.0 --port 5173",
@@ -10,6 +13,13 @@
     "build": "vite build",
     "start": "node server/index.js",
     "offline": "node server/offline-start.js",
+    "offline:models": "node scripts/install-offline-models.mjs",
+    "offline:verify-models": "node scripts/install-offline-models.mjs --verify-only",
+    "offline:check": "node scripts/offline-self-check.mjs",
+    "offline:smoke": "node scripts/voice-smoke.mjs",
+    "desktop": "npm run build && electron .",
+    "desktop:pack": "npm run build && electron-builder --dir",
+    "desktop:dist:mac": "npm run build && electron-builder --mac dmg zip",
     "preview": "node server/index.js",
     "seed": "node server/seed.js",
     "lint": "eslint src server test e2e playwright.config.js",
@@ -23,20 +33,74 @@
     "@fastify/cookie": "11.0.2",
     "@fastify/static": "^10.1.3",
     "bcryptjs": "2.4.3",
-    "better-sqlite3": "11.10.0",
+    "better-sqlite3": "^13.0.3",
     "echarts": "^6.1.0",
     "fastify": "^5.12.5",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "sherpa-onnx-node": "^1.13.8"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
     "vite": "^8.3.0"
   },
   "engines": {
     "node": "22.x"
+  },
+  "build": {
+    "appId": "cn.djtk.tihua.offline",
+    "productName": "替抗蓟化离线竞赛版",
+    "asar": true,
+    "icon": "build/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "server/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "models/offline",
+        "to": "models/offline",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/sherpa-onnx-node/**/*",
+      "node_modules/sherpa-onnx-*/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "用于离线识别现场讲解员的语音问题，录音不会上传网络。"
+      }
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   }
 }

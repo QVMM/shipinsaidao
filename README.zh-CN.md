@@ -19,23 +19,33 @@ npm start
 
 ### 本地离线部署
 
-先在有网络或已具备完整 `node_modules` 的电脑完成一次准备：
+本目录是独立的比赛离线版。完整部署与现场操作分别见：
+
+- [离线部署方案](docs/DEPLOYMENT_OFFLINE.md)
+- [启动与应急方案](docs/STARTUP_OFFLINE.md)
+- [比赛验收清单](docs/COMPETITION_ACCEPTANCE.md)
+
+首次准备：
 
 ```
 npm ci
+npm run offline:models
 npm run build
-npm run seed
+npm run offline:check
+npm run offline:smoke
 ```
 
-之后即使断网，也只需运行：
+桌面运行：
 
 ```
-npm run offline
+npm run desktop
 ```
 
-再打开 http://127.0.0.1:4173/。离线模式下，登录、SQLite 数据、检测判定、报告、追溯码、公开扫码页、指挥舱和本地证据问答均在本机运行；即使没有 `.env`，离线启动器也会为本次本机进程生成临时会话密钥。系统不会发起 MIMO 云端问答或语音请求，助手改用本地证据回答与浏览器本机朗读；“法规与风险”页会明确显示外部监管数据源未接入。
+也可双击 `bin/start-offline-mac.command` 或 `bin/start-offline-windows.bat`。Electron 桌面版自动选空闲端口，避免固定 4173 被占用。
 
-注意：`npm ci` 是首次准备动作；若交付到另一台完全没有依赖的电脑，需要把整个项目（包括 `node_modules` 和 `dist`）一起复制，或提前在那台电脑联网完成上述准备。数据库默认保存在 `data/tihua.db`。
+浏览器应急模式：`npm run offline`，然后打开 http://127.0.0.1:4173/?offline=1#/stage 。
+
+离线模式下，登录、SQLite、检测判定、报告、追溯码、公开扫码、两套大屏、本地证据问答、SenseVoice 语音识别和 ZipVoice 自然女声全部在本机运行。默认声音为 `本地自然女声·Emilia`，Matcha Baker 为本地兜底；不会调用浏览器声音。
 
 开发（前端热更新 + API）：
 
@@ -58,18 +68,11 @@ npm run build
 
 复制 `.env.example` 为 `.env`。至少改 `SESSION_SECRET`。不要把 `.env` 和 `*.db` 提交进 git。
 
-### DJTK 智控助手（MIMO）
+### DJTK 智控助手（完全离线）
 
-指挥舱 `#/stage` 右下角有可对话数字人。服务端用小米 MIMO Token Plan：
+指挥舱 `#/stage` 的数字人使用本地证据与固定规则回答，不接通用云端大模型。麦克风音频只发往 `127.0.0.1`，由 SenseVoice 识别；回答由 ZipVoice 本地自然女声播报。嘴型读取实际播放音频能量，在闭合、轻启、张开三档间平滑变化，人物头部和眼睛保持固定，避免整脸切换。
 
-- 环境变量 `MIMO_API_KEY`（必填才能云端问答/TTS；**不要**写进前端或提交 git）
-- 可选 `MIMO_BASE_URL`（默认 `https://token-plan-cn.xiaomimimo.com/v1`）
-- `DJTK_STAGE_TOKEN`：仅服务端；**必须在 Render Dashboard 配置长随机值**。请求头 `x-stage-token`（或 body.stageToken）与之匹配时可走展台鉴权；工作人员登录后 cookie 会话即可，无需令牌。前端**不再**内置或从 `/api/djtk/status` 下发任何默认令牌。
-- 生产环境 `SESSION_SECRET` 必填且不得为 `dev-only-change-me`，否则进程拒绝启动。
-
-Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `sync: false`），并**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。未配置 MIMO 时接口返回 503，前端回退浏览器 `speechSynthesis`。
-
-接口：`POST /api/djtk/ask`（默认 `speak:false`，先返文字；可再调 TTS）、`POST /api/djtk/tts`（需登录工作人员或舞台令牌；按 IP/会话限流）；`GET /api/djtk/status`（不含密钥）。
+接口：`POST /api/djtk/transcribe`（PCM16）、`POST /api/djtk/ask`、`POST /api/djtk/tts`、`GET /api/djtk/status`。状态接口会明确返回 `networkRequired:false`。
 
 ## 工作账号
 
@@ -111,7 +114,10 @@ server/app.js       路由
 server/command.js   公开指挥舱
 server/db.js        SQLite 表、种子、组装批次
 server/auth.js      哈希口令 + httpOnly 会话 cookie
-server/mimo.js      小米 MIMO Chat/TTS（仅服务端持 key）
+server/offline-voice.js  SenseVoice + ZipVoice/Matcha 本地语音
+src/lib/offline-audio.js 浏览器麦克风采集与 16kHz PCM
+desktop/main.js          Electron 桌面壳、动态端口与麦克风权限
+models/offline/          本地模型（git 忽略，交付时必须携带）
 server/roles.js     角色与 403 文案
 server/seed.js      npm run seed
 src/                Vite 前端（旅程 IA 未改）
@@ -135,7 +141,8 @@ data/tihua.db       本地库（git 忽略）
 - `GET  /api/public/command` command wall
 - `GET  /api/public/stage/:batchId` 公开大屏
 - `GET  /api/audit?batchId=` 工作人员
-- `GET  /api/djtk/status` MIMO 是否配置
+- `GET  /api/djtk/status` 离线语音与模型状态
+- `POST /api/djtk/transcribe` PCM16 → 本地识别文字
 - `POST /api/djtk/ask` `{question, history?}` → `{answer, audioBase64, mime, voice}`
 - `POST /api/djtk/tts` `{text}` → `{audioBase64, mime, voice}`
 

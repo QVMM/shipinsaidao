@@ -38,7 +38,7 @@ import {
   verifyPassword,
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
-import { mimoVoiceConfigured, mimoVoiceProfile, synthesizeMimoVoice } from './mimo-voice.js'
+import { getOfflineVoiceStatus, synthesizeOfflineVoice, transcribePcm16 } from './offline-voice.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -49,6 +49,7 @@ const DJTK_Q_MAX = 200
 const DJTK_TTS_MAX = 300
 const ASK_LIMIT = { windowMs: 60_000, max: 8 }
 const TTS_LIMIT = { windowMs: 60_000, max: 15 }
+const TRANSCRIBE_LIMIT = { windowMs: 60_000, max: 15 }
 
 /** Simple in-memory rate limit (single instance). Key = IP + session fragment. */
 function makeRateLimiter({ windowMs, max }) {
@@ -73,6 +74,7 @@ function makeRateLimiter({ windowMs, max }) {
 
 const askLimiter = makeRateLimiter(ASK_LIMIT)
 const ttsLimiter = makeRateLimiter(TTS_LIMIT)
+const transcribeLimiter = makeRateLimiter(TRANSCRIBE_LIMIT)
 // A wall display, operator console and test/inspection tabs may share one NAT IP.
 // This endpoint only mints a signed httpOnly booth cookie; Q&A keeps its own tighter limit.
 const STAGE_SESSION_LIMIT = { windowMs: 60_000, max: 120 }
@@ -101,6 +103,10 @@ export async function buildApp() {
   })
 
   await app.register(cookie, { secret: process.env.SESSION_SECRET || 'dev-only-change-me' })
+
+  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer', bodyLimit: 4 * 1024 * 1024 }, (_req, body, done) => {
+    done(null, body)
+  })
 
   app.post('/api/auth/login', async (req, reply) => {
     const username = String(req.body?.username || '').trim()
@@ -237,15 +243,20 @@ export async function buildApp() {
   })
 
   app.get('/api/djtk/status', async () => {
-    const voiceProfile = mimoVoiceProfile()
+    const voiceProfile = getOfflineVoiceStatus()
     return {
       ok: true,
-      mode: 'local-voice',
+      mode: 'competition-offline',
       cloudModel: false,
-      voiceInput: 'browser-speech-recognition',
-      voiceOutput: mimoVoiceConfigured() ? 'mimo-tts-with-system-fallback' : 'system-speech-synthesis',
+      voiceInput: 'offline-sensevoice',
+      voiceOutput: voiceProfile.ttsEngine,
       voiceName: voiceProfile.voice,
       voiceGender: voiceProfile.voiceGender,
+      voiceReady: voiceProfile.ready,
+      asrReady: voiceProfile.asrReady,
+      ttsReady: voiceProfile.ttsReady,
+      voiceMessage: voiceProfile.message,
+      networkRequired: false,
       offlineMode: offlineMode(),
       stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
       stageBooth: stageBoothEnabled(),
@@ -309,6 +320,19 @@ export async function buildApp() {
     }
   })
 
+  app.post('/api/djtk/transcribe', { preHandler: requireStaffOrStage }, async (req, reply) => {
+    if (!transcribeLimiter(clientKey(req))) {
+      return reply.code(429).send({ error: 'rate_limited', message: '语音识别请求太频繁，请稍后再试。' })
+    }
+    const sampleRate = Number(req.headers['x-sample-rate'] || 16000)
+    if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 48000) {
+      return reply.code(400).send({ error: 'invalid_sample_rate', message: '录音采样率不正确。' })
+    }
+    const result = await transcribePcm16(req.body, sampleRate)
+    if (!result.ok) return reply.code(result.status).send({ error: 'offline_asr_failed', message: result.error })
+    return result
+  })
+
   app.post('/api/djtk/tts', { preHandler: requireStaffOrStage }, async (req, reply) => {
     if (!ttsLimiter(clientKey(req))) {
       return reply.code(429).send({ error: 'rate_limited', message: '语音请求太频繁，请稍后再试。' })
@@ -320,23 +344,28 @@ export async function buildApp() {
     if (text.length > DJTK_TTS_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
-    const voice = await synthesizeMimoVoice(text)
+    const voice = await synthesizeOfflineVoice(text)
     if (!voice.ok) {
-      req.log.warn({ status: voice.status, error: voice.error }, 'djtk mimo voice fallback')
+      req.log.warn({ status: voice.status, error: voice.error }, 'djtk offline voice unavailable')
       return reply.code(voice.status).send({
-        error: 'mimo_voice_unavailable',
+        error: 'offline_voice_unavailable',
         message: voice.error,
-        fallback: true,
+        fallback: false,
       })
     }
     return voice
   })
 
-  app.get('/api/health', async () => ({
-    ok: true,
-    defaultBatchId: DEFAULT_BATCH_ID,
-    mode: offlineMode() ? 'offline-local' : 'online-capable',
-  }))
+  app.get('/api/health', async () => {
+    const voice = getOfflineVoiceStatus()
+    return {
+      ok: true,
+      defaultBatchId: DEFAULT_BATCH_ID,
+      mode: 'competition-offline',
+      voiceReady: voice.ready,
+      networkRequired: false,
+    }
+  })
 
   const dist = resolve(root, 'dist')
   if (existsSync(dist)) {

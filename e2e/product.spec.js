@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
-/* global document, getComputedStyle, window, setTimeout */
+/* global document, getComputedStyle, window */
 
 const forbiddenCopy = /演示|非真实|\bDemo\b/i
 
@@ -233,62 +233,40 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
 })
 
-test('语音输入可直接发起本地研判并由设备中文女声播报', async ({ page }) => {
+test('离线语音输入可直接发起本地研判并请求本地女声播报', async ({ page }) => {
   await page.addInitScript(() => {
-    window.__djtkSpokenText = ''
-    window.__djtkSelectedVoice = ''
-    window.SpeechSynthesisUtterance = class {
-      constructor(text) {
-        this.text = text
-      }
-    }
-    Object.defineProperty(window, 'speechSynthesis', {
-      configurable: true,
-      value: {
-        cancel() {},
-        getVoices() {
-          return [
-            { name: 'Microsoft Yunxi Online', lang: 'zh-CN' },
-            { name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' },
-          ]
-        },
-        speak(utterance) {
-          window.__djtkSpokenText = utterance.text
-          window.__djtkSelectedVoice = utterance.voice?.name || ''
-          setTimeout(() => utterance.onend?.(), 0)
-        },
+    window.__DJTK_OFFLINE_RECORDER__ = async () => ({
+      sampleRate: 16000,
+      async stop() {
+        return { pcm: new ArrayBuffer(3200), durationMs: 1000, heardSpeech: true }
       },
+      async cancel() {},
     })
-    window.SpeechRecognition = class {
-      start() {
-        window.__djtkRecognitionConfig = { lang: this.lang, processLocally: this.processLocally }
-        this.onstart?.()
-        setTimeout(() => {
-          const result = [{ transcript: '这批鸡从哪来？' }]
-          result.isFinal = true
-          this.onresult?.({ resultIndex: 0, results: [result] })
-        }, 0)
-      }
-      stop() { this.onend?.() }
-      abort() {}
-    }
   })
 
   let ttsRequests = 0
+  let transcribeRequests = 0
   page.on('request', (request) => {
     if (request.url().includes('/api/djtk/tts')) ttsRequests += 1
+    if (request.url().includes('/api/djtk/transcribe')) transcribeRequests += 1
   })
+  await page.route('**/api/djtk/transcribe', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ ok: true, text: '这批鸡从哪来？', engine: 'sensevoice-local-test' }),
+  }))
   await page.goto('/#/stage')
+  await page.waitForLoadState('networkidle')
   const assistant = page.locator('.djtk-human.is-embedded')
   const mic = assistant.getByRole('button', { name: '语音输入' })
   await expect(mic).toBeEnabled()
   await mic.click()
+  await expect(mic).toHaveAttribute('aria-pressed', 'true')
+  await mic.click()
 
   await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('这批鸡从哪来？')
   await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText(/批次|基地|鸡舍|品种/)
-  await expect.poll(() => page.evaluate(() => window.__djtkSpokenText)).toMatch(/批次|基地|鸡舍|品种/)
-  expect(await page.evaluate(() => window.__djtkSelectedVoice)).toBe('Microsoft Xiaoxiao Online')
-  expect(await page.evaluate(() => window.__djtkRecognitionConfig)).toEqual({ lang: 'zh-CN', processLocally: true })
+  expect(transcribeRequests).toBe(1)
   expect(ttsRequests).toBe(1)
 })
 
@@ -316,21 +294,23 @@ test('健康评价展示水分、嫩度、pH 与保水性实测指标', async ({
   await expect(quality).toContainText('79.2')
 })
 
-test('AI 助手说话口型只在嘴唇区域柔和切换', async ({ page }) => {
+test('AI 助手按音量使用两级嘴型且只在嘴唇区域柔和切换', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/#/stage')
   const assistant = page.locator('.djtk-human.is-embedded')
-  const speakingFrame = assistant.locator('.djtk-face-img.is-open')
+  const midFrame = assistant.locator('.djtk-face-img.is-mid')
+  const wideFrame = assistant.locator('.djtk-face-img.is-wide')
 
-  await expect(speakingFrame).toHaveAttribute('src', '/djtk-avatar-speak-v2.png')
+  await expect(midFrame).toHaveAttribute('src', '/djtk-avatar-speak-v2.png')
+  await expect(wideFrame).toHaveAttribute('src', '/djtk-avatar-open.png')
   const closedFrame = assistant.locator('.djtk-face-img.is-closed')
 
   await assistant.evaluate((node) => {
-    node.classList.add('is-speaking', 'is-mouth-open')
+    node.classList.add('is-speaking', 'is-mouth-open', 'is-mouth-mid')
   })
   await page.waitForTimeout(250)
 
-  const style = await speakingFrame.evaluate((node) => {
+  const style = await midFrame.evaluate((node) => {
     const computed = getComputedStyle(node)
     return {
       mask: computed.maskImage || computed.webkitMaskImage,
@@ -339,16 +319,24 @@ test('AI 助手说话口型只在嘴唇区域柔和切换', async ({ page }) => 
     }
   })
   expect(style.mask).toContain('radial-gradient')
-  expect(style.opacity).toBeGreaterThanOrEqual(0.85)
-  expect(style.opacity).toBeLessThanOrEqual(0.95)
-  expect(style.transitionDuration).toBe('0.11s')
+  expect(style.opacity).toBeGreaterThanOrEqual(0.7)
+  expect(style.opacity).toBeLessThanOrEqual(0.9)
+  expect(style.transitionDuration).toBe('0.092s')
 
   await assistant.evaluate((node) => {
-    node.classList.remove('is-mouth-open')
+    node.classList.remove('is-mouth-mid')
+    node.classList.add('is-mouth-wide')
+  })
+  await page.waitForTimeout(160)
+  expect(Number(await wideFrame.evaluate((node) => getComputedStyle(node).opacity))).toBeGreaterThan(0.75)
+  expect(Number(await midFrame.evaluate((node) => getComputedStyle(node).opacity))).toBe(0)
+
+  await assistant.evaluate((node) => {
+    node.classList.remove('is-mouth-open', 'is-mouth-wide', 'is-speaking')
   })
   await page.waitForTimeout(250)
-  expect(Number(await speakingFrame.evaluate((node) => getComputedStyle(node).opacity))).toBe(0)
-  expect(await closedFrame.evaluate((node) => getComputedStyle(node).transform)).toBe('none')
+  expect(Number(await wideFrame.evaluate((node) => getComputedStyle(node).opacity))).toBe(0)
+  expect(await closedFrame.evaluate((node) => getComputedStyle(node).animationName)).toBe('djtk-breathe')
 })
 
 test('全屏研判舱可打开、关闭且不包含虚构叙事', async ({ page }) => {

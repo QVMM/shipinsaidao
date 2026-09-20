@@ -2,6 +2,14 @@
 
 构建日期：2026-09-20　目标平台：Windows 10/11 x64
 
+正式比赛首选——Windows 本地 Web 版：
+
+```text
+f1e5b51d80b8ed6c10f4fb0ed09b67de772365782a7deda5aae506b4dc565617  替抗蓟化-Windows本地Web版-1.0.0-x64.zip
+```
+
+Electron 备用包：
+
 ```text
 f17b6d09dce081e80e064c3e8ef7cd631c3edc6b26baab28d368e3f0bc33f83b  替抗蓟化离线竞赛版 Setup 1.0.0.exe
 2038b75fc67bc1b93e6d773079c333feb8ba2188348043355e8af4d711eee355  替抗蓟化离线竞赛版 1.0.0.exe

@@ -1,5 +1,7 @@
 # 替抗蓟化离线竞赛版：Windows 部署方案
 
+> 正式比赛现改用“Windows 本地 Web 版”为第一选择，详见 `WINDOWS_WEB_DEPLOYMENT.md`。本文件中的 Electron 安装版和免安装版降为备用方案。
+
 ## 1. 交付目标
 
 目标设备为 Windows 10/11 64 位（x64）。比赛现场即使完全断网，仍可使用：

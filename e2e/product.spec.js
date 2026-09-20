@@ -294,7 +294,7 @@ test('健康评价展示水分、嫩度、pH 与保水性实测指标', async ({
   await expect(quality).toContainText('79.2')
 })
 
-test('AI 助手按音量使用两级嘴型且只在嘴唇区域柔和切换', async ({ page }) => {
+test('AI 助手按音量使用闭合、轻启、张开三级嘴型且只在嘴唇区域柔和切换', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/#/stage')
   const assistant = page.locator('.djtk-human.is-embedded')

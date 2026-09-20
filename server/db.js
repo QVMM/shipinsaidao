@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import Database from 'better-sqlite3'
+import Database from './sqlite.js'
 import bcrypt from 'bcryptjs'
 import { DEMO_SEED, makeReportNo, makeVerifyId, blankBatchFromSpotlight } from '../src/data.js'
 import { makeDemoHouseEnv, shanghaiYmd, resolveHouseEnv, looksLikeOldHouseEnv } from '../src/lib/house-env.js'
@@ -346,7 +346,7 @@ function migrateSpotlightIssued(d) {
 /**
  * 焦点批养殖档案被改空后，从 DEMO_SEED.farm 拉回。不碰检测/评价/报告/追溯。
  * 恢复后补一条养殖岗封存，使 live 与链对得上。不 rebuildSeal。
- * @param {import('better-sqlite3').Database} d
+ * @param {Database} d
  */
 function restoreSpotlightFarm(d) {
   const id = DEMO_SEED.batchId
@@ -370,7 +370,7 @@ function restoreSpotlightFarm(d) {
 /**
  * 现场新建批 蓟化-2026-0901：进苗/入孵用当天，出栏 +50 天，用药本只留「饲用抗生素 未使用」。
  * 保留基地名与大蓟日粮。不出证、不出码。
- * @param {import('better-sqlite3').Database} d
+ * @param {Database} d
  */
 function migrateLiveBlankBatch(d) {
   const id = '蓟化-2026-0901'
@@ -396,7 +396,7 @@ function migrateLiveBlankBatch(d) {
 
 /**
  * 未出证体系批若链尾仍是「准予上市」，按新 historyPlan 重铺。不碰焦点 0812，不碰 0901。
- * @param {import('better-sqlite3').Database} d
+ * @param {Database} d
  */
 function rebuildUnissuedFleetSeals(d) {
   const rows = d.prepare(`
@@ -425,7 +425,7 @@ function looksIdentifying(s) {
 
 /**
  * 演示数据去身份化：真实地名/校名/企业名换成基地编号。
- * @param {import('better-sqlite3').Database} d
+ * @param {Database} d
  */
 function migrateFarmIdentity(d) {
   const seeds = [DEMO_SEED, ...FLEET_SEEDS]

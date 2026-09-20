@@ -1,12 +1,12 @@
 # 本地交付包校验值
 
-构建日期：2026-09-20　平台：macOS Apple Silicon（arm64）
+构建日期：2026-09-20　目标平台：Windows 10/11 x64
 
 ```text
-9d9d767e13697a2bdc1c5b1d116d5fe19d7257ca5aa927fd36628158b127dd18  替抗蓟化离线竞赛版-1.0.0-arm64.dmg
-485a8db38b57d0946200b0630ddca044aa595287d825d25e9f0780533d30d03b  替抗蓟化离线竞赛版-1.0.0-arm64-mac.zip
+f17b6d09dce081e80e064c3e8ef7cd631c3edc6b26baab28d368e3f0bc33f83b  替抗蓟化离线竞赛版 Setup 1.0.0.exe
+2038b75fc67bc1b93e6d773079c333feb8ba2188348043355e8af4d711eee355  替抗蓟化离线竞赛版 1.0.0.exe
 ```
 
-复制到 U 盘后可运行 `shasum -a 256 文件名`；结果必须与上面完全一致。
+复制到 U 盘后，可在 Windows PowerShell 中运行 `Get-FileHash -Algorithm SHA256 "文件名.exe"`；结果必须与上面完全一致。
 
-当前包未使用 Apple Developer ID 签名。首次打开时按部署文档中的“隐私与安全性 → 仍要打开”处理。正式对外分发时应使用项目方的 Apple Developer ID 重新签名和公证。
+当前包未使用商业 Windows 代码签名证书。首次打开若出现 SmartScreen，按部署文档中的“更多信息 → 仍要运行”处理。正式对外分发时应使用项目方的 Windows 代码签名证书重新签名。

@@ -16,7 +16,7 @@ export default [
     },
   },
   {
-    files: ['server/**/*.js', 'test/**/*.js', 'vite.config.js', 'eslint.config.js'],
+    files: ['server/**/*.js', 'desktop/**/*.js', 'scripts/**/*.mjs', 'test/**/*.js', 'vite.config.js', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

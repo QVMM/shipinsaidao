@@ -22,6 +22,9 @@ test('公开追溯只使用接口返回值，不拿演示种子补空字段', ()
   assert.equal(state.eval.tenderness, '')
   assert.equal(state.eval.pH, '')
   assert.equal(state.eval.waterHolding, '')
+  for (const field of ['protein', 'fat', 'minerals', 'vitamins', 'aminoAcids', 'fattyAcids', 'peptides']) {
+    assert.equal(state.eval[field], '')
+  }
   assert.equal(state.report.no, '')
   assert.equal(state.trace.verifyId, '')
 })

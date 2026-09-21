@@ -4,18 +4,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-test('配置 MiMo 语音密钥后，问答仍只使用本地证据且不发起外部请求', async () => {
+test('问答只使用本地证据且不发起外部模型请求', async () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'djtk-local-assistant-'))
   const originalDatabase = process.env.DATABASE_PATH
   const originalStageToken = process.env.DJTK_STAGE_TOKEN
-  const originalMimoKey = process.env.MIMO_API_KEY
   const originalOffline = process.env.OFFLINE_MODE
   const originalFetch = globalThis.fetch
   let fetchCalls = 0
 
   process.env.DATABASE_PATH = join(tempDir, 'test.db')
   process.env.DJTK_STAGE_TOKEN = 'local-voice-test-token'
-  process.env.MIMO_API_KEY = 'legacy-key-must-never-be-used'
   delete process.env.OFFLINE_MODE
   globalThis.fetch = async () => {
     fetchCalls += 1
@@ -31,8 +29,8 @@ test('配置 MiMo 语音密钥后，问答仍只使用本地证据且不发起�
     assert.equal(status.mode, 'local-voice')
     assert.equal(status.cloudModel, false)
     assert.equal(status.voiceInput, 'browser-speech-recognition')
-    assert.equal(status.voiceOutput, 'mimo-tts-with-system-fallback')
-    assert.equal(status.voiceName, '茉莉')
+    assert.equal(status.voiceOutput, 'system-female-speech-synthesis')
+    assert.equal(status.voiceName, '设备中文女声')
     assert.equal(status.voiceGender, 'female')
 
     const response = await app.inject({
@@ -59,8 +57,6 @@ test('配置 MiMo 语音密钥后，问答仍只使用本地证据且不发起�
     else process.env.DATABASE_PATH = originalDatabase
     if (originalStageToken == null) delete process.env.DJTK_STAGE_TOKEN
     else process.env.DJTK_STAGE_TOKEN = originalStageToken
-    if (originalMimoKey == null) delete process.env.MIMO_API_KEY
-    else process.env.MIMO_API_KEY = originalMimoKey
     if (originalOffline == null) delete process.env.OFFLINE_MODE
     else process.env.OFFLINE_MODE = originalOffline
     rmSync(tempDir, { recursive: true, force: true })

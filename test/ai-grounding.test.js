@@ -29,9 +29,10 @@ test('AI 在判定未通过时不得输出合格上市结论', () => {
   assert.match(answer, /证据|未达到/)
 })
 
-test('未接入实时外部监管数据时必须如实说明', () => {
+test('监管问答说明离线快照与批次证据边界', () => {
   const reply = buildFastAnswer('当前海关和监管数据状态？', blockedEvidence)
-  assert.match(reply.answer, /未接入实时外部监管数据/)
+  assert.match(reply.answer, /监管公开信息离线快照/)
+  assert.match(reply.answer, /当前批次是否上市/)
   assert.equal(/通报称|预警显示|依法退市/.test(reply.answer), false)
 })
 

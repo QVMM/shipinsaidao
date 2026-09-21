@@ -38,7 +38,6 @@ import {
   verifyPassword,
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
-import { mimoVoiceConfigured, mimoVoiceProfile, synthesizeMimoVoice } from './mimo-voice.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -46,9 +45,7 @@ import { offlineMode } from './runtime.js'
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
 const DJTK_Q_MAX = 200
-const DJTK_TTS_MAX = 300
 const ASK_LIMIT = { windowMs: 60_000, max: 8 }
-const TTS_LIMIT = { windowMs: 60_000, max: 15 }
 
 /** Simple in-memory rate limit (single instance). Key = IP + session fragment. */
 function makeRateLimiter({ windowMs, max }) {
@@ -72,7 +69,6 @@ function makeRateLimiter({ windowMs, max }) {
 }
 
 const askLimiter = makeRateLimiter(ASK_LIMIT)
-const ttsLimiter = makeRateLimiter(TTS_LIMIT)
 // A wall display, operator console and test/inspection tabs may share one NAT IP.
 // This endpoint only mints a signed httpOnly booth cookie; Q&A keeps its own tighter limit.
 const STAGE_SESSION_LIMIT = { windowMs: 60_000, max: 120 }
@@ -237,15 +233,14 @@ export async function buildApp() {
   })
 
   app.get('/api/djtk/status', async () => {
-    const voiceProfile = mimoVoiceProfile()
     return {
       ok: true,
       mode: 'local-voice',
       cloudModel: false,
       voiceInput: 'browser-speech-recognition',
-      voiceOutput: mimoVoiceConfigured() ? 'mimo-tts-with-system-fallback' : 'system-speech-synthesis',
-      voiceName: voiceProfile.voice,
-      voiceGender: voiceProfile.voiceGender,
+      voiceOutput: 'system-female-speech-synthesis',
+      voiceName: '设备中文女声',
+      voiceGender: 'female',
       offlineMode: offlineMode(),
       stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
       stageBooth: stageBoothEnabled(),
@@ -307,29 +302,6 @@ export async function buildApp() {
       local: true,
       ttsFallback: true,
     }
-  })
-
-  app.post('/api/djtk/tts', { preHandler: requireStaffOrStage }, async (req, reply) => {
-    if (!ttsLimiter(clientKey(req))) {
-      return reply.code(429).send({ error: 'rate_limited', message: '语音请求太频繁，请稍后再试。' })
-    }
-    const text = String(req.body?.text || '').trim()
-    if (!text) {
-      return reply.code(400).send({ error: 'invalid', message: '没有要播报的文字。' })
-    }
-    if (text.length > DJTK_TTS_MAX) {
-      return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
-    }
-    const voice = await synthesizeMimoVoice(text)
-    if (!voice.ok) {
-      req.log.warn({ status: voice.status, error: voice.error }, 'djtk mimo voice fallback')
-      return reply.code(voice.status).send({
-        error: 'mimo_voice_unavailable',
-        message: voice.error,
-        fallback: true,
-      })
-    }
-    return voice
   })
 
   app.get('/api/health', async () => ({

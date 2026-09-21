@@ -33,7 +33,7 @@ npm run seed
 npm run offline
 ```
 
-再打开 http://127.0.0.1:4173/。离线模式下，登录、SQLite 数据、检测判定、报告、追溯码、公开扫码页、指挥舱和本地证据问答均在本机运行；即使没有 `.env`，离线启动器也会为本次本机进程生成临时会话密钥。系统不会发起 MIMO 云端问答或语音请求，助手改用本地证据回答与浏览器本机朗读；“法规与风险”页会明确显示外部监管数据源未接入。
+再打开 http://127.0.0.1:4173/。离线模式下，登录、SQLite 数据、检测判定、报告、追溯码、公开扫码页、指挥舱和本地证据问答均在本机运行；即使没有 `.env`，离线启动器也会为本次本机进程生成临时会话密钥。风险情报页使用经审核的离线快照，不依赖现场网络。
 
 注意：`npm ci` 是首次准备动作；若交付到另一台完全没有依赖的电脑，需要把整个项目（包括 `node_modules` 和 `dist`）一起复制，或提前在那台电脑联网完成上述准备。数据库默认保存在 `data/tihua.db`。
 
@@ -58,18 +58,16 @@ npm run build
 
 复制 `.env.example` 为 `.env`。至少改 `SESSION_SECRET`。不要把 `.env` 和 `*.db` 提交进 git。
 
-### DJTK 智控助手（MIMO）
+### DJTK 智控助手
 
-指挥舱 `#/stage` 右下角有可对话数字人。服务端用小米 MIMO Token Plan：
+指挥舱 `#/stage` 右侧有可对话数字人：
 
-- 环境变量 `MIMO_API_KEY`（必填才能云端问答/TTS；**不要**写进前端或提交 git）
-- 可选 `MIMO_BASE_URL`（默认 `https://token-plan-cn.xiaomimimo.com/v1`）
 - `DJTK_STAGE_TOKEN`：仅服务端；**必须在 Render Dashboard 配置长随机值**。请求头 `x-stage-token`（或 body.stageToken）与之匹配时可走展台鉴权；工作人员登录后 cookie 会话即可，无需令牌。前端**不再**内置或从 `/api/djtk/status` 下发任何默认令牌。
 - 生产环境 `SESSION_SECRET` 必填且不得为 `dev-only-change-me`，否则进程拒绝启动。
 
-Render 部署须在 Dashboard 配置 `MIMO_API_KEY`（`render.yaml` 已声明 `sync: false`），并**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。未配置 MIMO 时接口返回 503，前端回退浏览器 `speechSynthesis`。
+线上版不连接外部语音模型，直接选择设备上的中文女声；Windows 比赛包内置离线语音识别与离线女声模型。Render 部署只需**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。
 
-接口：`POST /api/djtk/ask`（默认 `speak:false`，先返文字；可再调 TTS）、`POST /api/djtk/tts`（需登录工作人员或舞台令牌；按 IP/会话限流）；`GET /api/djtk/status`（不含密钥）。
+接口：`POST /api/djtk/ask`（本地证据问答）；`GET /api/djtk/status`（语音能力与运行状态，不含密钥）。
 
 ## 工作账号
 
@@ -111,7 +109,7 @@ server/app.js       路由
 server/command.js   公开指挥舱
 server/db.js        SQLite 表、种子、组装批次
 server/auth.js      哈希口令 + httpOnly 会话 cookie
-server/mimo.js      小米 MIMO Chat/TTS（仅服务端持 key）
+server/local-assistant.js  本地证据问答与比赛规定话术
 server/roles.js     角色与 403 文案
 server/seed.js      npm run seed
 src/                Vite 前端（旅程 IA 未改）
@@ -135,9 +133,8 @@ data/tihua.db       本地库（git 忽略）
 - `GET  /api/public/command` command wall
 - `GET  /api/public/stage/:batchId` 公开大屏
 - `GET  /api/audit?batchId=` 工作人员
-- `GET  /api/djtk/status` MIMO 是否配置
+- `GET  /api/djtk/status` 语音能力与运行状态
 - `POST /api/djtk/ask` `{question, history?}` → `{answer, audioBase64, mime, voice}`
-- `POST /api/djtk/tts` `{text}` → `{audioBase64, mime, voice}`
 
 会话 cookie：`tihua_session`，httpOnly，SameSite=Lax。口令 bcryptjs（cost 10）。SQL 全是参数化。服务端不打口令日志。
 

@@ -5,9 +5,8 @@
  * Optional legacy x-stage-token only if injected (window.__DJTK_STAGE_TOKEN__ or
  * sessionStorage) — never hardcoded.
  *
- * Mic / STT: uses browser SpeechRecognition only (webkitSpeechRecognition).
- * Audio is NOT uploaded to our server or third-party APIs beyond the browser's
- * built-in speech engine.
+ * Mic / STT and spoken output use the device browser's speech capabilities.
+ * The production web build does not call an external voice model.
  */
 
 import { post } from '../api.js'
@@ -389,10 +388,12 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Prefer MiMo text-to-speech for the final local answer, with system speech fallback.
+ * Speak through an available Chinese female system voice without contacting an
+ * external voice service. The Windows competition package replaces this with
+ * its bundled offline voice engine.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
+ * @returns {Promise<{ ok: boolean, via: 'browser' | 'none' }>}
  */
 export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
@@ -401,22 +402,10 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
   }
-  try {
-    const data = await post('/api/djtk/tts', {
-      text: say.slice(0, 300),
-      ...stageBody(),
-    }, { silent: true, signal: opts.signal, headers: stageHeaders() })
-    if (data?.audioBase64) {
-      const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
-      return { ok, via: 'mimo' }
-    }
-  } catch (error) {
-    if (error?.name === 'AbortError') {
-      opts.onEnd?.()
-      return { ok: false, via: 'none' }
-    }
+  if (opts.signal?.aborted) {
+    opts.onEnd?.()
+    return { ok: false, via: 'none' }
   }
-  opts.onFallback?.()
   const ok = await speakBrowser(say, opts)
   return { ok, via: ok ? 'browser' : 'none' }
 }
@@ -471,7 +460,7 @@ function cabinMarkup() {
           <b>DJTK · 食品安全研判舱</b>
           <span>从养殖记录到检测结论，全程有据可查</span>
         </div>
-        <p class="djtk-cabin-first"><span>本地运行</span><span>证据约束</span><span>断网可用</span>回答仅依据当前批次平台记录，不做用药处方。</p>
+        <p class="djtk-cabin-first"><span>批次来源</span><span>安全检测</span><span>健康评价</span>回答基于当前批次记录，不做用药处方。</p>
         <div class="djtk-cabin-top-actions">
           <button type="button" class="djtk-clear" data-djtk-clear>新建会话</button>
           <button type="button" class="djtk-cabin-exit" data-djtk-cabin-exit title="退出全屏指挥舱（Esc）">退出</button>
@@ -481,7 +470,7 @@ function cabinMarkup() {
         <section class="djtk-cabin-hero">
           <div class="djtk-cabin-avatar" data-djtk-avatar>${avatarHtml('cabin')}</div>
           <p class="djtk-cabin-hero-name">DJTK 智控助手</p>
-          <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>本地证据已就绪</p>
+          <p class="djtk-cabin-hero-sub" data-djtk-cabin-speak-hint>当前批次已载入</p>
         </section>
         <section class="djtk-cabin-chat">
           <div class="djtk-cabin-chip-block">
@@ -538,7 +527,7 @@ export function renderDjtkHuman(opts = {}) {
           <div class="djtk-hd-copy">
             <b>DJTK智控助手</b>
             <span>${embedded ? '您的食品安全 AI 搭档' : '替抗蓟化 · 质控溯源'}</span>
-            ${embedded ? '<em class="djtk-stage-state" data-djtk-stage-state>待命 · 本地证据已就绪</em>' : ''}
+            ${embedded ? '<em class="djtk-stage-state" data-djtk-stage-state>待命 · 当前批次已载入</em>' : ''}
           </div>
           <div class="djtk-hd-actions">
             <button type="button" class="djtk-clear" data-djtk-clear>新建会话</button>
@@ -559,7 +548,7 @@ export function renderDjtkHuman(opts = {}) {
         <div class="djtk-chips">${starters}</div>
         <div class="djtk-log" data-djtk-log aria-live="polite">
           ${embedded
-    ? '<p class="djtk-embedded-empty" data-djtk-empty>可以直接问我：这批鸡从哪来、安不安全、能不能上市。<span>答案只引用当前批次证据。</span></p>'
+    ? '<p class="djtk-embedded-empty" data-djtk-empty>可以直接问我：这批鸡从哪来、安不安全、能不能上市。</p>'
     : compact
       ? '<p class="djtk-compact-empty" data-djtk-empty><strong>等待研判问题</strong><span>选择左侧快捷问题，或在下方输入。</span></p>'
       : ''}
@@ -678,7 +667,7 @@ export function bindDjtkHuman(root, opts = {}) {
       btn.title = on ? '停止语音输入' : (btn.dataset.micOk === '0' ? '当前浏览器不支持语音输入' : '语音输入')
     })
     if (on) setEmbeddedState('聆听中 · 请说出问题')
-    else if (!asking) setEmbeddedState('待命 · 本地证据已就绪')
+    else if (!asking) setEmbeddedState('待命 · 当前批次已载入')
   }
 
   const setEmbeddedState = (text) => {
@@ -711,7 +700,7 @@ export function bindDjtkHuman(root, opts = {}) {
       hint.textContent = on ? '等待中…' : (asking ? '等待中…' : '待命')
     }
     if (on) setEmbeddedState('等待中…')
-    else if (!asking && !listening) setEmbeddedState('待命 · 本地证据已就绪')
+    else if (!asking && !listening) setEmbeddedState('待命 · 当前批次已载入')
   }
 
   const setSpeaking = (on) => {
@@ -721,7 +710,7 @@ export function bindDjtkHuman(root, opts = {}) {
     else clearMouthClasses()
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
     if (hint) hint.textContent = on ? '回答中…' : (asking ? '等待中…' : '待命')
-    setEmbeddedState(on ? '回答中 · 正在引用平台记录' : (asking ? '等待中…' : '待命 · 本地证据已就绪'))
+    setEmbeddedState(on ? '正在回答' : (asking ? '等待中…' : '待命 · 当前批次已载入'))
     allStop().forEach((btn) => {
       btn.hidden = !on && !asking
       if (on) btn.hidden = false
@@ -849,7 +838,7 @@ export function bindDjtkHuman(root, opts = {}) {
       log.innerHTML = '<p class="djtk-cabin-empty" data-djtk-empty><strong>开始批次研判</strong><span>选择上方问题，或直接询问来源、安全状态与上市依据。</span><small>回答只引用平台内可核验记录</small></p>'
     })
     setStatus('')
-    setEmbeddedState('待命 · 本地证据已就绪')
+    setEmbeddedState('待命 · 当前批次已载入')
   }
 
   const exitCabin = () => {
@@ -1177,25 +1166,25 @@ function localFallback(q) {
   const s = String(q || '')
   // 降级简答禁止默认合格/未检出/用药结论；引导看平台只读证据。
   if (/海关|监管|法规|政务公开/.test(s)) {
-    return '【降级·未连模型】当前离线实例未接入实时外部监管数据。可查看“法规与风险”页确认数据源状态；本批次结论只依据平台内的养殖、检测、报告与追溯记录。'
+    return '风险情报库保存了监管公开信息离线快照，用于确定排查重点。当前批次结论以养殖、检测、评价、报告与追溯记录为准。'
   }
   if (/氟苯|兽药|用药|剂量|处方|能不能用|可以用|合规使用|休药/.test(s)) {
     if (/筛查|结果|检出|残留|阴性|阳性/.test(s) && !/怎么用|如何用|剂量|处方|合规使用|能不能用|可以用/.test(s)) {
-      return '【降级·未连模型】本助手不做用药处方。氟苯尼考筛查请打开安全检测页或焦点档案，核对平台筛查定性/结果字段，我不会在本地臆造阴性或合格。'
+      return '本助手不做用药处方。氟苯尼考筛查请打开安全检测页或焦点档案，核对筛查定性与结果字段。'
     }
-    return '【降级·未连模型】本助手不做用药处方，也不回答氟苯尼考能否使用。请打开检测或焦点档案查看平台记录。'
+    return '本助手不做用药处方，也不回答氟苯尼考能否使用。请打开安全检测或焦点档案查看记录。'
   }
   if (/风险|待复核|复核/.test(s)) {
-    return '【降级·未连模型】云端暂不可用。请看焦点档案判定条与报告印章是否为待复核；下一步可点安全检测或健康评价，以页面记录为准。'
+    return '请查看焦点档案判定条与报告印章是否为待复核；下一步可打开安全检测或健康评价核对记录。'
   }
   if (/哪|来|产地|基地|从/.test(s)) {
-    return '【降级·未连模型】云端暂不可用。请看左侧焦点档案里的基地与批次字段，以页面显示为准。'
+    return '请查看左侧焦点档案中的基地与批次字段。'
   }
   if (/安全|合格|残留|上桌|放心|检出/.test(s)) {
-    return '【降级·未连模型】云端暂不可用，我不能在本地直接下安全结论。请看左侧焦点档案与判定条、安全检测页的筛查结果。'
+    return '安全结论需要对应批次证据。请查看焦点档案、判定条和安全检测页的筛查结果。'
   }
   if (/下一步|点哪|怎么|操作|去哪/.test(s)) {
-    return '【降级·未连模型】云端暂不可用。可先点传送带上的检测或评价节点，或打开安全检测/健康评价页查看记录。'
+    return '可先选择传送带上的检测或评价节点，或打开安全检测、健康评价页查看记录。'
   }
-  return '【降级·未连模型】云端暂不可用。请先查看焦点档案与判定条；恢复后可再问批次来源、安全状态、下一步或待复核项。'
+  return '请先查看焦点档案与判定条，也可以继续询问批次来源、安全状态、下一步或待复核项。'
 }

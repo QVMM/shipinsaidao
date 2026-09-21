@@ -343,7 +343,6 @@ export function render() {
             </div>
           </div>
           <div class="hd-trust" aria-label="系统运行状态">
-            <span class="hd-local"><i></i>本地部署 · 离线运行正常</span>
             <span>数据安全</span>
             <span>隐私可控</span>
             <span>证据可核验</span>
@@ -352,7 +351,7 @@ export function render() {
             <time class="hd-clock dig" data-clock></time>
             <span class="hd-stamp" data-stamp>体系</span>
             <a class="hd-view-switch" href="${esc(switchHref)}">经典可视化</a>
-            <button type="button" class="hd-insights" data-insights aria-pressed="false">数据洞察</button>
+            <button type="button" class="hd-insights" data-insights aria-pressed="false" title="查看批次统计指标">指标分析</button>
             <button type="button" class="hd-fs" data-fs title="进入全屏">全屏</button>
             <button type="button" class="hd-assess" data-assess>研判当前批次</button>
           </div>
@@ -624,7 +623,7 @@ function toggleInsights(event) {
   const open = !wall.classList.contains('show-insights')
   wall.classList.toggle('show-insights', open)
   event?.currentTarget?.setAttribute('aria-pressed', open ? 'true' : 'false')
-  event.currentTarget.textContent = open ? '收起洞察' : '数据洞察'
+  event.currentTarget.textContent = open ? '收起分析' : '指标分析'
   requestAnimationFrame(() => Object.values(charts).forEach((chart) => chart?.resize()))
 }
 

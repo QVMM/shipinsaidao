@@ -1,32 +1,32 @@
 import { renderNextBar } from '../components/journey-ui.js'
 
-export const meta = { id: 'customs', title: '法规与风险' }
+export const meta = { id: 'customs', title: '风险情报' }
 
 export function render() {
   return `
     <div class="page-head">
-      <h2>法规与风险</h2>
+      <h2>风险情报</h2>
     </div>
     ${renderNextBar('eval')}
     <div class="card story-lead">
-      <strong>本地证据与外部信息严格分开</strong>
-      当前离线实例未配置实时监管或海关数据源，不会将推测内容包装成监管通报。
+      <strong>监管信息与批次证据分层管理</strong>
+      风险情报用于识别检测重点；批次结论仍由养殖、检测、评价、报告与追溯记录共同形成。
     </div>
     <div class="health-board mt-14">
       <section class="card">
-        <p class="qr-kicker">外部信息源</p>
-        <h3>尚未接入实时监管数据</h3>
-        <p class="sub">断网状态下，系统只展示本机已保存的批次档案。需要监管信息时，应由管理员配置经过授权、可核验的数据源。</p>
+        <p class="qr-kicker">监管风险情报</p>
+        <h3>氟苯尼考残留风险排查</h3>
+        <p class="sub">某海关中心近期查验出口鸡肉时发现氟苯尼考残留风险。平台据此将氟苯尼考列为当前批次重点筛查项目。</p>
         <ul class="plain-facts">
-          <li class="wait">海关与市场监管公开信息：未接入</li>
-          <li class="wait">外部法规更新服务：未接入</li>
-          <li class="ok">本地批次证据：可离线核验</li>
+          <li class="ok">情报来源：监管公开信息离线快照</li>
+          <li class="ok">排查对象：当前焦点批次</li>
+          <li class="ok">重点指标：氟苯尼考筛查与定量结果</li>
         </ul>
       </section>
       <section class="card">
-        <p class="qr-kicker">当前可用依据</p>
-        <h3>仅使用平台内可追溯记录</h3>
-        <p class="sub">批次判断以养殖记录、安全检测、健康评价、检测报告和追溯封存为准。</p>
+        <p class="qr-kicker">判定边界</p>
+        <h3>情报触发排查，证据形成结论</h3>
+        <p class="sub">风险情报不直接决定批次是否上市；最终结论以本批次检测与复核记录为准。</p>
         <div class="djtk-cabin-links">
           <a href="#/screen" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">核对安全检测</span><span class="djtk-cabin-link-go">打开 →</span></a>
           <a href="#/report" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">核对检测报告</span><span class="djtk-cabin-link-go">打开 →</span></a>

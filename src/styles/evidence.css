@@ -411,6 +411,16 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px 10px;
 }
+.quality-group-title {
+  margin: 10px 0 7px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.quality-group-title.is-nutrition { margin-top: 14px; }
+.quality-grid-nutrition { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.quality-grid-nutrition .quality-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .quality-tile {
   min-width: 0;
   padding: 8px 10px;

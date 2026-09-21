@@ -90,7 +90,7 @@ export function renderShell(state, route, inner) {
       <div class="main">
         <header class="topbar">
           <div class="top-context">
-            <span class="local-badge"><i></i>本地运行 · 断网可用</span>
+            <span class="local-badge"><i></i>全过程数据可追溯</span>
             <div class="crumb">替抗蓟化 / <b data-crumb-title>${route.title}</b></div>
           </div>
           <div class="top-actions">

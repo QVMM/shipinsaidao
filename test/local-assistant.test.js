@@ -26,12 +26,14 @@ test('问答只使用本地证据且不发起外部模型请求', async () => {
     app = await buildApp()
     const statusResponse = await app.inject({ method: 'GET', url: '/api/djtk/status' })
     const status = statusResponse.json()
-    assert.equal(status.mode, 'local-voice')
+    assert.equal(status.mode, 'hybrid-voice')
     assert.equal(status.cloudModel, false)
     assert.equal(status.voiceInput, 'browser-speech-recognition')
     assert.equal(status.voiceOutput, 'system-female-speech-synthesis')
     assert.equal(status.voiceName, '设备中文女声')
     assert.equal(status.voiceGender, 'female')
+    assert.equal(status.asrReady, false)
+    assert.equal(status.ttsReady, false)
 
     const response = await app.inject({
       method: 'POST',

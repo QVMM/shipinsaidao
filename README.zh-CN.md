@@ -65,9 +65,9 @@ npm run build
 - `DJTK_STAGE_TOKEN`：仅服务端；**必须在 Render Dashboard 配置长随机值**。请求头 `x-stage-token`（或 body.stageToken）与之匹配时可走展台鉴权；工作人员登录后 cookie 会话即可，无需令牌。前端**不再**内置或从 `/api/djtk/status` 下发任何默认令牌。
 - 生产环境 `SESSION_SECRET` 必填且不得为 `dev-only-change-me`，否则进程拒绝启动。
 
-线上版不连接外部语音模型，直接选择设备上的中文女声；Windows 比赛包内置离线语音识别与离线女声模型。Render 部署只需**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。
+语音采用双通道：线上版配置 `MIMO_API_KEY` 后优先使用 MiMo V2.5 ASR 与知性女声 TTS，接口、密钥或网络异常时自动回退浏览器语音能力；Windows 比赛包内置 SenseVoice 与本地女声模型，可作为断网备用。Render 部署需配置 `MIMO_API_KEY`，并**轮换** `DJTK_STAGE_TOKEN`（勿沿用旧的公开默认值）。
 
-接口：`POST /api/djtk/ask`（本地证据问答）；`GET /api/djtk/status`（语音能力与运行状态，不含密钥）。
+接口：`POST /api/djtk/ask`（本地证据问答）；`POST /api/djtk/transcribe`（联网语音识别）；`POST /api/djtk/tts`（联网女声）；`GET /api/djtk/status`（语音能力与运行状态，不含密钥）。
 
 ## 工作账号
 
@@ -135,6 +135,8 @@ data/tihua.db       本地库（git 忽略）
 - `GET  /api/audit?batchId=` 工作人员
 - `GET  /api/djtk/status` 语音能力与运行状态
 - `POST /api/djtk/ask` `{question, history?}` → `{answer, audioBase64, mime, voice}`
+- `POST /api/djtk/transcribe` PCM16 录音 → MiMo ASR 文本
+- `POST /api/djtk/tts` 文本 → MiMo 女声音频；失败由前端回退设备女声
 
 会话 cookie：`tihua_session`，httpOnly，SameSite=Lax。口令 bcryptjs（cost 10）。SQL 全是参数化。服务端不打口令日志。
 

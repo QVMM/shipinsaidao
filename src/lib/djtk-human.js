@@ -5,12 +5,13 @@
  * Optional legacy x-stage-token only if injected (window.__DJTK_STAGE_TOKEN__ or
  * sessionStorage) — never hardcoded.
  *
- * Mic / STT and spoken output use the device browser's speech capabilities.
- * The production web build does not call an external voice model.
+ * Online: MiMo ASR/TTS when configured, with browser speech fallback.
+ * Windows competition package: the same UI targets bundled local ASR/TTS.
  */
 
 import { post } from '../api.js'
 import { chosenBatchId, getState } from '../store.js'
+import { offlineMicSupported, startOfflineRecorder } from './offline-audio.js'
 
 /**
  * All assistant surfaces share four non-overlapping, high-frequency actions.
@@ -234,6 +235,34 @@ function speechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null
 }
 
+export function chooseMicInputMode({ recognitionAvailable, recorderAvailable, serverAsrReady }) {
+  if (recorderAvailable && serverAsrReady !== false) return 'recorder'
+  if (recognitionAvailable) return 'browser'
+  if (recorderAvailable) return 'recorder'
+  return 'none'
+}
+
+async function transcribeRecordedPcm(pcm, sampleRate, signal) {
+  const response = await fetch('/api/djtk/transcribe', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'content-type': 'application/octet-stream',
+      'x-sample-rate': String(sampleRate || 16000),
+      ...stageHeaders(),
+    },
+    body: pcm,
+    signal,
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = new Error(payload?.message || '语音识别未完成，请再试一次。')
+    error.status = response.status
+    throw error
+  }
+  return payload
+}
+
 /**
  * Play base64 wav with optional AnalyserNode mouth sync.
  * @param {string} base64
@@ -388,12 +417,11 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Speak through an available Chinese female system voice without contacting an
- * external voice service. The Windows competition package replaces this with
- * its bundled offline voice engine.
+ * Prefer MiMo female TTS online, then fall back to a Chinese female device
+ * voice. The Windows package replaces the endpoint with its local voice engine.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'browser' | 'none' }>}
+ * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}
  */
 export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
@@ -402,10 +430,22 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     opts.onEnd?.()
     return { ok: false, via: 'none' }
   }
-  if (opts.signal?.aborted) {
-    opts.onEnd?.()
-    return { ok: false, via: 'none' }
+  try {
+    const data = await post('/api/djtk/tts', {
+      text: say.slice(0, 300),
+      ...stageBody(),
+    }, { silent: true, signal: opts.signal, headers: stageHeaders() })
+    if (data?.audioBase64) {
+      const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
+      return { ok, via: 'mimo' }
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      opts.onEnd?.()
+      return { ok: false, via: 'none' }
+    }
   }
+  opts.onFallback?.()
   const ok = await speakBrowser(say, opts)
   return { ok, via: ok ? 'browser' : 'none' }
 }
@@ -622,6 +662,9 @@ export function bindDjtkHuman(root, opts = {}) {
   let cabinOpen = false
   /** @type {SpeechRecognition | null} */
   let recognition = null
+  let micSession = null
+  let micFinishing = false
+  let serverAsrReady = null
   let listening = false
 
   // Resume AudioContext on first user gesture (autoplay policies).
@@ -636,6 +679,10 @@ export function bindDjtkHuman(root, opts = {}) {
 
   // Anonymous booth: mint httpOnly djtk_stage cookie (silent).
   ensureStageSession()
+  fetch('/api/djtk/status', { credentials: 'same-origin' })
+    .then((response) => response.ok ? response.json() : null)
+    .then((status) => { serverAsrReady = typeof status?.asrReady === 'boolean' ? status.asrReady : null })
+    .catch(() => { serverAsrReady = null })
 
   const resolveBatchId = () => {
     try {
@@ -661,6 +708,8 @@ export function bindDjtkHuman(root, opts = {}) {
 
   const setMicUi = (on) => {
     listening = on
+    box.classList.toggle('is-listening', on)
+    cabin.classList.toggle('is-listening', on)
     allMics().forEach((btn) => {
       btn.classList.toggle('is-listening', on)
       btn.setAttribute('aria-pressed', on ? 'true' : 'false')
@@ -677,6 +726,10 @@ export function bindDjtkHuman(root, opts = {}) {
   const stopMic = () => {
     try { recognition?.stop() } catch { /* ignore */ }
     try { recognition?.abort() } catch { /* ignore */ }
+    recognition = null
+    const current = micSession
+    micSession = null
+    try { current?.cancel?.() } catch { /* ignore */ }
     setMicUi(false)
   }
 
@@ -976,7 +1029,7 @@ export function bindDjtkHuman(root, opts = {}) {
     }
   }
 
-  const startMic = () => {
+  const startBrowserMic = () => {
     const Ctor = speechRecognitionCtor()
     if (!Ctor) return
     stopMic()
@@ -1019,10 +1072,65 @@ export function bindDjtkHuman(root, opts = {}) {
     }
   }
 
+  const finishRecordedMic = async () => {
+    if (!micSession || micFinishing) return
+    micFinishing = true
+    const current = micSession
+    micSession = null
+    setMicUi(false)
+    setStatus('识别中…')
+    try {
+      const recording = await current.stop()
+      if (!recording.heardSpeech || recording.durationMs < 250) {
+        setStatus('没有听清，请靠近麦克风再说一遍')
+        return
+      }
+      const data = await transcribeRecordedPcm(recording.pcm, current.sampleRate)
+      const finalText = String(data?.text || '').trim()
+      if (!finalText) {
+        setStatus('没有听清，请重新说一遍')
+        return
+      }
+      allInputs().forEach((input) => { input.value = finalText })
+      setStatus('识别完成')
+      if (!asking) await ask(finalText)
+    } catch (error) {
+      setStatus(error?.message || '语音识别未完成，请再试一次')
+    } finally {
+      micFinishing = false
+    }
+  }
+
+  const startRecordedMic = async () => {
+    stopMic()
+    unlockAudio()
+    stopDjtkAudio()
+    setStatus('正在启用麦克风…')
+    try {
+      micSession = await startOfflineRecorder({ onAutoStop: () => finishRecordedMic() })
+      setMicUi(true)
+      setStatus('聆听中，说完后会自动识别')
+    } catch (error) {
+      setMicUi(false)
+      setStatus(error?.message || '麦克风不可用，请检查系统权限')
+    }
+  }
+
+  const startMic = () => {
+    const mode = chooseMicInputMode({
+      recognitionAvailable: !!speechRecognitionCtor(),
+      recorderAvailable: offlineMicSupported(),
+      serverAsrReady,
+    })
+    if (mode === 'recorder') startRecordedMic()
+    else if (mode === 'browser') startBrowserMic()
+  }
+
   const toggleMic = () => {
     if (asking) return
     if (listening) {
-      stopMic()
+      if (micSession) finishRecordedMic()
+      else stopMic()
       return
     }
     startMic()
@@ -1030,12 +1138,16 @@ export function bindDjtkHuman(root, opts = {}) {
 
   // Mic support probe
   {
-    const ok = !!speechRecognitionCtor()
+    const ok = chooseMicInputMode({
+      recognitionAvailable: !!speechRecognitionCtor(),
+      recorderAvailable: offlineMicSupported(),
+      serverAsrReady,
+    }) !== 'none'
     allMics().forEach((btn) => {
       if (!ok) {
         btn.disabled = true
         btn.dataset.micOk = '0'
-        btn.title = '当前浏览器不支持语音输入'
+        btn.title = '当前设备无法读取麦克风'
       } else {
         btn.dataset.micOk = '1'
       }

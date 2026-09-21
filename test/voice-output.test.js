@@ -33,17 +33,17 @@ test('浏览器降级播报只选择中文女声，不误用排在前面的中�
   assert.equal(selectFemaleChineseVoice([voices[0]]), null)
 })
 
-test('线上语音输出不请求外部语音接口', async () => {
+test('联网女声失败时自动回退设备女声且不影响文字回答', async () => {
   const originalFetch = globalThis.fetch
   let fetchCalls = 0
   globalThis.fetch = async () => {
     fetchCalls += 1
-    throw new Error('不应发起网络请求')
+    throw new Error('模拟联网女声不可用')
   }
 
   try {
     const result = await speakWithPreferredVoice('本地播报测试。')
-    assert.equal(fetchCalls, 0)
+    assert.equal(fetchCalls, 1)
     assert.equal(result.via, 'none')
   } finally {
     globalThis.fetch = originalFetch

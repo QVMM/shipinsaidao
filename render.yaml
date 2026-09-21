@@ -20,6 +20,13 @@ services:
         generateValue: true
       - key: SEAL_SECRET
         generateValue: true
+      # 联网时优先使用 MiMo ASR/TTS；密钥或网络异常时客户端自动降级。
+      - key: MIMO_API_KEY
+        sync: false
+      - key: MIMO_BASE_URL
+        value: https://token-plan-cn.xiaomimimo.com/v1
+      - key: MIMO_TTS_VOICE
+        value: 茉莉
       # Rotate in Render Dashboard if this blueprint value was ever public.
       # Prefer sync:false + Dashboard secret for long-lived deploys.
       - key: DJTK_STAGE_TOKEN

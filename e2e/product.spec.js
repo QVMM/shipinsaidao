@@ -221,8 +221,8 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   })
   await page.goto('/#/stage')
   await page.locator('[data-assess]').click()
-  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot')).toBeVisible()
-  const answer = await page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot').last().innerText()
+  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)')).toBeVisible()
+  const answer = await page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)').last().innerText()
   expect(answer).not.toMatch(forbiddenCopy)
   expect(answer).toMatch(/批次|检测|筛查|报告|证据/)
   await page.waitForTimeout(100)
@@ -231,6 +231,62 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await page.getByRole('button', { name: '新建会话' }).click()
   await expect(page.locator('.djtk-human.is-embedded .djtk-bubble')).toHaveCount(0)
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
+})
+
+test('语音准备期间显示思考过程，最终文字与女声同时开始', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__djtkSpeechStartedAt = 0
+    window.SpeechSynthesisUtterance = class {
+      constructor(text) {
+        this.text = text
+      }
+    }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() {
+          return [{ name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' }]
+        },
+        speak(utterance) {
+          window.__djtkSpeechStartedAt = window.performance.now()
+          utterance.onstart?.()
+          setTimeout(() => utterance.onend?.(), 80)
+        },
+      },
+    })
+  })
+  await page.route('**/api/djtk/tts', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'voice unavailable' }) })
+  })
+
+  await page.goto('/#/stage')
+  const assistant = page.locator('.djtk-human.is-embedded')
+  await assistant.evaluate((node) => {
+    window.__djtkTextShownAt = 0
+    const observer = new window.MutationObserver(() => {
+      if (!window.__djtkTextShownAt && node.querySelector('.djtk-bubble.is-bot:not(.is-progress)')) {
+        window.__djtkTextShownAt = window.performance.now()
+        observer.disconnect()
+      }
+    })
+    observer.observe(node, { childList: true, subtree: true })
+  })
+
+  await assistant.getByRole('button', { name: '研判当前批次' }).click()
+  await expect(assistant.locator('.djtk-bubble.is-progress')).toContainText(/检索|核对|分析|生成.*女声/)
+  await page.waitForTimeout(350)
+  await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toHaveCount(0)
+
+  await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toBeVisible()
+  const timing = await page.evaluate(() => ({
+    text: window.__djtkTextShownAt,
+    speech: window.__djtkSpeechStartedAt,
+  }))
+  expect(timing.text).toBeGreaterThan(0)
+  expect(timing.speech).toBeGreaterThan(0)
+  expect(Math.abs(timing.text - timing.speech)).toBeLessThan(120)
 })
 
 test('语音输入可直接发起本地研判并由设备中文女声播报', async ({ page }) => {

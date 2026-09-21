@@ -31,8 +31,9 @@ test('0911 需求：合格印章使用带纹理的正式印章组件', () => {
   assert.match(html, /stamp-qualified\.png|feTurbulence/)
 })
 
-test('比赛大屏不显示部署状态口号，并将统计入口命名为指标分析', () => {
+test('比赛新版大屏不显示部署口号与无需求依据的指标分析入口', () => {
   const source = readFileSync(new URL('../src/pages/stage.js', import.meta.url), 'utf8')
   assert.equal(source.includes('本地部署 · 离线运行正常'), false)
-  assert.match(source, />指标分析<\/button>/)
+  assert.equal(source.includes('data-insights'), false)
+  assert.equal(source.includes('>指标分析</button>'), false)
 })

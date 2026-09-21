@@ -351,7 +351,6 @@ export function render() {
             <time class="hd-clock dig" data-clock></time>
             <span class="hd-stamp" data-stamp>体系</span>
             <a class="hd-view-switch" href="${esc(switchHref)}">经典可视化</a>
-            <button type="button" class="hd-insights" data-insights aria-pressed="false" title="查看批次统计指标">指标分析</button>
             <button type="button" class="hd-fs" data-fs title="进入全屏">全屏</button>
             <button type="button" class="hd-assess" data-assess>研判当前批次</button>
           </div>
@@ -463,7 +462,7 @@ export function render() {
           `}
         </section>
 
-        <aside class="wall-col wall-right">
+        ${legacy ? `<aside class="wall-col wall-right">
           <div class="dv-box rate-box">
             ${corners()}
             <div class="dv-hd"><i></i><h2>氟苯尼考未检出率</h2><span>FLEET</span></div>
@@ -495,7 +494,7 @@ export function render() {
               <div class="chart chart-trend" data-chart="trend"></div>
             </div>
           </div>
-        </aside>
+        </aside>` : ''}
 
       </div>
     </div>
@@ -511,12 +510,13 @@ export async function bind(root) {
   lastSig = ''
   document.title = '替抗蓟化 全链条质控与溯源指挥舱'
   applyScale()
-  if (!echartsMod) echartsMod = await import('echarts')
-  initCharts()
+  if (isLegacyView()) {
+    if (!echartsMod) echartsMod = await import('echarts')
+    initCharts()
+  }
   tickClock()
   root.querySelector('[data-fs]')?.addEventListener('click', toggleFs)
   root.querySelector('[data-assess]')?.addEventListener('click', startBatchAssessment)
-  root.querySelector('[data-insights]')?.addEventListener('click', toggleInsights)
   bindDjtkHuman(root, { batchId: chosenBatchId(), embedded: !isLegacyView() })
   window.addEventListener('resize', onResize)
   clockTimer = window.setInterval(tickClock, 1000)
@@ -615,16 +615,6 @@ function startQueueRoll(queue, count) {
 function startBatchAssessment() {
   const chip = rootEl?.querySelector('.djtk-human.is-embedded [data-primary-query]')
   chip?.click()
-}
-
-function toggleInsights(event) {
-  const wall = rootEl?.querySelector('[data-wall]')
-  if (!wall) return
-  const open = !wall.classList.contains('show-insights')
-  wall.classList.toggle('show-insights', open)
-  event?.currentTarget?.setAttribute('aria-pressed', open ? 'true' : 'false')
-  event.currentTarget.textContent = open ? '收起分析' : '指标分析'
-  requestAnimationFrame(() => Object.values(charts).forEach((chart) => chart?.resize()))
 }
 
 function toggleFs() {

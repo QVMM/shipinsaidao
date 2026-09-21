@@ -162,7 +162,6 @@
 }
 
 .hd-fs,
-.hd-insights,
 .hd-view-switch,
 .hd-assess {
   display: inline-flex;
@@ -181,9 +180,7 @@
 }
 
 .hd-fs:hover,
-.hd-view-switch:hover,
-.hd-insights:hover,
-.hd-insights[aria-pressed="true"] {
+.hd-view-switch:hover {
   border-color: rgba(127, 231, 189, .58);
   color: #f5fff9;
 }
@@ -596,28 +593,6 @@
 .stage-evidence-grid .lab-fix-pill { display: none; }
 .lab-conds { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
 .lab-conds li { min-width: 0; border-radius: 6px; background: rgba(0, 0, 0, .12); }
-
-.wall-right {
-  display: none;
-  position: absolute;
-  top: 80px;
-  right: calc(clamp(340px, 21.4vw, 360px) + 20px);
-  bottom: 10px;
-  z-index: 30;
-  width: min(740px, calc(100vw - 540px));
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr 1fr;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid rgba(227, 199, 119, .32);
-  border-radius: 12px;
-  background: rgba(3, 18, 16, .97);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
-}
-:scope.show-insights .wall-right { display: grid; }
-.wall-right > .dv-box { min-height: 0; }
-.wall-right .rate-box { grid-column: 1 / -1; }
-.wall-right .right-split { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
 
 /* 右侧 AI 证据搭档 */
 .djtk-human.is-stage.is-embedded {

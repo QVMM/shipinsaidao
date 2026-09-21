@@ -3,8 +3,6 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-const FEMALE_REFERENCE_TEXT = '各位村民, 大家新年好! 近期, 湖北省武汉市等多个地区'
-
 export function windowsVoiceCliPaths() {
   const directory = resolve(process.env.OFFLINE_VOICE_CLI_DIR || '')
   return {
@@ -23,15 +21,14 @@ export function windowsVoiceCliReady() {
 
 export function ttsCliArgs(p, text, outputFile) {
   return [
-    `--zipvoice-encoder=${p.zipEncoder}`,
-    `--zipvoice-decoder=${p.zipDecoder}`,
-    `--zipvoice-data-dir=${p.zipDataDir}`,
-    `--zipvoice-lexicon=${p.zipLexicon}`,
-    `--zipvoice-tokens=${p.zipTokens}`,
-    `--zipvoice-vocoder=${p.zipVocoder}`,
-    `--reference-audio=${p.zipReference}`,
-    `--reference-text=${FEMALE_REFERENCE_TEXT}`,
-    '--num-steps=4',
+    `--matcha-acoustic-model=${p.ttsModel}`,
+    `--matcha-vocoder=${p.vocoder}`,
+    `--matcha-lexicon=${p.ttsLexicon}`,
+    `--matcha-tokens=${p.ttsTokens}`,
+    `--tts-rule-fsts=${[p.phoneFst, p.dateFst, p.numberFst].join(',')}`,
+    `--speed=${Number(process.env.OFFLINE_VOICE_SPEED || 0.82)}`,
+    `--tts-silence-scale=${Number(process.env.OFFLINE_VOICE_SILENCE_SCALE || 0.65)}`,
+    '--tts-max-num-sentences=1',
     `--num-threads=${Math.max(2, Math.min(6, Number(process.env.OFFLINE_TTS_THREADS || 4)))}`,
     `--output-filename=${outputFile}`,
     String(text || '').slice(0, 300),
@@ -128,9 +125,9 @@ export async function synthesizeWindowsVoiceCli(p, text, options = {}) {
       ok: true,
       audioBase64: wav.toString('base64'),
       mime: 'audio/wav',
-      voice: '本地自然女声·Emilia',
+      voice: '本地清晰女声·Baker',
       voiceGender: 'female',
-      engine: 'zipvoice-arm64-native',
+      engine: 'matcha-arm64-native',
     }
   } finally {
     rmSync(work, { recursive: true, force: true })

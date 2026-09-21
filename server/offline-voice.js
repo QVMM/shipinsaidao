@@ -104,8 +104,8 @@ export function getOfflineVoiceStatus() {
   const naturalVoiceUsable = naturalVoiceReady && !failedTtsKinds.has('zipvoice')
   const fallbackVoiceUsable = fallbackVoiceReady && !failedTtsKinds.has('matcha')
   const ttsReady = naturalVoiceUsable || fallbackVoiceUsable
-  const activeVoiceKind = workingTtsKind || (naturalVoiceUsable ? 'zipvoice' : 'matcha')
   const cliReady = windowsVoiceCliReady()
+  const activeVoiceKind = cliReady ? 'matcha' : (workingTtsKind || (naturalVoiceUsable ? 'zipvoice' : 'matcha'))
   let nativeReady = cliReady
   let nativeError = ''
   if (!cliReady) {
@@ -130,7 +130,7 @@ export function getOfflineVoiceStatus() {
     nativeError,
     voice: activeVoiceKind === 'zipvoice' ? VOICE_NAME : FALLBACK_VOICE_NAME,
     voiceGender: 'female',
-    ttsEngine: cliReady ? 'zipvoice-arm64-native' : (activeVoiceKind === 'zipvoice' ? 'zipvoice-local' : 'matcha-local'),
+    ttsEngine: cliReady ? 'matcha-arm64-native' : (activeVoiceKind === 'zipvoice' ? 'zipvoice-local' : 'matcha-local'),
     naturalVoiceReady: naturalVoiceUsable,
     message: ready ? `离线识别与${activeVoiceKind === 'zipvoice' ? '自然' : '备用'}本地女声已就绪。` : `尚未安装或加载：${missing.join('、')}。`,
     modelDir: p.base,
@@ -289,7 +289,8 @@ function fakeFemaleWave() {
 function generateTtsWave(api, bundle, say) {
   const generationConfig = new api.GenerationConfig(bundle.kind === 'zipvoice'
     ? {
-        speed: Number(process.env.OFFLINE_VOICE_SPEED || 1.04),
+        speed: Number(process.env.OFFLINE_VOICE_SPEED || 0.9),
+        silenceScale: Number(process.env.OFFLINE_VOICE_SILENCE_SCALE || 0.65),
         referenceAudio: bundle.reference.samples,
         referenceSampleRate: bundle.reference.sampleRate,
         referenceText: FEMALE_REFERENCE_TEXT,
@@ -298,8 +299,8 @@ function generateTtsWave(api, bundle, say) {
       }
     : {
         sid: 0,
-        speed: Number(process.env.OFFLINE_VOICE_SPEED || 1.08),
-        silenceScale: 0.18,
+        speed: Number(process.env.OFFLINE_VOICE_SPEED || 0.82),
+        silenceScale: Number(process.env.OFFLINE_VOICE_SILENCE_SCALE || 0.65),
       })
   const audio = bundle.engine.generate({ text: say.slice(0, 300), generationConfig, enableExternalBuffer: false })
   return encodeWaveBuffer(audio.samples, audio.sampleRate)

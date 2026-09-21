@@ -11,7 +11,7 @@
 - 同时内置官方 Windows x64 和 ARM64 Node.js 便携运行时，自动选择与电脑匹配的版本；
 - 自动选择空闲本地端口，不再固定依赖 4173；
 - 只监听 `127.0.0.1`，局域网其他电脑无法访问；
-- SenseVoice、ZipVoice Emilia 女声和全部模型均随包携带；
+- SenseVoice、x64 ZipVoice Emilia 女声、ARM64 Matcha Baker 女声和全部模型均随包携带；
 - 断网后页面、数据、语音输入和语音输出仍可运行；
 - Electron 安装版与免安装版只作为第二级备用。
 
@@ -20,7 +20,7 @@
 正式交付为：
 
 ```text
-替抗蓟化-Windows本地Web版-1.0.6-universal.zip
+替抗蓟化-Windows本地Web版-1.0.7-universal.zip
 ```
 
 必须先完整解压，不能直接在压缩包预览窗口中运行。解压后的主要入口：

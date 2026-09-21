@@ -208,7 +208,7 @@ console.log(JSON.stringify({
   host: '127.0.0.1 only',
   nodeRuntime: 'Windows x64 + ARM64 已内置并自动选择',
   voiceRuntime: 'Windows x64 + ARM64 已内置并自动选择',
-  offlineModels: 'SenseVoice + ZipVoice Emilia + Matcha Baker',
+  offlineModels: 'SenseVoice + x64 ZipVoice Emilia + ARM64 Matcha Baker',
   stagedSmoke: smoke,
   zipSize: `${mb(zipFile)} MB`,
   zipSha256: sha256,

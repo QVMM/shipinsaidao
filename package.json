@@ -1,7 +1,7 @@
 {
   "name": "tihua-offline-competition",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "替抗蓟化全链条质控与溯源平台完全离线竞赛版",
   "author": "DJTK 项目组",
   "type": "module",

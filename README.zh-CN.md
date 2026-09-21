@@ -25,7 +25,7 @@ npm start
 - [启动与应急方案](docs/STARTUP_OFFLINE.md)
 - [比赛验收清单](docs/COMPETITION_ACCEPTANCE.md)
 
-交付电脑小白时，使用 `release/替抗蓟化-Windows本地Web版-1.0.6-universal.zip`。同一个包会自动适配 Intel/AMD x64 与 Qualcomm/Windows on ARM 电脑。用户只需先“全部解压”，再双击排在最上方的 `00-首次使用-安装并启动.bat`；程序会等到本地网页真正可访问后才打开浏览器，本地女声在独立线程中准备，不会阻塞网页。之后每次直接使用自动创建的“打开替抗蓟化网页”桌面图标。它会打开带地址栏的普通浏览器窗口，不是桌面应用；对方电脑不需要安装 Node.js、Python 或数据库。
+交付电脑小白时，使用 `release/替抗蓟化-Windows本地Web版-1.0.7-universal.zip`。同一个包会自动适配 Intel/AMD x64 与 Qualcomm/Windows on ARM 电脑。用户只需先“全部解压”，再双击排在最上方的 `00-首次使用-安装并启动.bat`；程序会等到本地网页真正可访问后才打开浏览器，本地女声在独立线程中准备，不会阻塞网页。之后每次直接使用自动创建的“打开替抗蓟化网页”桌面图标。它会打开带地址栏的普通浏览器窗口，不是桌面应用；对方电脑不需要安装 Node.js、Python 或数据库。
 
 首次准备：
 
@@ -47,7 +47,7 @@ npm run desktop
 
 浏览器应急模式：`npm run offline`，然后打开 http://127.0.0.1:4173/?offline=1#/stage 。
 
-离线模式下，登录、SQLite、检测判定、报告、追溯码、公开扫码、两套大屏、本地证据问答、SenseVoice 语音识别和 ZipVoice 自然女声全部在本机运行。默认声音为 `本地自然女声·Emilia`，Matcha Baker 为本地兜底；不会调用浏览器声音。
+离线模式下，登录、SQLite、检测判定、报告、追溯码、公开扫码、两套大屏、本地证据问答和 SenseVoice 语音识别全部在本机运行。Intel/AMD x64 使用 ZipVoice Emilia 自然女声，Windows ARM64 使用 Matcha Baker 清晰中文女声；两种架构都不会调用浏览器声音。
 
 开发（前端热更新 + API）：
 

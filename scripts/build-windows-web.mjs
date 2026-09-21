@@ -183,7 +183,7 @@ const notice = [
   '替抗蓟化 Windows 本地 Web 版',
   `版本：${manifest.version}`,
   `内置 Node.js：v${nodeVersion} Windows x64 + ARM64（官方便携二进制）`,
-  '语音运行库：x64 sherpa-onnx-node / ARM64 sherpa-onnx 原生 CLI',
+  '本地女声：x64 ZipVoice Emilia / ARM64 Matcha Baker',
   '运行方式：仅监听 127.0.0.1，运行时不需要互联网。',
   '',
 ].join('\r\n')

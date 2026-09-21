@@ -275,7 +275,7 @@ test('语音准备期间显示思考过程，最终文字与女声同时开始',
   })
 
   await assistant.getByRole('button', { name: '研判当前批次' }).click()
-  await expect(assistant.locator('.djtk-bubble.is-progress')).toContainText(/检索|核对|分析|生成.*女声/)
+  await expect(assistant.locator('.djtk-bubble.is-progress')).toHaveText(/等待中/)
   await page.waitForTimeout(350)
   await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toHaveCount(0)
 

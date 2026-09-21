@@ -710,9 +710,9 @@ export function bindDjtkHuman(root, opts = {}) {
     cabin.classList.toggle('is-thinking', on)
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
     if (hint && !cabin.classList.contains('is-speaking')) {
-      hint.textContent = on ? '思考中…' : (asking ? '思考中…' : '待命')
+      hint.textContent = on ? '等待中…' : (asking ? '等待中…' : '待命')
     }
-    if (on) setEmbeddedState('核对证据中…')
+    if (on) setEmbeddedState('等待中…')
     else if (!asking && !listening) setEmbeddedState('待命 · 本地证据已就绪')
   }
 
@@ -722,8 +722,8 @@ export function bindDjtkHuman(root, opts = {}) {
     if (on) setThinking(false)
     else clearMouthClasses()
     const hint = cabin.querySelector('[data-djtk-cabin-speak-hint]')
-    if (hint) hint.textContent = on ? '播报中…' : (asking ? '思考中…' : '待命')
-    setEmbeddedState(on ? '播报中 · 正在引用平台记录' : (asking ? '核对证据中…' : '待命 · 本地证据已就绪'))
+    if (hint) hint.textContent = on ? '回答中…' : (asking ? '等待中…' : '待命')
+    setEmbeddedState(on ? '回答中 · 正在引用平台记录' : (asking ? '等待中…' : '待命 · 本地证据已就绪'))
     allStop().forEach((btn) => {
       btn.hidden = !on && !asking
       if (on) btn.hidden = false
@@ -877,8 +877,8 @@ export function bindDjtkHuman(root, opts = {}) {
     stopMic()
     pushBubble('user', q)
     history.push({ role: 'user', content: q })
-    setStatus('智控助手思考中…')
-    setProgress('正在检索当前批次记录与检测证据…')
+    setStatus('等待中…')
+    setProgress('等待中…')
     setBusy(true)
     setThinking(true)
     setSpeaking(false)
@@ -907,8 +907,8 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
-      setStatus(data?.fast ? '证据检索完成，正在准备女声…' : '证据分析完成，正在准备女声…')
-      setProgress(data?.fast ? '证据检索完成，正在生成女声…' : '证据分析完成，正在生成女声…')
+      setStatus('等待中…')
+      setProgress('等待中…')
     } catch (err) {
       if (seq !== askSeq || err?.name === 'AbortError') return
       if (err?.status === 401) {
@@ -942,14 +942,14 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('正在生成女声，完成后将同步显示与播报…')
-    setProgress('正在生成女声，完成后将同步显示与播报…')
+    setStatus('等待中…')
+    setProgress('等待中…')
 
     const hooks = {
       onStart: () => {
         if (seq !== askSeq) return
         revealAnswer()
-        setStatus('文字与女声同步播报中…')
+        setStatus('正在回答…')
         setSpeaking(true)
       },
       onEnd: () => {
@@ -961,8 +961,8 @@ export function bindDjtkHuman(root, opts = {}) {
       },
       onFallback: () => {
         if (seq !== askSeq) return
-        setStatus('专用女声暂不可用，正在准备本机女声…')
-        setProgress('正在切换本机女声，完成后将同步显示与播报…')
+        setStatus('等待中…')
+        setProgress('等待中…')
       },
     }
 

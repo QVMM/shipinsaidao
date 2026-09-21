@@ -583,9 +583,9 @@ export function renderDjtkHuman(opts = {}) {
           </div>
         </header>
         <section class="djtk-customs-monitor" aria-label="海关公开数据风险监测">
-          <a class="djtk-customs-source" href="#/customs" title="查看海关公开数据与风险信息">
+          <a class="djtk-customs-source" href="https://online.customs.gov.cn/" target="_blank" rel="noopener noreferrer" title="在新窗口访问海关官方平台">
             <span>海关中心政务公开数据平台</span>
-            <em>风险快照已载入 · 查看 ›</em>
+            <em>访问官网 ↗</em>
           </a>
           <div class="djtk-customs-alert">
             <p><b>实验前风险预警</b>某海关中心拦截一批出口鸡肉，兽药残留氟苯尼考超标，请对我基地鸡肉进行风险排查。</p>

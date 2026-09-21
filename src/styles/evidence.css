@@ -311,6 +311,7 @@
   align-items: start;
 }
 .customs-risk-board { grid-template-columns: 1.18fr .82fr; }
+.page-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .customs-risk-card { grid-column: 1 / -1; }
 .customs-risk-head {
   display: flex;
@@ -334,6 +335,7 @@
 }
 .customs-risk-facts dt { margin: 0 0 5px; color: var(--muted); font-size: 11px; }
 .customs-risk-facts dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; line-height: 1.4; }
+.customs-risk-facts dd a { color: var(--forest); text-decoration-color: color-mix(in srgb, var(--forest) 35%, transparent); text-underline-offset: 3px; }
 .health-col {
   display: flex;
   flex-direction: column;

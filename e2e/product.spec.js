@@ -77,6 +77,11 @@ test('大屏助手移除说明条并紧凑展示三个证据入口', async ({ pa
   const assistant = page.locator('.djtk-human.is-embedded')
   await expect(assistant.locator('.djtk-tip')).toHaveCount(0)
 
+  const customsLink = assistant.getByRole('link', { name: /海关中心政务公开数据平台/ })
+  await expect(customsLink).toHaveAttribute('href', 'https://online.customs.gov.cn/')
+  await expect(customsLink).toHaveAttribute('target', '_blank')
+  await expect(customsLink).toHaveAttribute('rel', 'noopener noreferrer')
+
   const proofLinks = assistant.locator('.djtk-proof-list a')
   await expect(proofLinks).toHaveCount(3)
   await expect(proofLinks).toHaveText(['氟苯尼考报告', '养殖记录', '合规证明'])

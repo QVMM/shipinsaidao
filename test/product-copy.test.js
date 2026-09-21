@@ -39,6 +39,9 @@ test('风险情报页使用离线快照并避免虚构真实地点', () => {
   assert.match(visibleText(renderCustoms()), /海关中心政务公开数据平台/)
   assert.match(visibleText(renderCustoms()), /在线更新.*本地保留|本地保留.*在线更新/)
   assert.match(renderCustoms(), /href="#\/stage"/)
+  assert.match(renderCustoms(), /href="https:\/\/online\.customs\.gov\.cn\/"/)
+  assert.match(renderCustoms(), /target="_blank"/)
+  assert.match(renderCustoms(), /rel="noopener noreferrer"/)
 })
 
 test('大屏助手明确显示海关公开数据来源与实验前风险预警', () => {
@@ -47,7 +50,9 @@ test('大屏助手明确显示海关公开数据来源与实验前风险预警',
   assert.match(text, /海关中心政务公开数据平台/)
   assert.match(text, /实验前风险预警/)
   assert.match(text, /某海关中心拦截一批出口鸡肉/)
-  assert.match(html, /href="#\/customs"/)
+  assert.match(html, /href="https:\/\/online\.customs\.gov\.cn\/"/)
+  assert.match(html, /target="_blank"/)
+  assert.match(html, /rel="noopener noreferrer"/)
   assert.match(html, /data-customs-assess/)
 })
 

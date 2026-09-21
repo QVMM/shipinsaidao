@@ -9,12 +9,15 @@ export function render() {
         <p class="eyebrow">CUSTOMS PUBLIC DATA</p>
         <h2>海关中心政务公开数据平台</h2>
       </div>
-      <a class="btn" href="#/stage">返回指挥舱</a>
+      <div class="page-head-actions">
+        <a class="btn" href="#/stage">返回指挥舱</a>
+        <a class="btn gold" href="https://online.customs.gov.cn/" target="_blank" rel="noopener noreferrer">访问海关官方平台 ↗</a>
+      </div>
     </div>
     ${renderNextBar('eval')}
     <div class="card story-lead">
       <strong>公开风险信息驱动检测，批次原始证据形成结论</strong>
-      联网时可更新公开风险信息，本地保留最近一次核验数据；网络波动不影响已载入风险排查与批次证据核验。
+      联网时可访问 online.customs.gov.cn 核对公开信息，本地保留最近一次核验数据；网络波动不影响已载入风险排查与批次证据核验。
     </div>
     <div class="health-board mt-14 customs-risk-board">
       <section class="card customs-risk-card">
@@ -27,7 +30,7 @@ export function render() {
         </div>
         <p class="sub">某海关中心拦截一批出口鸡肉，兽药残留氟苯尼考超标，请对我基地鸡肉进行风险排查。</p>
         <dl class="customs-risk-facts">
-          <div><dt>公开数据来源</dt><dd>海关中心政务公开数据平台</dd></div>
+          <div><dt>公开数据来源</dt><dd><a href="https://online.customs.gov.cn/" target="_blank" rel="noopener noreferrer">online.customs.gov.cn ↗</a></dd></div>
           <div><dt>风险对象</dt><dd>出口鸡肉</dd></div>
           <div><dt>重点指标</dt><dd>氟苯尼考兽药残留</dd></div>
           <div><dt>处置方式</dt><dd>联动焦点批次安全检测</dd></div>

@@ -13,27 +13,16 @@ import { post } from '../api.js'
 import { chosenBatchId, getState } from '../store.js'
 import { offlineMicSupported, startOfflineRecorder } from './offline-audio.js'
 
-const ANALYSIS_QUERIES = [
-  { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。' },
-  { label: '说明上市判定', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
-  { label: '列出待复核项', ask: '当前焦点批次有哪些待复核项？' },
-  {
-    label: '出口风险排查',
-    ask: '我是某出口鸡肉企业的质量工程师，我联动自主开发的大蓟替抗智控平台，对近期我国出口鸡肉安全进行风险排查。请DJTK智控助手结合大数据平台进行安全风险排查。',
-  },
-  { label: '样品结果判定', ask: '质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。' },
-  { label: '安全使命收束', ask: '大蓟替抗 高品质鸡肉解决方案 技能展示完成' },
-]
-
-/** 业务快捷问：一律走 grounded ask，禁止本地臆造合格/用药。 */
-const STARTERS = [
-  '这批鸡从哪来？',
-  '安不安全？能上桌吗？',
-  '下一步我该点哪里？',
-  '当前焦点批次风险？',
-  '氟苯尼考筛查结果？',
-  '有哪些待复核 / 下一步点哪？',
-  '当前法规与监管数据状态？',
+/**
+ * All assistant surfaces share four non-overlapping, high-frequency actions.
+ * Longer competition scripts remain available through voice/text input without
+ * permanently crowding the interface.
+ */
+const QUICK_ACTIONS = [
+  { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。', primary: true },
+  { label: '上市判定依据', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
+  { label: '氟苯尼考结果', ask: '请说明当前焦点批次的氟苯尼考筛查结果及对应证据。' },
+  { label: '待复核与下一步', ask: '请列出当前焦点批次的待复核项，并说明下一步应处理什么。' },
 ]
 
 const SS_KEY = 'djtk_stage_token'
@@ -467,19 +456,12 @@ function avatarHtml(suffix = 'panel') {
   `
 }
 
-function analysisChipsHtml() {
-  return ANALYSIS_QUERIES.map((item, index) => {
-    const primary = index === 0 ? ' data-primary-query' : ''
-    return `<button type="button" class="djtk-chip is-primary" data-djtk-chip${primary} data-djtk-ask="${esc(item.ask)}">${esc(item.label)}</button>`
+function quickChipsHtml() {
+  return QUICK_ACTIONS.map((item) => {
+    const primaryQuery = item.primary ? ' data-primary-query' : ''
+    const primaryClass = item.primary ? ' is-primary' : ''
+    return `<button type="button" class="djtk-chip${primaryClass}" data-djtk-chip${primaryQuery} data-djtk-ask="${esc(item.ask)}">${esc(item.label)}</button>`
   }).join('')
-}
-
-function businessChipsHtml() {
-  return STARTERS.map((q) => `<button type="button" class="djtk-chip" data-djtk-chip>${esc(q)}</button>`).join('')
-}
-
-function chipsHtml() {
-  return `${analysisChipsHtml()}${businessChipsHtml()}`
 }
 
 function formActionsHtml() {
@@ -523,12 +505,8 @@ function cabinMarkup() {
         </section>
         <section class="djtk-cabin-chat">
           <div class="djtk-cabin-chip-block">
-            <p class="djtk-cabin-sec-label">快捷研判</p>
-            <div class="djtk-chips djtk-cabin-chips is-analysis">${analysisChipsHtml()}</div>
-          </div>
-          <div class="djtk-cabin-chip-block">
-            <p class="djtk-cabin-sec-label">业务快问</p>
-            <div class="djtk-chips djtk-cabin-chips is-biz">${businessChipsHtml()}</div>
+            <p class="djtk-cabin-sec-label">常用研判</p>
+            <div class="djtk-chips djtk-cabin-chips">${quickChipsHtml()}</div>
           </div>
           <div class="djtk-cabin-log-wrap">
             <div class="djtk-log" data-djtk-log aria-live="polite">
@@ -567,7 +545,7 @@ function cabinMarkup() {
 export function renderDjtkHuman(opts = {}) {
   const compact = !!opts.compact
   const embedded = !!opts.embedded
-  const starters = chipsHtml()
+  const starters = quickChipsHtml()
   return `
     <aside class="djtk-human ${compact ? 'is-compact' : 'is-stage'}${embedded ? ' is-embedded' : ''}" data-djtk-human data-collapsed="${compact || embedded ? '0' : '1'}">
       ${compact || embedded ? '' : `

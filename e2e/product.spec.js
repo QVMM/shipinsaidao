@@ -274,10 +274,33 @@ test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ pa
   await page.goto('/#/stage')
   await page.getByRole('button', { name: '全屏研判' }).click()
   const cabin = page.getByRole('dialog', { name: 'DJTK 全屏指挥舱' })
-  await cabin.getByRole('button', { name: '样品结果判定' }).click()
+  const input = cabin.locator('[data-djtk-input]')
+  await input.fill('质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。')
+  await input.press('Enter')
   const answer = cabin.locator('.djtk-bubble.is-bot').last()
   await expect(answer).toContainText(/高品质鸡肉三维评价体系|尚未达到出证条件/)
   await expect(answer).not.toContainText('4 号')
+})
+
+test('各页面助手只保留四个不重复的核心快捷入口', async ({ page }) => {
+  const expected = ['研判当前批次', '上市判定依据', '氟苯尼考结果', '待复核与下一步']
+
+  await page.goto('/#/stage')
+  const stageAssistant = page.locator('.djtk-human.is-embedded')
+  await expect(stageAssistant.locator('[data-djtk-chip]')).toHaveCount(4)
+  for (const label of expected) await expect(stageAssistant.getByRole('button', { name: label })).toBeVisible()
+
+  await stageAssistant.getByRole('button', { name: '全屏研判' }).click()
+  const cabin = page.getByRole('dialog', { name: 'DJTK 全屏指挥舱' })
+  await expect(cabin.locator('[data-djtk-chip]')).toHaveCount(4)
+  await expect(cabin.getByText('常用研判', { exact: true })).toBeVisible()
+  await expect(cabin.getByText('业务快问', { exact: true })).toHaveCount(0)
+
+  await cabin.getByRole('button', { name: '退出' }).click()
+  await login(page)
+  await page.goto('/#/eval')
+  const compactAssistant = page.locator('.djtk-human.is-compact')
+  await expect(compactAssistant.locator('[data-djtk-chip]')).toHaveCount(4)
 })
 
 test('健康评价展示水分、嫩度、pH 与保水性实测指标', async ({ page }) => {

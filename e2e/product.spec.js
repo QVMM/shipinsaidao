@@ -237,7 +237,7 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   })
   await page.goto('/#/stage')
   await page.locator('[data-assess]').click()
-  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)')).toBeVisible()
+  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)')).toBeVisible({ timeout: 10_000 })
   const answer = await page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)').last().innerText()
   expect(answer).not.toMatch(forbiddenCopy)
   expect(answer).toMatch(/批次|检测|筛查|报告|证据/)

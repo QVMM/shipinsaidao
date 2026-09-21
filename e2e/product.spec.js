@@ -57,6 +57,8 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   await expect(page.locator('.wall')).toBeVisible()
   await expect(page.locator('.wall')).not.toHaveClass(/is-legacy/)
   await expect(page.getByRole('link', { name: '经典可视化' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '指标分析' })).toHaveCount(0)
+  await expect(page.locator('.wall-right')).toHaveCount(0)
   const currentBatch = await page.locator('[data-callout]').innerText()
   expect(currentBatch).toContain('蓟化-2026-0812')
 
@@ -66,6 +68,8 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   await expect(page.getByRole('link', { name: '新版指挥舱' })).toBeVisible()
   await expect(page.locator('.djtk-human.is-stage:not(.is-embedded)')).toHaveCount(1)
   await expect(page.locator('.stage-evidence-grid')).toHaveCount(0)
+  await expect(page.locator('.wall-right')).toBeVisible()
+  await expect(page.locator('.wall-right [data-chart]')).toHaveCount(5)
   await expect(page.locator('[data-callout]')).toContainText('蓟化-2026-0812')
 
   const bodyText = await page.locator('body').innerText()

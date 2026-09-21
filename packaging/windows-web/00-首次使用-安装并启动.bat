@@ -13,14 +13,11 @@ echo [1/3] Checking system files...
 if not exist "runtime\node.exe" goto :files_missing
 if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
   if not exist "runtime\node-arm64.exe" goto :files_missing
-  if not exist "runtime\voice-arm64\sherpa-onnx-offline-tts.exe" goto :files_missing
   if not exist "runtime\voice-arm64\sherpa-onnx-offline.exe" goto :files_missing
 )
 if not exist "app\server\windows-web-start.mjs" goto :files_missing
 if not exist "start-local-service.ps1" goto :files_missing
 if not exist "models\offline\sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17\model.int8.onnx" goto :files_missing
-if not exist "models\offline\sherpa-onnx-zipvoice-distill-int8-zh-en-emilia\encoder.int8.onnx" goto :files_missing
-
 echo [2/3] Creating desktop shortcuts...
 set "SHORTCUT_READY=1"
 powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0create-shortcuts.ps1"

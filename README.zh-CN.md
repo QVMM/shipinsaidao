@@ -25,7 +25,7 @@ npm start
 - [启动与应急方案](docs/STARTUP_OFFLINE.md)
 - [比赛验收清单](docs/COMPETITION_ACCEPTANCE.md)
 
-交付电脑小白时，使用 `release/替抗蓟化-Windows本地Web版-1.0.7-universal.zip`。同一个包会自动适配 Intel/AMD x64 与 Qualcomm/Windows on ARM 电脑。用户只需先“全部解压”，再双击排在最上方的 `00-首次使用-安装并启动.bat`；程序会等到本地网页真正可访问后才打开浏览器，本地女声在独立线程中准备，不会阻塞网页。之后每次直接使用自动创建的“打开替抗蓟化网页”桌面图标。它会打开带地址栏的普通浏览器窗口，不是桌面应用；对方电脑不需要安装 Node.js、Python 或数据库。
+交付电脑小白时，使用 `release/替抗蓟化-Windows本地Web版-1.0.8-universal.zip`。同一个包会自动适配 Intel/AMD x64 与 Qualcomm/Windows on ARM 电脑。用户只需先“全部解压”，再双击排在最上方的 `00-首次使用-安装并启动.bat`；程序会等到本地网页真正可访问后才打开浏览器。之后每次直接使用自动创建的“打开替抗蓟化网页”桌面图标。它会打开带地址栏的普通浏览器窗口，不是桌面应用；对方电脑不需要安装 Node.js、Python 或数据库。
 
 首次准备：
 
@@ -47,7 +47,7 @@ npm run desktop
 
 浏览器应急模式：`npm run offline`，然后打开 http://127.0.0.1:4173/?offline=1#/stage 。
 
-离线模式下，登录、SQLite、检测判定、报告、追溯码、公开扫码、两套大屏、本地证据问答和 SenseVoice 语音识别全部在本机运行。Intel/AMD x64 使用 ZipVoice Emilia 自然女声，Windows ARM64 使用 Matcha Baker 清晰中文女声；两种架构都不会调用浏览器声音。
+离线模式下，登录、SQLite、检测判定、报告、追溯码、公开扫码、两套大屏、本地证据问答和 SenseVoice 语音识别全部在本机运行。语音输出联网时优先使用 MiMo；MiMo 未配置、断网、报错或超时时，自动使用 Edge/Chrome 调用的电脑自带中文声音。
 
 开发（前端热更新 + API）：
 
@@ -70,9 +70,9 @@ npm run build
 
 复制 `.env.example` 为 `.env`。至少改 `SESSION_SECRET`。不要把 `.env` 和 `*.db` 提交进 git。
 
-### DJTK 智控助手（完全离线）
+### DJTK 智控助手（本地证据 + 动态语音）
 
-指挥舱 `#/stage` 的数字人使用本地证据与固定规则回答，不接通用云端大模型。麦克风音频只发往 `127.0.0.1`，由 SenseVoice 识别；回答由 ZipVoice 本地自然女声播报。嘴型读取实际播放音频能量，在闭合、轻启、张开三档间平滑变化，人物头部和眼睛保持固定，避免整脸切换。
+指挥舱 `#/stage` 的数字人使用本地证据与固定规则回答，不接通用云端大模型。麦克风音频只发往 `127.0.0.1`，由 SenseVoice 识别；回答在联网时使用 MiMo 女声，失败后自动切换电脑自带中文声音。嘴型随实际播放状态变化，人物头部和眼睛保持固定，避免整脸切换。
 
 接口：`POST /api/djtk/transcribe`（PCM16）、`POST /api/djtk/ask`、`POST /api/djtk/tts`、`GET /api/djtk/status`。状态接口会明确返回 `networkRequired:false`。
 
@@ -116,7 +116,8 @@ server/app.js       路由
 server/command.js   公开指挥舱
 server/db.js        SQLite 表、种子、组装批次
 server/auth.js      哈希口令 + httpOnly 会话 cookie
-server/offline-voice.js  SenseVoice + ZipVoice/Matcha 本地语音
+server/offline-voice.js  SenseVoice 本地语音识别
+server/mimo-voice.js     MiMo 在线语音输出（浏览器声音兜底）
 src/lib/offline-audio.js 浏览器麦克风采集与 16kHz PCM
 desktop/main.js          Electron 桌面壳、动态端口与麦克风权限
 models/offline/          本地模型（git 忽略，交付时必须携带）

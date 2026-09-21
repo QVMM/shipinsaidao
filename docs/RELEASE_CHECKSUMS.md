@@ -5,7 +5,7 @@
 正式比赛首选——Windows 本地 Web 版：
 
 ```text
-a0ca979815a4454810d78a48c914d3a0a6163b494c0794002082e9dbe8a78f82  替抗蓟化-Windows本地Web版-1.0.7-universal.zip
+1812adb130f4409161a405837b0437e83d3c4171cfbf37cfe6bdbe6dfab36053  替抗蓟化-Windows本地Web版-1.0.8-universal.zip
 ```
 
 Electron 备用包：

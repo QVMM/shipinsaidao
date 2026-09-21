@@ -23,30 +23,54 @@ test('4 号现场人员台词不进入助手播报', () => {
   )
 })
 
-test('浏览器降级播报只选择中文女声，不误用排在前面的中文男声', () => {
+test('浏览器播报优先中文女声，没有女声时仍使用电脑自带中文声音', () => {
   const voices = [
     { name: 'Microsoft Yunxi Online', lang: 'zh-CN' },
     { name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' },
     { name: 'Samantha', lang: 'en-US' },
   ]
   assert.equal(selectFemaleChineseVoice(voices)?.name, 'Microsoft Xiaoxiao Online')
-  assert.equal(selectFemaleChineseVoice([voices[0]]), null)
+  assert.equal(selectFemaleChineseVoice([voices[0]])?.name, 'Microsoft Yunxi Online')
 })
 
-test('语音输出只请求本地语音接口，默认不回退浏览器声音', async () => {
+test('MiMo 不可用时自动使用浏览器自带声音', async () => {
   const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  const originalUtterance = globalThis.SpeechSynthesisUtterance
+  const originalDocument = globalThis.document
   let fetchCalls = 0
+  let spoken = ''
   globalThis.fetch = async () => {
     fetchCalls += 1
-    throw new Error('不应发起网络请求')
+    throw new Error('MiMo unavailable')
   }
+  globalThis.SpeechSynthesisUtterance = class {
+    constructor(text) { this.text = text }
+  }
+  globalThis.window = {
+    setTimeout,
+    SpeechSynthesisUtterance: globalThis.SpeechSynthesisUtterance,
+    speechSynthesis: {
+      cancel() {},
+      getVoices() { return [{ name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' }] },
+      speak(utterance) {
+        spoken = utterance.text
+        utterance.onstart?.()
+        utterance.onend?.()
+      },
+    },
+  }
+  globalThis.document = { querySelectorAll: () => [] }
 
   try {
-    const result = await speakWithPreferredVoice('本地播报测试。')
+    const result = await speakWithPreferredVoice('浏览器播报测试。')
     assert.equal(fetchCalls, 1)
-    assert.equal(result.via, 'none')
-    assert.equal(result.reason, 'service')
+    assert.equal(result.via, 'browser')
+    assert.equal(spoken, '浏览器播报测试。')
   } finally {
     globalThis.fetch = originalFetch
+    globalThis.window = originalWindow
+    globalThis.SpeechSynthesisUtterance = originalUtterance
+    globalThis.document = originalDocument
   }
 })

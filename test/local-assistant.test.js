@@ -10,6 +10,7 @@ test('配置离线语音后，问答仍只使用本地证据且不发起外部�
   const originalStageToken = process.env.DJTK_STAGE_TOKEN
   const originalVoiceFake = process.env.OFFLINE_VOICE_FAKE
   const originalOffline = process.env.OFFLINE_MODE
+  const originalMimoKey = process.env.MIMO_API_KEY
   const originalFetch = globalThis.fetch
   let fetchCalls = 0
 
@@ -17,6 +18,7 @@ test('配置离线语音后，问答仍只使用本地证据且不发起外部�
   process.env.DJTK_STAGE_TOKEN = 'local-voice-test-token'
   process.env.OFFLINE_VOICE_FAKE = '1'
   delete process.env.OFFLINE_MODE
+  delete process.env.MIMO_API_KEY
   globalThis.fetch = async () => {
     fetchCalls += 1
     throw new Error('不应连接外部模型')
@@ -28,12 +30,12 @@ test('配置离线语音后，问答仍只使用本地证据且不发起外部�
     app = await buildApp()
     const statusResponse = await app.inject({ method: 'GET', url: '/api/djtk/status' })
     const status = statusResponse.json()
-    assert.equal(status.mode, 'competition-offline')
+    assert.equal(status.mode, 'hybrid-voice')
     assert.equal(status.cloudModel, false)
     assert.equal(status.voiceInput, 'offline-sensevoice')
-    assert.equal(status.voiceOutput, 'zipvoice-local-test')
-    assert.equal(status.voiceName, '本地自然女声·Emilia')
-    assert.equal(status.voiceGender, 'female')
+    assert.equal(status.voiceOutput, 'browser-speech-synthesis')
+    assert.equal(status.voiceName, '电脑自带声音')
+    assert.equal(status.voiceGender, 'female-preferred')
     assert.equal(status.networkRequired, false)
 
     const response = await app.inject({
@@ -64,6 +66,8 @@ test('配置离线语音后，问答仍只使用本地证据且不发起外部�
     else process.env.OFFLINE_VOICE_FAKE = originalVoiceFake
     if (originalOffline == null) delete process.env.OFFLINE_MODE
     else process.env.OFFLINE_MODE = originalOffline
+    if (originalMimoKey == null) delete process.env.MIMO_API_KEY
+    else process.env.MIMO_API_KEY = originalMimoKey
     rmSync(tempDir, { recursive: true, force: true })
   }
 })

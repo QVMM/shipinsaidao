@@ -39,7 +39,7 @@ import {
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
 import { getOfflineVoiceStatus, transcribePcm16 } from './offline-voice.js'
-import { synthesizeOfflineVoiceIsolated } from './offline-voice-runner.js'
+import { mimoVoiceConfigured, synthesizeMimoVoice } from './mimo-voice.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -245,18 +245,19 @@ export async function buildApp() {
 
   app.get('/api/djtk/status', async () => {
     const voiceProfile = getOfflineVoiceStatus()
+    const mimoReady = mimoVoiceConfigured()
     return {
       ok: true,
-      mode: 'competition-offline',
+      mode: 'hybrid-voice',
       cloudModel: false,
       voiceInput: 'offline-sensevoice',
-      voiceOutput: voiceProfile.ttsEngine,
-      voiceName: voiceProfile.voice,
-      voiceGender: voiceProfile.voiceGender,
-      voiceReady: voiceProfile.ready,
+      voiceOutput: mimoReady ? 'mimo-tts-with-browser-fallback' : 'browser-speech-synthesis',
+      voiceName: mimoReady ? 'MiMo 茉莉 / 电脑自带声音' : '电脑自带声音',
+      voiceGender: 'female-preferred',
+      voiceReady: voiceProfile.asrReady,
       asrReady: voiceProfile.asrReady,
-      ttsReady: voiceProfile.ttsReady,
-      voiceMessage: voiceProfile.message,
+      ttsReady: true,
+      voiceMessage: mimoReady ? '联网使用 MiMo，异常时自动切换电脑自带声音。' : '使用电脑自带声音。',
       networkRequired: false,
       offlineMode: offlineMode(),
       stageAuth: 'staff-session-or-booth-cookie-or-x-stage-token',
@@ -345,13 +346,13 @@ export async function buildApp() {
     if (text.length > DJTK_TTS_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
-    const voice = await synthesizeOfflineVoiceIsolated(text)
+    const voice = await synthesizeMimoVoice(text)
     if (!voice.ok) {
-      req.log.warn({ status: voice.status, error: voice.error }, 'djtk offline voice unavailable')
+      req.log.warn({ status: voice.status, error: voice.error }, 'djtk mimo voice fallback')
       return reply.code(voice.status).send({
-        error: 'offline_voice_unavailable',
+        error: 'mimo_voice_unavailable',
         message: voice.error,
-        fallback: false,
+        fallback: true,
       })
     }
     return voice
@@ -363,7 +364,7 @@ export async function buildApp() {
       ok: true,
       defaultBatchId: DEFAULT_BATCH_ID,
       mode: 'competition-offline',
-      voiceReady: voice.ready,
+      voiceReady: voice.asrReady,
       networkRequired: false,
     }
   })

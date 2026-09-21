@@ -97,7 +97,7 @@ async function extractNodeRuntime(arch, config, archive) {
 async function extractArm64VoiceRuntime(archive) {
   const temp = mkdtempSync(join(tmpdir(), 'tihua-voice-win-arm64-'))
   try {
-    const wanted = ['sherpa-onnx-offline-tts.exe', 'sherpa-onnx-offline.exe']
+    const wanted = ['sherpa-onnx-offline.exe']
     const paths = wanted.map((name) => `${arm64Voice.root}/bin/${name}`)
     run('tar', ['-xjf', archive, '-C', temp, ...paths])
     const target = resolve(output, 'runtime/voice-arm64')
@@ -163,7 +163,8 @@ await Promise.all([
   runCopy(resolve(root, 'dist'), resolve(output, 'app/dist')),
   runCopy(resolve(root, 'server'), resolve(output, 'app/server')),
   runCopy(resolve(root, 'src'), resolve(output, 'app/src')),
-  runCopy(resolve(root, 'models/offline'), resolve(output, 'models/offline')),
+  runCopy(resolve(root, 'models/offline/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17'), resolve(output, 'models/offline/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17')),
+  runCopy(resolve(root, 'models/offline/manifest.json'), resolve(output, 'models/offline/manifest.json')),
   runCopy(resolve(root, 'packaging/windows-web'), output),
   runCopy(resolve(root, 'package.json'), resolve(output, 'app/package.json')),
   runCopy(resolve(root, 'package-lock.json'), resolve(output, 'app/package-lock.json')),
@@ -183,8 +184,9 @@ const notice = [
   '替抗蓟化 Windows 本地 Web 版',
   `版本：${manifest.version}`,
   `内置 Node.js：v${nodeVersion} Windows x64 + ARM64（官方便携二进制）`,
-  '本地女声：x64 ZipVoice Emilia / ARM64 Matcha Baker',
-  '运行方式：仅监听 127.0.0.1，运行时不需要互联网。',
+  '语音输入：SenseVoice 本地识别（x64 + ARM64）',
+  '语音输出：联网 MiMo / 断网或超时自动使用电脑自带声音',
+  '运行方式：仅监听 127.0.0.1；核心页面与本地识别不需要互联网。',
   '',
 ].join('\r\n')
 writeFileSync(resolve(output, '版本与运行环境.txt'), notice, 'utf8')

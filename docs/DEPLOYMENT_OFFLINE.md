@@ -10,11 +10,11 @@
 - 本地业务数据、检测、评价、报告、追溯与审计；
 - 只依据当前批次证据的确定性问答；
 - 麦克风中文语音输入；
-- 本地自然中文女声输出；
+- 联网 MiMo、断网电脑自带中文声音的自动切换输出；
 - 随真实声音能量变化的数字人口型；
 - 文字输入与快捷问题兜底。
 
-所有业务请求只访问 `127.0.0.1`。不需要 MiMo、Render、浏览器云语音或现场互联网。
+所有业务数据和判定请求只访问 `127.0.0.1`。MiMo 仅用于联网时的语音合成；不可用时浏览器自动调用电脑自带声音，不影响业务结论。
 
 ## 2. Windows 完整交付包
 
@@ -23,7 +23,7 @@
 - `替抗蓟化离线竞赛版 Setup 1.0.0.exe`：标准安装版，按当前用户安装，可创建桌面快捷方式；
 - `替抗蓟化离线竞赛版 1.0.0.exe`：免安装版，没有管理员权限或安装版异常时直接双击。
 
-两个文件均约 538MB，已经内置 Windows x64 运行时、SenseVoice 识别模型、ZipVoice Emilia 女声、Matcha Baker 备用女声、SQLite 数据库能力和全部页面资源。目标电脑不需要另外安装 Node.js、Python、数据库或模型。
+旧 Electron 文件仅作历史备用；正式交付请使用 `WINDOWS_WEB_DEPLOYMENT.md` 中的 Windows 本地 Web 通用包。该包内置 x64/ARM64 运行时、SenseVoice 识别模型、SQLite 数据库能力和全部页面资源，不再携带 ZipVoice/Matcha 合成模型。
 
 当前包未使用商业 Windows 代码签名证书，首次运行可能出现 SmartScreen。比赛前应在主机和备用机上各运行一次，避免现场首次确认。
 
@@ -85,7 +85,7 @@ npm run offline:verify-win-package
 - `ok: true`；
 - `platform: Windows x64`；
 - `appExecutable: x86-64`；
-- SenseVoice、ZipVoice Emilia 和 Matcha Baker 均已打包；
+- SenseVoice 识别模型已打包；
 - `networkRequiredAtRuntime: false`。
 
 交叉构建能验证架构与资源完整性，但最终麦克风、扬声器、识别速度和合成速度必须在实际 Windows 比赛电脑上断网验收。
@@ -124,4 +124,4 @@ Windows 桌面版数据通常位于：
 
 ## 10. 后续增强边界
 
-当前版本以普通 Windows x64 CPU 为运行基线，不依赖 CUDA。若后续取得授权的真人数字人形象与录音，可替换 ZipVoice 参考音频和头像素材，无需重写业务系统；GPU 视频数字人只能作为增强层，不能替换当前稳定的离线兜底链路。
+当前版本以普通 Windows x64/ARM64 CPU 为运行基线，不依赖 CUDA。语音输出由 MiMo 与浏览器系统声音自动切换；GPU 视频数字人只能作为增强层，不能替换当前稳定的业务与识别链路。

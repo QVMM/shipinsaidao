@@ -22,7 +22,6 @@ const required = [
   '使用说明.txt',
   'runtime/node.exe',
   'runtime/node-arm64.exe',
-  'runtime/voice-arm64/sherpa-onnx-offline-tts.exe',
   'runtime/voice-arm64/sherpa-onnx-offline.exe',
   'app/dist/index.html',
   'app/server/windows-web-start.mjs',
@@ -33,10 +32,6 @@ const required = [
   'app/node_modules/sherpa-onnx-win-x64/sherpa-onnx.node',
   'app/node_modules/sherpa-onnx-win-x64/onnxruntime.dll',
   'models/offline/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/model.int8.onnx',
-  'models/offline/sherpa-onnx-zipvoice-distill-int8-zh-en-emilia/encoder.int8.onnx',
-  'models/offline/sherpa-onnx-zipvoice-distill-int8-zh-en-emilia/decoder.int8.onnx',
-  'models/offline/vocos_24khz.onnx',
-  'models/offline/matcha-icefall-zh-baker/model-steps-3.onnx',
 ]
 
 const missing = required.filter((file) => !existsSync(resolve(bundle, file)))
@@ -63,7 +58,6 @@ for (const [label, file] of [
 }
 for (const [label, file] of [
   ['Windows ARM64 Node.js', resolve(bundle, 'runtime/node-arm64.exe')],
-  ['Windows ARM64 女声引擎', resolve(bundle, 'runtime/voice-arm64/sherpa-onnx-offline-tts.exe')],
   ['Windows ARM64 语音识别引擎', resolve(bundle, 'runtime/voice-arm64/sherpa-onnx-offline.exe')],
 ]) {
   if (peMachine(file) !== 0xaa64) throw new Error(`${label} 不是 Windows ARM64 文件。`)
@@ -207,8 +201,8 @@ console.log(JSON.stringify({
   dailyLaunch: '双击桌面上的“打开替抗蓟化网页”',
   host: '127.0.0.1 only',
   nodeRuntime: 'Windows x64 + ARM64 已内置并自动选择',
-  voiceRuntime: 'Windows x64 + ARM64 已内置并自动选择',
-  offlineModels: 'SenseVoice + x64 ZipVoice Emilia + ARM64 Matcha Baker',
+  voiceRuntime: '本地识别 x64 + ARM64 已内置；输出为 MiMo + 浏览器声音自动降级',
+  offlineModels: 'SenseVoice ASR',
   stagedSmoke: smoke,
   zipSize: `${mb(zipFile)} MB`,
   zipSha256: sha256,

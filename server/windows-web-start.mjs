@@ -179,14 +179,8 @@ try {
   writeFileSync(stopTokenFile, `${stopToken}\n`, { encoding: 'utf8', mode: 0o600 })
   rmSync(errorFile, { force: true })
   log(`Windows 本地 Web 版已启动：${pageUrl}`)
-  log('本地女声将在独立线程中准备，不阻塞网页使用。')
+  log('语音输出：联网时使用 MiMo，断网或超时时使用浏览器 speechSynthesis。')
   openBrowser(pageUrl)
-  void import('./offline-voice-runner.js')
-    .then(({ warmOfflineVoiceIsolated }) => warmOfflineVoiceIsolated())
-    .then((voice) => log(voice.ok
-      ? `语音：${voice.voice}；网络依赖：无。`
-      : `语音准备未完成，网页继续可用：${voice.error}`))
-    .catch((error) => log(`语音准备异常，网页继续可用：${String(error?.message || error)}`))
 } catch (error) {
   const message = String(error?.stack || error?.message || error)
   rmSync(launchReadyFile, { force: true })

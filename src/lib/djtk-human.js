@@ -241,6 +241,7 @@ export function selectFemaleChineseVoice(voices = []) {
   const chinese = Array.from(voices).filter((voice) => /^zh(?:[-_]|$)/i.test(String(voice?.lang || '')))
   return chinese.find((voice) => FEMALE_CHINESE_VOICE.test(String(voice?.name || '')))
     || chinese.find((voice) => GOOGLE_CHINESE_VOICE.test(String(voice?.name || '')))
+    || chinese[0]
     || null
 }
 
@@ -419,10 +420,10 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Prefer bundled offline text-to-speech for the final local answer.
+ * Prefer MiMo text-to-speech when reachable, then use the browser/Windows voice.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'offline' | 'browser' | 'none', reason?: string, error?: string }>}
+ * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none', reason?: string, error?: string }>}
  */
 export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
@@ -439,7 +440,7 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     }, { silent: true, signal: opts.signal, headers: stageHeaders() })
     if (data?.audioBase64) {
       const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
-      return { ok, via: 'offline', reason: ok ? undefined : 'playback' }
+      return { ok, via: 'mimo', reason: ok ? undefined : 'playback' }
     }
   } catch (error) {
     if (error?.name === 'AbortError') {
@@ -449,9 +450,9 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     serviceError = String(error?.message || error || '')
   }
   opts.onFallback?.()
-  if (typeof window !== 'undefined' && window.__DJTK_ALLOW_SYSTEM_VOICE_FALLBACK__ === true) {
+  if (typeof window !== 'undefined') {
     const ok = await speakBrowser(say, opts)
-    return { ok, via: ok ? 'browser' : 'none' }
+    return { ok, via: ok ? 'browser' : 'none', reason: ok ? undefined : 'browser-unavailable', error: serviceError }
   }
   opts.onEnd?.()
   return { ok: false, via: 'none', reason: serviceError ? 'service' : 'unavailable', error: serviceError }
@@ -1022,7 +1023,7 @@ export function bindDjtkHuman(root, opts = {}) {
         revealAnswer()
         setStatus(spoken.reason === 'playback'
           ? '浏览器未能播放声音，请检查标签页声音与系统音量'
-          : '本地女声生成未完成，请重启系统后再试')
+          : '电脑自带声音不可用，请检查浏览器与系统声音设置')
       }
     } catch {
       if (seq === askSeq) {

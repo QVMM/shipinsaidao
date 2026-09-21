@@ -67,12 +67,12 @@ test('Windows 启动入口等待服务真正就绪，失败时直接显示真实
   assert.match(launcher, /launch-ready\.url/)
 })
 
-test('Windows Web 先启动页面，再在独立线程准备本地女声', () => {
+test('Windows Web 启动不再加载本地语音合成模型', () => {
   const launcher = readFileSync(resolve(root, 'server/windows-web-start.mjs'), 'utf8')
 
   assert.doesNotMatch(launcher, /await warmOfflineVoice\(/)
-  assert.match(launcher, /warmOfflineVoiceIsolated/)
-  assert.ok(launcher.indexOf('writeFileSync(launchReadyFile') < launcher.indexOf('warmOfflineVoiceIsolated'))
+  assert.doesNotMatch(launcher, /warmOfflineVoiceIsolated/)
+  assert.match(launcher, /speechSynthesis/)
 })
 
 test('Windows 后台服务使用可验证的 Start-Process，不再依赖 cmd start 解析', () => {
@@ -98,7 +98,7 @@ test('Windows Web 包自动选择 x64 或 ARM64 原生运行时', () => {
   assert.match(launcher, /voice-arm64/)
   assert.match(stop, /node-arm64\.exe/)
   assert.match(build, /node-v\$\{nodeVersion\}-win-arm64\.zip/)
-  assert.match(build, /sherpa-onnx-offline-tts\.exe/)
+  assert.doesNotMatch(build, /sherpa-onnx-offline-tts\.exe/)
   assert.match(build, /sherpa-onnx-offline\.exe/)
 })
 

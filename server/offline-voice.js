@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import {
   synthesizeWindowsVoiceCli,
   transcribeWindowsVoiceCli,
+  windowsVoiceCliAsrReady,
   windowsVoiceCliReady,
 } from './windows-voice-cli.js'
 
@@ -104,7 +105,7 @@ export function getOfflineVoiceStatus() {
   const naturalVoiceUsable = naturalVoiceReady && !failedTtsKinds.has('zipvoice')
   const fallbackVoiceUsable = fallbackVoiceReady && !failedTtsKinds.has('matcha')
   const ttsReady = naturalVoiceUsable || fallbackVoiceUsable
-  const cliReady = windowsVoiceCliReady()
+  const cliReady = windowsVoiceCliAsrReady()
   const activeVoiceKind = cliReady ? 'matcha' : (workingTtsKind || (naturalVoiceUsable ? 'zipvoice' : 'matcha'))
   let nativeReady = cliReady
   let nativeError = ''
@@ -238,7 +239,7 @@ export async function transcribePcm16(buffer, sampleRate = 16000) {
   if (!Buffer.isBuffer(buffer) || buffer.byteLength < 640) {
     return { ok: false, status: 400, error: '录音过短，请重新说一遍。' }
   }
-  if (windowsVoiceCliReady()) {
+  if (windowsVoiceCliAsrReady()) {
     return transcribeWindowsVoiceCli(offlineVoicePaths(), buffer, sampleRate, normalizeTranscript)
   }
   try {

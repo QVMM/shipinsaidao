@@ -12,11 +12,20 @@ export function windowsVoiceCliPaths() {
   }
 }
 
-export function windowsVoiceCliReady() {
+function windowsArm64CliSupported() {
   const forced = process.env.OFFLINE_VOICE_CLI_FORCE === '1'
-  if (!forced && !(process.platform === 'win32' && process.arch === 'arm64')) return false
+  return forced || (process.platform === 'win32' && process.arch === 'arm64')
+}
+
+export function windowsVoiceCliAsrReady() {
+  if (!windowsArm64CliSupported()) return false
   const cli = windowsVoiceCliPaths()
-  return existsSync(cli.asr) && existsSync(cli.tts)
+  return existsSync(cli.asr)
+}
+
+export function windowsVoiceCliReady() {
+  if (!windowsVoiceCliAsrReady()) return false
+  return existsSync(windowsVoiceCliPaths().tts)
 }
 
 export function ttsCliArgs(p, text, outputFile) {

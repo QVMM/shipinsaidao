@@ -17,8 +17,8 @@ try {
   $env:WINDOWS_WEB_NO_BROWSER = '1'
   if ($isArm64) {
     $voiceCli = Join-Path $runtime 'voice-arm64'
-    if (-not (Test-Path -LiteralPath (Join-Path $voiceCli 'sherpa-onnx-offline-tts.exe') -PathType Leaf)) {
-      throw 'Windows ARM64 voice runtime is missing.'
+    if (-not (Test-Path -LiteralPath (Join-Path $voiceCli 'sherpa-onnx-offline.exe') -PathType Leaf)) {
+      throw 'Windows ARM64 speech recognition runtime is missing.'
     }
     $env:OFFLINE_VOICE_CLI_DIR = $voiceCli
     $env:DJTK_WINDOWS_ARCH = 'arm64'

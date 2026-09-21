@@ -11,6 +11,7 @@ const dataRoot = join(runtimeRoot, 'data')
 const stateFile = join(runtimeRoot, 'server-state.json')
 const pidFile = join(runtimeRoot, 'server.pid')
 const urlFile = join(runtimeRoot, 'server.url')
+const launchReadyFile = join(runtimeRoot, 'launch-ready.url')
 const stopTokenFile = join(runtimeRoot, 'server.stop-token')
 const logFile = join(runtimeRoot, 'server.log')
 const errorFile = join(runtimeRoot, 'startup-error.txt')
@@ -44,6 +45,14 @@ async function healthy(url) {
   }
 }
 
+async function waitUntilServing(url, attempts = 30) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (await healthy(url)) return true
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 100))
+  }
+  return false
+}
+
 function browserCandidates() {
   const roots = [
     process.env['ProgramFiles(x86)'],
@@ -64,7 +73,8 @@ function openBrowser(url) {
   const browser = browserCandidates().find(existsSync)
   if (browser) {
     const child = spawn(browser, [
-      `--app=${url}`,
+      url,
+      '--new-window',
       '--start-maximized',
       '--no-first-run',
       '--disable-background-networking',
@@ -92,13 +102,14 @@ async function useExistingInstance() {
     const state = JSON.parse(readFileSync(stateFile, 'utf8'))
     if (running(Number(state.pid)) && await healthy(String(state.baseUrl || ''))) {
       log(`系统已在运行，重新打开页面：${state.pageUrl}`)
+      writeFileSync(launchReadyFile, `${state.pageUrl}\n`, 'utf8')
       openBrowser(state.pageUrl)
       return true
     }
   } catch {
     // Stale or partially-written state is replaced below.
   }
-  for (const file of [stateFile, pidFile, urlFile, stopTokenFile]) rmSync(file, { force: true })
+  for (const file of [stateFile, pidFile, urlFile, launchReadyFile, stopTokenFile]) rmSync(file, { force: true })
   return false
 }
 
@@ -119,7 +130,7 @@ function removeOwnState() {
   } catch {
     return
   }
-  for (const file of [stateFile, pidFile, urlFile, stopTokenFile]) rmSync(file, { force: true })
+  for (const file of [stateFile, pidFile, urlFile, launchReadyFile, stopTokenFile]) rmSync(file, { force: true })
 }
 
 async function shutdown(signal) {
@@ -138,13 +149,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => void shutdo
 process.on('exit', removeOwnState)
 
 try {
-  const [{ buildApp }, { getOfflineVoiceStatus }] = await Promise.all([
-    import('./app.js'),
-    import('./offline-voice.js'),
-  ])
-  const voice = getOfflineVoiceStatus()
-  if (!voice.ready) throw new Error(`${voice.message}\n模型目录：${voice.modelDir}`)
-
+  const { buildApp } = await import('./app.js')
   server = await buildApp()
   const stopToken = randomBytes(24).toString('hex')
   server.post('/api/local/shutdown', async (request, reply) => {
@@ -156,6 +161,9 @@ try {
   })
   const requestedPort = Number(process.env.WINDOWS_WEB_PORT || 0)
   const baseUrl = await server.listen({ port: requestedPort, host: '127.0.0.1' })
+  if (!await waitUntilServing(baseUrl)) {
+    throw new Error(`Local HTTP health check did not become ready: ${baseUrl}`)
+  }
   const pageUrl = `${baseUrl}/?offline=1#/stage`
   const state = {
     pid: process.pid,
@@ -167,13 +175,21 @@ try {
   writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
   writeFileSync(pidFile, `${process.pid}\n`, 'utf8')
   writeFileSync(urlFile, `${pageUrl}\n`, 'utf8')
+  writeFileSync(launchReadyFile, `${pageUrl}\n`, 'utf8')
   writeFileSync(stopTokenFile, `${stopToken}\n`, { encoding: 'utf8', mode: 0o600 })
   rmSync(errorFile, { force: true })
   log(`Windows 本地 Web 版已启动：${pageUrl}`)
-  log(`语音：${voice.voice}；网络依赖：无。`)
+  log('本地女声将在独立线程中准备，不阻塞网页使用。')
   openBrowser(pageUrl)
+  void import('./offline-voice-runner.js')
+    .then(({ warmOfflineVoiceIsolated }) => warmOfflineVoiceIsolated())
+    .then((voice) => log(voice.ok
+      ? `语音：${voice.voice}；网络依赖：无。`
+      : `语音准备未完成，网页继续可用：${voice.error}`))
+    .catch((error) => log(`语音准备异常，网页继续可用：${String(error?.message || error)}`))
 } catch (error) {
   const message = String(error?.stack || error?.message || error)
+  rmSync(launchReadyFile, { force: true })
   writeFileSync(errorFile, `${message}\n`, 'utf8')
   log(`启动失败：${message}`)
   process.exit(1)

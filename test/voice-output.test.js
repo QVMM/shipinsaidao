@@ -45,6 +45,7 @@ test('语音输出只请求本地语音接口，默认不回退浏览器声音',
     const result = await speakWithPreferredVoice('本地播报测试。')
     assert.equal(fetchCalls, 1)
     assert.equal(result.via, 'none')
+    assert.equal(result.reason, 'service')
   } finally {
     globalThis.fetch = originalFetch
   }

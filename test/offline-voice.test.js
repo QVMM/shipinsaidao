@@ -9,7 +9,9 @@ import {
   getOfflineVoiceStatus,
   normalizeTranscript,
   synthesizeOfflineVoice,
+  ttsEngineCandidates,
   transcribePcm16,
+  warmOfflineVoice,
 } from '../server/offline-voice.js'
 
 test('PCM 可以编码为浏览器可播放的标准单声道 WAV', () => {
@@ -44,6 +46,17 @@ test('模型缺失时自检明确指出 ASR 与 TTS 尚未安装', () => {
   }
 })
 
+test('自然女声失败时按顺序自动切换到本地备用女声', () => {
+  assert.deepEqual(
+    ttsEngineCandidates({ naturalVoiceReady: true, fallbackVoiceReady: true, preferMatcha: false }),
+    ['zipvoice', 'matcha'],
+  )
+  assert.deepEqual(
+    ttsEngineCandidates({ naturalVoiceReady: true, fallbackVoiceReady: true, preferMatcha: true }),
+    ['matcha', 'zipvoice'],
+  )
+})
+
 test('离线语音测试模式无需网络即可完成识别和女声合成', async () => {
   const previous = {
     fake: process.env.OFFLINE_VOICE_FAKE,
@@ -63,6 +76,10 @@ test('离线语音测试模式无需网络即可完成识别和女声合成', as
     assert.equal(voice.voiceGender, 'female')
     assert.equal(voice.mime, 'audio/wav')
     assert.ok(voice.audioBase64.length > 40)
+
+    const warmed = await warmOfflineVoice()
+    assert.equal(warmed.ok, true)
+    assert.equal(warmed.voiceGender, 'female')
   } finally {
     if (previous.fake == null) delete process.env.OFFLINE_VOICE_FAKE
     else process.env.OFFLINE_VOICE_FAKE = previous.fake

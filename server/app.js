@@ -38,7 +38,8 @@ import {
   verifyPassword,
 } from './auth.js'
 import { buildDjtkEvidence, buildLocalAnswer, sanitizeDjtkAnswer } from './local-assistant.js'
-import { getOfflineVoiceStatus, synthesizeOfflineVoice, transcribePcm16 } from './offline-voice.js'
+import { getOfflineVoiceStatus, transcribePcm16 } from './offline-voice.js'
+import { synthesizeOfflineVoiceIsolated } from './offline-voice-runner.js'
 import { actionsInPatch, canWrite, denyMessage } from './roles.js'
 import { getSeal } from './seal.js'
 import { offlineMode } from './runtime.js'
@@ -344,7 +345,7 @@ export async function buildApp() {
     if (text.length > DJTK_TTS_MAX) {
       return reply.code(400).send({ error: 'invalid', message: `播报文字请控制在 ${DJTK_TTS_MAX} 字以内。` })
     }
-    const voice = await synthesizeOfflineVoice(text)
+    const voice = await synthesizeOfflineVoiceIsolated(text)
     if (!voice.ok) {
       req.log.warn({ status: voice.status, error: voice.error }, 'djtk offline voice unavailable')
       return reply.code(voice.status).send({

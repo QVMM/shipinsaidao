@@ -1,10 +1,9 @@
 @echo off
-chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
 if not exist "runtime\server.url" (
-  echo 系统尚未启动，请先双击“启动系统.bat”。
+  echo The system is not running. Run start-system.bat first.
   pause
   exit /b 1
 )

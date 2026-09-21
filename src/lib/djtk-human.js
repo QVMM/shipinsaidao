@@ -422,15 +422,16 @@ export function speakPreview(text, maxChars = 120) {
  * Prefer bundled offline text-to-speech for the final local answer.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
- * @returns {Promise<{ ok: boolean, via: 'offline' | 'browser' | 'none' }>}
+ * @returns {Promise<{ ok: boolean, via: 'offline' | 'browser' | 'none', reason?: string, error?: string }>}
  */
 export async function speakWithPreferredVoice(text, opts = {}) {
   const full = String(text || '').trim()
   const say = speakPreview(full, 120)
   if (!say) {
     opts.onEnd?.()
-    return { ok: false, via: 'none' }
+    return { ok: false, via: 'none', reason: 'empty' }
   }
+  let serviceError = ''
   try {
     const data = await post('/api/djtk/tts', {
       text: say.slice(0, 300),
@@ -438,13 +439,14 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     }, { silent: true, signal: opts.signal, headers: stageHeaders() })
     if (data?.audioBase64) {
       const ok = await playBase64Audio(data.audioBase64, data.mime || 'audio/wav', opts)
-      return { ok, via: 'offline' }
+      return { ok, via: 'offline', reason: ok ? undefined : 'playback' }
     }
   } catch (error) {
     if (error?.name === 'AbortError') {
       opts.onEnd?.()
-      return { ok: false, via: 'none' }
+      return { ok: false, via: 'none', reason: 'aborted' }
     }
+    serviceError = String(error?.message || error || '')
   }
   opts.onFallback?.()
   if (typeof window !== 'undefined' && window.__DJTK_ALLOW_SYSTEM_VOICE_FALLBACK__ === true) {
@@ -452,7 +454,7 @@ export async function speakWithPreferredVoice(text, opts = {}) {
     return { ok, via: ok ? 'browser' : 'none' }
   }
   opts.onEnd?.()
-  return { ok: false, via: 'none' }
+  return { ok: false, via: 'none', reason: serviceError ? 'service' : 'unavailable', error: serviceError }
 }
 
 /**
@@ -921,6 +923,7 @@ export function bindDjtkHuman(root, opts = {}) {
   const ask = async (question) => {
     const q = String(question || '').trim().slice(0, 200)
     if (!q || asking) return
+    unlockAudio()
     stopMic()
     pushBubble('user', q)
     history.push({ role: 'user', content: q })
@@ -1017,12 +1020,14 @@ export function bindDjtkHuman(root, opts = {}) {
       const spoken = await speakWithPreferredVoice(answer, { ...hooks, signal })
       if (!spoken.ok && seq === askSeq) {
         revealAnswer()
-        setStatus('当前设备语音不可用，已显示文字回答')
+        setStatus(spoken.reason === 'playback'
+          ? '浏览器未能播放声音，请检查标签页声音与系统音量'
+          : '本地女声生成未完成，请重启系统后再试')
       }
     } catch {
       if (seq === askSeq) {
         revealAnswer()
-        setStatus('当前设备语音不可用，已显示文字回答')
+        setStatus('浏览器未能播放声音，请检查标签页声音与系统音量')
       }
     } finally {
       if (seq === askSeq) {

@@ -1,11 +1,11 @@
 # 本地交付包校验值
 
-构建日期：2026-09-20　目标平台：Windows 10/11 x64
+构建日期：2026-09-21　目标平台：Windows 10/11 x64
 
 正式比赛首选——Windows 本地 Web 版：
 
 ```text
-7043b11e62d760587f3921b4aac7b0c9db25b27700d7e8068bcb6c2757d69d66  替抗蓟化-Windows本地Web版-1.0.0-x64.zip
+3bb8674f9e8040e5178f0a3ffb38fb3501ebba52eb80030af8bca42fc3dfb1db  替抗蓟化-Windows本地Web版-1.0.0-x64.zip
 ```
 
 Electron 备用包：

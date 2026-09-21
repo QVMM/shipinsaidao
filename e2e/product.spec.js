@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
-/* global document, getComputedStyle, window */
+/* global document, getComputedStyle, window, setTimeout */
 
 const forbiddenCopy = /演示|非真实|\bDemo\b/i
 
@@ -221,8 +221,8 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   })
   await page.goto('/#/stage')
   await page.locator('[data-assess]').click()
-  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot')).toBeVisible()
-  const answer = await page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot').last().innerText()
+  await expect(page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)')).toBeVisible()
+  const answer = await page.locator('.djtk-human.is-embedded .djtk-bubble.is-bot:not(.is-progress)').last().innerText()
   expect(answer).not.toMatch(forbiddenCopy)
   expect(answer).toMatch(/批次|检测|筛查|报告|证据/)
   await page.waitForTimeout(100)
@@ -231,6 +231,63 @@ test('AI 研判使用真实批次证据并可清空会话', async ({ page }) => 
   await page.getByRole('button', { name: '新建会话' }).click()
   await expect(page.locator('.djtk-human.is-embedded .djtk-bubble')).toHaveCount(0)
   await expect(page.locator('.djtk-embedded-empty')).toBeVisible()
+})
+
+test('语音准备期间显示思考过程，最终文字与女声同时开始', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__DJTK_ALLOW_SYSTEM_VOICE_FALLBACK__ = true
+    window.__djtkSpeechStartedAt = 0
+    window.SpeechSynthesisUtterance = class {
+      constructor(text) {
+        this.text = text
+      }
+    }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() {
+          return [{ name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' }]
+        },
+        speak(utterance) {
+          window.__djtkSpeechStartedAt = window.performance.now()
+          utterance.onstart?.()
+          setTimeout(() => utterance.onend?.(), 80)
+        },
+      },
+    })
+  })
+  await page.route('**/api/djtk/tts', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'voice unavailable' }) })
+  })
+
+  await page.goto('/#/stage')
+  const assistant = page.locator('.djtk-human.is-embedded')
+  await assistant.evaluate((node) => {
+    window.__djtkTextShownAt = 0
+    const observer = new window.MutationObserver(() => {
+      if (!window.__djtkTextShownAt && node.querySelector('.djtk-bubble.is-bot:not(.is-progress)')) {
+        window.__djtkTextShownAt = window.performance.now()
+        observer.disconnect()
+      }
+    })
+    observer.observe(node, { childList: true, subtree: true })
+  })
+
+  await assistant.getByRole('button', { name: '研判当前批次' }).click()
+  await expect(assistant.locator('.djtk-bubble.is-progress')).toContainText(/检索|核对|分析|生成.*女声/)
+  await page.waitForTimeout(350)
+  await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toHaveCount(0)
+
+  await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toBeVisible()
+  const timing = await page.evaluate(() => ({
+    text: window.__djtkTextShownAt,
+    speech: window.__djtkSpeechStartedAt,
+  }))
+  expect(timing.text).toBeGreaterThan(0)
+  expect(timing.speech).toBeGreaterThan(0)
+  expect(Math.abs(timing.text - timing.speech)).toBeLessThan(120)
 })
 
 test('离线语音输入可直接发起本地研判并请求本地女声播报', async ({ page }) => {
@@ -255,6 +312,11 @@ test('离线语音输入可直接发起本地研判并请求本地女声播报',
     contentType: 'application/json',
     body: JSON.stringify({ ok: true, text: '这批鸡从哪来？', engine: 'sensevoice-local-test' }),
   }))
+  await page.route('**/api/djtk/tts', (route) => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'voice unavailable in browser test' }),
+  }))
   await page.goto('/#/stage')
   await page.waitForLoadState('networkidle')
   const assistant = page.locator('.djtk-human.is-embedded')
@@ -265,7 +327,7 @@ test('离线语音输入可直接发起本地研判并请求本地女声播报',
   await mic.click()
 
   await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('这批鸡从哪来？')
-  await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText(/批次|基地|鸡舍|品种/)
+  await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)').last()).toContainText(/批次|基地|鸡舍|品种/)
   expect(transcribeRequests).toBe(1)
   expect(ttsRequests).toBe(1)
 })

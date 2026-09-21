@@ -327,11 +327,15 @@ export function playBase64Audio(base64, mime = 'audio/wav', hooks = {}) {
 
     prepareGraph().then((analyser) => {
       if (!stillActive()) return
-      hooks.onStart?.()
-      speaking = true
-      if (analyser) startAnalyserMouth(analyser, () => stillActive() && speaking)
-      else startTimedMouth(() => stillActive() && speaking)
-      audio.play().catch(() => done(false))
+      const beginSpeaking = () => {
+        if (speaking || !stillActive()) return
+        speaking = true
+        hooks.onStart?.()
+        if (analyser) startAnalyserMouth(analyser, () => stillActive() && speaking)
+        else startTimedMouth(() => stillActive() && speaking)
+      }
+      audio.onplaying = beginSpeaking
+      audio.play().then(beginSpeaking).catch(() => done(false))
     })
   })
 }
@@ -363,18 +367,28 @@ export function speakBrowser(text, hooks = {}) {
     }
     u.voice = voice
     let active = true
+    let startTimer = 0
     const finish = (ok) => {
       active = false
+      if (startTimer) clearTimeout(startTimer)
       stopMouthAnim()
       hooks.onEnd?.()
       resolve(ok)
     }
+    let started = false
+    const beginSpeaking = () => {
+      if (started || !active) return
+      started = true
+      if (startTimer) clearTimeout(startTimer)
+      hooks.onStart?.()
+      startTimedMouth(() => active)
+    }
+    u.onstart = beginSpeaking
     u.onend = () => finish(true)
     u.onerror = () => finish(false)
-    hooks.onStart?.()
-    startTimedMouth(() => active)
     try {
       window.speechSynthesis.speak(u)
+      startTimer = window.setTimeout(beginSpeaking, 180)
     } catch {
       finish(false)
     }
@@ -656,7 +670,6 @@ export function bindDjtkHuman(root, opts = {}) {
   let micSession = null
   let micFinishing = false
   let listening = false
-  let statusTimer = 0
 
   // Resume AudioContext on first user gesture (autoplay policies).
   const unlockAudio = () => {
@@ -766,15 +779,6 @@ export function bindDjtkHuman(root, opts = {}) {
     })
   }
 
-  const flashStatus = (msg, ms = 2200) => {
-    setStatus(msg)
-    if (statusTimer) clearTimeout(statusTimer)
-    statusTimer = window.setTimeout(() => {
-      setStatus('')
-      statusTimer = 0
-    }, ms)
-  }
-
   const clearEmptyState = (log) => {
     log.querySelectorAll('[data-djtk-empty]').forEach((el) => el.remove())
   }
@@ -806,6 +810,29 @@ export function bindDjtkHuman(root, opts = {}) {
     })
   }
 
+  const setProgress = (msg) => {
+    allLogs().forEach((log) => {
+      clearEmptyState(log)
+      let art = log.querySelector('[data-djtk-progress]')
+      if (!art) {
+        art = document.createElement('article')
+        art.className = 'djtk-bubble is-bot is-progress'
+        art.setAttribute('data-djtk-progress', '')
+        art.setAttribute('role', 'status')
+        art.innerHTML = '<header>DJTK智控助手<span class="djtk-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></header><p></p>'
+        log.appendChild(art)
+      }
+      art.querySelector('p').textContent = msg
+      log.scrollTop = log.scrollHeight
+    })
+  }
+
+  const clearProgress = () => {
+    allLogs().forEach((log) => {
+      log.querySelectorAll('[data-djtk-progress]').forEach((el) => el.remove())
+    })
+  }
+
   const setCollapsed = (collapsed) => {
     if (opts.compact || opts.embedded) return
     const panel = box.querySelector('[data-djtk-panel]')
@@ -823,6 +850,7 @@ export function bindDjtkHuman(root, opts = {}) {
       askAbort = null
       stopMic()
       stopDjtkAudio()
+      clearProgress()
       setThinking(false)
       setSpeaking(false)
       setBusy(false)
@@ -838,6 +866,7 @@ export function bindDjtkHuman(root, opts = {}) {
     askSeq += 1
     stopMic()
     stopDjtkAudio()
+    clearProgress()
     setBusy(false)
     setThinking(false)
     setSpeaking(false)
@@ -886,6 +915,7 @@ export function bindDjtkHuman(root, opts = {}) {
     pushBubble('user', q)
     history.push({ role: 'user', content: q })
     setStatus('智控助手思考中…')
+    setProgress('正在检索当前批次记录与检测证据…')
     setBusy(true)
     setThinking(true)
     setSpeaking(false)
@@ -914,7 +944,8 @@ export function bindDjtkHuman(root, opts = {}) {
       }, { silent: true, signal, headers: stageHeaders() })
       if (seq !== askSeq) return
       answer = String(data?.answer || '').trim() || localFallback(q)
-      flashStatus(data?.fast ? '平台证据速答' : '本地证据已回答', 1800)
+      setStatus(data?.fast ? '证据检索完成，正在准备本地女声…' : '证据分析完成，正在准备本地女声…')
+      setProgress(data?.fast ? '证据检索完成，正在生成本地女声…' : '证据分析完成，正在生成本地女声…')
     } catch (err) {
       if (seq !== askSeq || err?.name === 'AbortError') return
       if (err?.status === 401) {
@@ -928,14 +959,19 @@ export function bindDjtkHuman(root, opts = {}) {
     }
 
     if (seq !== askSeq) return
-    pushBubble('bot', answer)
-    history.push({ role: 'assistant', content: answer })
-    if (history.length > 12) history.splice(0, history.length - 12)
-
-    // Clear thinking as soon as text is shown; TTS runs with 「正在播报…」
-    setThinking(false)
+    let answerShown = false
+    const revealAnswer = () => {
+      if (answerShown || seq !== askSeq) return
+      answerShown = true
+      clearProgress()
+      pushBubble('bot', answer)
+      history.push({ role: 'assistant', content: answer })
+      if (history.length > 12) history.splice(0, history.length - 12)
+    }
 
     if (authFail) {
+      revealAnswer()
+      setThinking(false)
       setBusy(false)
       setSpeaking(false)
       allStop().forEach((b) => { b.hidden = true })
@@ -943,10 +979,16 @@ export function bindDjtkHuman(root, opts = {}) {
       return
     }
 
-    setStatus('正在生成本地女声…')
+    setStatus('正在生成本地女声，完成后将同步显示与播报…')
+    setProgress('正在生成本地女声，完成后将同步显示与播报…')
 
     const hooks = {
-      onStart: () => { if (seq === askSeq) setSpeaking(true) },
+      onStart: () => {
+        if (seq !== askSeq) return
+        revealAnswer()
+        setStatus('文字与女声同步播报中…')
+        setSpeaking(true)
+      },
       onEnd: () => {
         if (seq !== askSeq) return
         setThinking(false)
@@ -955,19 +997,26 @@ export function bindDjtkHuman(root, opts = {}) {
         allStop().forEach((b) => { b.hidden = true })
       },
       onFallback: () => {
-        if (seq === askSeq) setStatus('本地女声暂不可用，请查看文字回答')
+        if (seq !== askSeq) return
+        setStatus('本地女声暂不可用，正在准备文字回答…')
+        setProgress('本地女声暂不可用，正在准备文字回答…')
       },
     }
 
     try {
       const spoken = await speakWithPreferredVoice(answer, { ...hooks, signal })
-      if (!spoken.ok && seq === askSeq) setStatus('当前设备语音不可用，请查看文字回答')
+      if (!spoken.ok && seq === askSeq) {
+        revealAnswer()
+        setStatus('当前设备语音不可用，已显示文字回答')
+      }
     } catch {
       if (seq === askSeq) {
-        setStatus('当前设备语音不可用，请查看文字回答')
+        revealAnswer()
+        setStatus('当前设备语音不可用，已显示文字回答')
       }
     } finally {
       if (seq === askSeq) {
+        revealAnswer()
         setBusy(false)
         setThinking(false)
         setSpeaking(false)
@@ -1144,7 +1193,6 @@ export function bindDjtkHuman(root, opts = {}) {
     askAbort = null
     askSeq += 1
     stopMic()
-    if (statusTimer) clearTimeout(statusTimer)
     stopDjtkAudio()
     window.removeEventListener('keydown', onKey)
     exitCabin()

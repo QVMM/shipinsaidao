@@ -40,6 +40,8 @@ test('MiMo 不可用时自动使用浏览器自带声音', async () => {
   const originalDocument = globalThis.document
   let fetchCalls = 0
   let spoken = ''
+  let spokenRate = 0
+  let spokenPitch = 0
   globalThis.fetch = async () => {
     fetchCalls += 1
     throw new Error('MiMo unavailable')
@@ -55,6 +57,8 @@ test('MiMo 不可用时自动使用浏览器自带声音', async () => {
       getVoices() { return [{ name: 'Microsoft Xiaoxiao Online', lang: 'zh-CN' }] },
       speak(utterance) {
         spoken = utterance.text
+        spokenRate = utterance.rate
+        spokenPitch = utterance.pitch
         utterance.onstart?.()
         utterance.onend?.()
       },
@@ -67,6 +71,8 @@ test('MiMo 不可用时自动使用浏览器自带声音', async () => {
     assert.equal(fetchCalls, 1)
     assert.equal(result.via, 'browser')
     assert.equal(spoken, '浏览器播报测试。')
+    assert.equal(spokenRate, 0.92)
+    assert.equal(spokenPitch, 1)
   } finally {
     globalThis.fetch = originalFetch
     globalThis.window = originalWindow

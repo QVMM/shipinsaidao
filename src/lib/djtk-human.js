@@ -359,8 +359,8 @@ export function speakBrowser(text, hooks = {}) {
     stopMouthAnim()
     const u = new SpeechSynthesisUtterance(String(text).trim())
     u.lang = 'zh-CN'
-    u.rate = 1.18
-    u.pitch = 1.04
+    u.rate = 0.92
+    u.pitch = 1
     const list = window.speechSynthesis.getVoices?.() || []
     const voice = selectFemaleChineseVoice(list)
     if (!voice) {

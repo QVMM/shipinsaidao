@@ -40,6 +40,8 @@ test('联网女声失败时自动回退设备声音且不影响文字回答', as
   const originalDocument = globalThis.document
   let fetchCalls = 0
   let spoken = ''
+  let spokenRate = 0
+  let spokenPitch = 0
   globalThis.fetch = async () => {
     fetchCalls += 1
     throw new Error('模拟联网女声不可用')
@@ -55,6 +57,8 @@ test('联网女声失败时自动回退设备声音且不影响文字回答', as
       getVoices() { return [{ name: 'Microsoft Yunxi Online', lang: 'zh-CN' }] },
       speak(utterance) {
         spoken = utterance.text
+        spokenRate = utterance.rate
+        spokenPitch = utterance.pitch
         utterance.onstart?.()
         utterance.onend?.()
       },
@@ -67,6 +71,8 @@ test('联网女声失败时自动回退设备声音且不影响文字回答', as
     assert.equal(fetchCalls, 1)
     assert.equal(result.via, 'browser')
     assert.equal(spoken, '浏览器播报测试。')
+    assert.equal(spokenRate, 0.92)
+    assert.equal(spokenPitch, 1)
   } finally {
     globalThis.fetch = originalFetch
     globalThis.window = originalWindow

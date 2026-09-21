@@ -1,8 +1,49 @@
 import { renderNextBar } from '../components/journey-ui.js'
+import { inflamStatus, noFeedAntibiotic, screenStatus } from '../lib/verdict.js'
 
 export const meta = { id: 'customs', title: '海关中心政务公开数据平台' }
 
-export function render() {
+export function render(state = {}) {
+  const farmOk = noFeedAntibiotic(state)
+  const screening = screenStatus(state)
+  const evaluation = inflamStatus(state)
+  const reportOk = !!(state.report?.generated && state.report?.no)
+  const traceOk = !!(state.trace?.generated && state.trace?.verifyId)
+  const proofOk = reportOk && traceOk
+  const evidenceSteps = [
+    {
+      href: '#/farm',
+      title: '养殖记录',
+      detail: farmOk ? '饲用抗生素未使用' : '用药记录待复核',
+      state: farmOk ? '已核验' : '待复核',
+      tone: farmOk ? 'ok' : 'hold',
+    },
+    {
+      href: '#/screen',
+      title: '安全检测',
+      detail: screening === 'clear' ? '氟苯尼考未检出' : (screening === 'fail' ? '检测结果异常，需复核' : '检测结果待录入'),
+      state: screening === 'clear' ? '已通过' : (screening === 'fail' ? '异常' : '待检测'),
+      tone: screening === 'clear' ? 'ok' : (screening === 'fail' ? 'bad' : 'hold'),
+    },
+    {
+      href: '#/eval',
+      title: '健康评价',
+      detail: evaluation === 'clear' ? '炎症指标低于对照' : (evaluation === 'fail' ? '炎症指标未达标' : '健康指标待录入'),
+      state: evaluation === 'clear' ? '已通过' : (evaluation === 'fail' ? '异常' : '待评价'),
+      tone: evaluation === 'clear' ? 'ok' : (evaluation === 'fail' ? 'bad' : 'hold'),
+    },
+    {
+      href: proofOk ? '#/qr' : '#/report',
+      title: '报告与追溯',
+      detail: proofOk
+        ? `${state.report.no} · ${state.trace.verifyId}`
+        : (reportOk ? `${state.report.no} · 追溯码待生成` : '检测报告与追溯码待生成'),
+      state: proofOk ? '已出证' : (reportOk ? '待出码' : '待出证'),
+      tone: proofOk ? 'ok' : 'hold',
+    },
+  ]
+  const verifiedCount = evidenceSteps.filter((item) => item.tone === 'ok').length
+
   return `
     <div class="page-head">
       <div>
@@ -36,7 +77,7 @@ export function render() {
           <div><dt>处置方式</dt><dd>联动焦点批次安全检测</dd></div>
         </dl>
       </section>
-      <section class="card">
+      <section class="card customs-strategy-card">
         <p class="qr-kicker">数据接入策略</p>
         <h3>在线更新，本地保留</h3>
         <p class="sub">比赛现场优先读取已审核的公开信息；联网条件具备时更新风险数据，网络不可用时继续使用最近一次本地核验记录。</p>
@@ -46,18 +87,41 @@ export function render() {
           <li class="ok">不以风险信息替代批次检测结论</li>
         </ul>
       </section>
-      <section class="card">
-        <p class="qr-kicker">证据闭环</p>
-        <h3>风险触发排查，检测决定放行</h3>
-        <p class="sub">预警负责确定检测重点；最终上市结论仍以当前批次的养殖记录、安全检测、健康评价、检测报告与追溯记录为准。</p>
-        <div class="djtk-cabin-links">
-          <a href="#/screen" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">核对安全检测</span><span class="djtk-cabin-link-go">打开 →</span></a>
-          <a href="#/report" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">核对检测报告</span><span class="djtk-cabin-link-go">打开 →</span></a>
-          <a href="#/qr" class="djtk-cabin-link-card"><span class="djtk-cabin-link-title">核对追溯封存</span><span class="djtk-cabin-link-go">打开 →</span></a>
+      <section class="card customs-evidence-card">
+        <div class="customs-evidence-head">
+          <div>
+            <p class="qr-kicker">证据闭环</p>
+            <h3>风险触发排查，批次证据决定放行</h3>
+          </div>
+          <span class="customs-evidence-summary is-${verifiedCount === evidenceSteps.length ? 'ok' : 'hold'}">${verifiedCount}/4 已核验</span>
         </div>
+        <p class="sub customs-evidence-intro">每项结论都能回到当前批次原始记录，点击节点可直接复核。</p>
+        <ol class="customs-evidence-chain" aria-label="当前批次证据核验链路">
+          ${evidenceSteps.map((item, index) => `
+            <li class="customs-evidence-step is-${item.tone}">
+              <a href="${item.href}" aria-label="打开${item.title}：${esc(item.detail)}">
+                <span class="customs-evidence-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
+                <span class="customs-evidence-copy">
+                  <b class="customs-evidence-step-title">${item.title}</b>
+                  <small>${esc(item.detail)}</small>
+                </span>
+                <span class="customs-evidence-state">${item.state}</span>
+                <span class="customs-evidence-arrow" aria-hidden="true">→</span>
+              </a>
+            </li>
+          `).join('')}
+        </ol>
       </section>
     </div>
   `
 }
 
 export function bind() {}
+
+function esc(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}

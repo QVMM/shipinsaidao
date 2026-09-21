@@ -20,9 +20,9 @@ import { offlineMicSupported, startOfflineRecorder } from './offline-audio.js'
  */
 const QUICK_ACTIONS = [
   { label: '出口风险排查', ask: '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。', primary: true },
+  { label: '样品结果判定', ask: '质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。' },
+  { label: '安全使命收束', ask: '大蓟替抗 高品质鸡肉解决方案 技能展示完成' },
   { label: '上市判定依据', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
-  { label: '氟苯尼考结果', ask: '请说明当前焦点批次的氟苯尼考筛查结果及对应证据。' },
-  { label: '待复核与下一步', ask: '请列出当前焦点批次的待复核项，并说明下一步应处理什么。' },
 ]
 
 const CUSTOMS_ASSESSMENT_QUERY = '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。'

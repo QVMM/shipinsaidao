@@ -11,7 +11,7 @@ export const NAV = [
       { href: '#/eval', id: 'eval', label: '健康评价' },
     ],
   },
-  { href: '#/customs', id: 'customs', label: '风险情报' },
+  { href: '#/customs', id: 'customs', label: '海关公开数据' },
   { href: '#/report', id: 'report', label: '检测报告' },
   { href: '#/qr', id: 'qr', label: '追溯码' },
   { href: '#/consumer', id: 'consumer', label: '客户端显示' },

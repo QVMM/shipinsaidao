@@ -25,9 +25,9 @@ function show(v) {
 
 const MEAT_QUALITY_METRICS = [
   { field: 'moisture', label: '水分', unit: '%', note: '水分含量' },
-  { field: 'tenderness', label: '剪切力（嫩度）', unit: 'N', note: '数值越低，肉质越嫩' },
+  { field: 'tenderness', label: '嫩度', unit: 'N', note: '以剪切力表征，数值越低，肉质越嫩' },
   { field: 'pH', label: 'pH 值', unit: '', note: '宰后 24 h' },
-  { field: 'waterHolding', label: '系水力（保水性）', unit: '%', note: '加压法测定' },
+  { field: 'waterHolding', label: '保水性', unit: '%', note: '以系水力表征，加压法测定' },
 ]
 
 const NUTRITION_METRICS = [

@@ -291,7 +291,7 @@ test('语音准备期间显示思考过程，最终文字与女声同时开始',
     observer.observe(node, { childList: true, subtree: true })
   })
 
-  await assistant.getByRole('button', { name: '研判当前批次' }).click()
+  await assistant.getByRole('button', { name: '出口风险排查' }).click()
   await expect(assistant.locator('.djtk-bubble.is-progress')).toHaveText(/等待中/)
   await page.waitForTimeout(350)
   await expect(assistant.locator('.djtk-bubble.is-bot:not(.is-progress)')).toHaveCount(0)
@@ -361,7 +361,7 @@ test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ pa
 })
 
 test('各页面助手只保留四个不重复的核心快捷入口', async ({ page }) => {
-  const expected = ['研判当前批次', '上市判定依据', '氟苯尼考结果', '待复核与下一步']
+  const expected = ['出口风险排查', '上市判定依据', '氟苯尼考结果', '待复核与下一步']
 
   await page.goto('/#/stage')
   const stageAssistant = page.locator('.djtk-human.is-embedded')

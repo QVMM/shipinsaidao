@@ -310,6 +310,30 @@
   gap: 16px;
   align-items: start;
 }
+.customs-risk-board { grid-template-columns: 1.18fr .82fr; }
+.customs-risk-card { grid-column: 1 / -1; }
+.customs-risk-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.customs-risk-head h3 { margin: 0; }
+.customs-risk-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+}
+.customs-risk-facts div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 88%, var(--mint) 12%);
+}
+.customs-risk-facts dt { margin: 0 0 5px; color: var(--muted); font-size: 11px; }
+.customs-risk-facts dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; line-height: 1.4; }
 .health-col {
   display: flex;
   flex-direction: column;
@@ -465,12 +489,15 @@
 
 @media (max-width: 1100px) {
   .health-board { grid-template-columns: 1fr; }
+  .customs-risk-card { grid-column: auto; }
+  .customs-risk-facts { grid-template-columns: 1fr 1fr; }
   .inflam-grid { grid-template-columns: 1fr; }
   .flora-grid { grid-template-columns: 1fr; }
   .quality-grid { grid-template-columns: 1fr 1fr; }
   .fact-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 780px) {
+  .customs-risk-facts { grid-template-columns: 1fr; }
   .verdict-strip-hl { font-size: 18px; }
   .med-timeline li { grid-template-columns: 1fr; gap: 2px; }
   .cassette-word { font-size: 24px; }

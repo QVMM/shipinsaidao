@@ -72,6 +72,22 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   expect(bodyText).not.toMatch(forbiddenCopy)
 })
 
+test('大屏助手移除说明条并紧凑展示三个证据入口', async ({ page }) => {
+  await page.goto('/#/stage')
+  const assistant = page.locator('.djtk-human.is-embedded')
+  await expect(assistant.locator('.djtk-tip')).toHaveCount(0)
+
+  const proofLinks = assistant.locator('.djtk-proof-list a')
+  await expect(proofLinks).toHaveCount(3)
+  await expect(proofLinks).toHaveText(['氟苯尼考报告', '养殖记录', '合规证明'])
+  const layout = await assistant.locator('.djtk-proof-list').evaluate((node) => ({
+    height: node.clientHeight,
+    columns: getComputedStyle(node).gridTemplateColumns.split(' ').length,
+  }))
+  expect(layout.height).toBeLessThanOrEqual(44)
+  expect(layout.columns).toBe(3)
+})
+
 test('经典可视化焦点判定区紧凑呈现且不留下大块空白', async ({ page }) => {
   await page.setViewportSize({ width: 1512, height: 829 })
   await page.goto('/?view=classic#/stage')

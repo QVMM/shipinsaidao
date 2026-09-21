@@ -52,6 +52,36 @@ test('数据大屏符合正式产品文案与稳定布局约束', async ({ page 
   expect(errors).toEqual([])
 })
 
+test('产品端子页面的导航指示器只对齐当前子菜单', async ({ page }) => {
+  await login(page)
+
+  for (const item of [
+    { route: 'screen', label: '安全检测' },
+    { route: 'eval', label: '健康评价' },
+  ]) {
+    await page.goto(`/#/${item.route}`)
+    const active = page.locator(`.nav a[data-nav="${item.route}"]`)
+    await expect(active).toHaveClass(/active/)
+    await expect(page.locator('.nav a.active')).toHaveCount(1)
+    await expect(page.locator('[data-nav-group="product"]')).toHaveClass(/is-open/)
+
+    await expect.poll(async () => page.evaluate((routeId) => {
+      const indicator = document.querySelector('.nav-indicator')?.getBoundingClientRect()
+      const current = document.querySelector(`.nav a[data-nav="${routeId}"]`)?.getBoundingClientRect()
+      if (!indicator || !current) return Number.POSITIVE_INFINITY
+      return Math.abs(indicator.top - current.top)
+    }, item.route)).toBeLessThanOrEqual(1)
+
+    const farmOverlap = await page.evaluate(() => {
+      const indicator = document.querySelector('.nav-indicator')?.getBoundingClientRect()
+      const farm = document.querySelector('.nav a[data-nav="farm"]')?.getBoundingClientRect()
+      if (!indicator || !farm) return 0
+      return Math.max(0, Math.min(indicator.bottom, farm.bottom) - Math.max(indicator.top, farm.top))
+    })
+    expect(farmOverlap).toBe(0)
+  }
+})
+
 test('新版与经典可视化共用同一焦点批次并可互相切换', async ({ page }) => {
   await page.goto('/#/stage')
   await expect(page.locator('.wall')).toBeVisible()

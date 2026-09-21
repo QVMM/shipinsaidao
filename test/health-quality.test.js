@@ -17,7 +17,7 @@ test('焦点批次包含肉质核心与营养品质指标', () => {
   for (const field of qualityFields) assert.notEqual(String(state.eval[field] ?? '').trim(), '')
 
   const html = renderQualityBlock(state.eval)
-  for (const label of ['水分', '剪切力（嫩度）', 'pH 值', '系水力（保水性）', '蛋白质', '脂肪', '矿物质', '维生素', '氨基酸', '脂肪酸', '多肽']) {
+  for (const label of ['水分', '嫩度', 'pH 值', '保水性', '蛋白质', '脂肪', '矿物质', '维生素', '氨基酸', '脂肪酸', '多肽']) {
     assert.match(html, new RegExp(label.replace(/[（）]/g, '\\$&')))
   }
   assert.match(html, /%/)

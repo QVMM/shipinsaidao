@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { NAV } from '../src/lib/journey.js'
 import { render as renderRegulatoryRisk } from '../src/pages/customs.js'
 
-test('产品端只包含安全检测与健康评价，风险情报独立导航', () => {
+test('产品端只包含安全检测与健康评价，海关公开数据独立导航', () => {
   const product = NAV.find((item) => item.id === 'product')
   const customs = NAV.find((item) => item.id === 'customs')
 
@@ -12,5 +12,6 @@ test('产品端只包含安全检测与健康评价，风险情报独立导航',
   assert.equal(customs.href, '#/customs')
   assert.notEqual(customs.external, true)
   assert.equal(/href=["']https?:\/\//i.test(renderRegulatoryRisk()), false)
-  assert.match(renderRegulatoryRisk(), /监管公开信息离线快照/)
+  assert.match(renderRegulatoryRisk(), /海关中心政务公开数据平台/)
+  assert.match(renderRegulatoryRisk(), /本地保留/)
 })

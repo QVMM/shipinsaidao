@@ -68,7 +68,7 @@ export function buildFastAnswer(question, evidence) {
 
   const ok = (answer) => ({ answer, fast: true })
 
-  if (/出口鸡肉安全/.test(q) && /大数据平台/.test(q) && /风险排查/.test(q)) {
+  if (/出口鸡肉安全/.test(q) && /大数据平台|政务公开数据平台|海关中心/.test(q) && /风险排查/.test(q)) {
     return ok(REQUIRED_OPENING_REPLY)
   }
 
@@ -83,7 +83,7 @@ export function buildFastAnswer(question, evidence) {
   }
 
   if (/海关|监管|法规|政务公开/.test(q)) {
-    return ok('风险情报库保存了经审核的监管公开信息离线快照，用于确定排查重点。当前批次是否上市，仍以养殖记录、安全检测、健康评价、检测报告与追溯记录为准。')
+    return ok('海关中心政务公开数据平台采用在线更新、本地保留的接入策略，最近一次核验快照可在网络不可用时继续用于确定排查重点。当前批次是否上市，仍以养殖记录、安全检测、健康评价、检测报告与追溯记录为准。')
   }
 
   // Medication how-to → refuse (do not invent 合格/用药处方)

@@ -19,11 +19,13 @@ import { offlineMicSupported, startOfflineRecorder } from './offline-audio.js'
  * permanently crowding the interface.
  */
 const QUICK_ACTIONS = [
-  { label: '研判当前批次', ask: '请汇总当前焦点批次的风险、判定依据与下一步。', primary: true },
+  { label: '出口风险排查', ask: '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。', primary: true },
   { label: '上市判定依据', ask: '请说明当前焦点批次能否上市，以及判定依据。' },
   { label: '氟苯尼考结果', ask: '请说明当前焦点批次的氟苯尼考筛查结果及对应证据。' },
   { label: '待复核与下一步', ask: '请列出当前焦点批次的待复核项，并说明下一步应处理什么。' },
 ]
+
+const CUSTOMS_ASSESSMENT_QUERY = '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。'
 
 const SS_KEY = 'djtk_stage_token'
 const MOUTH_RMS_OPEN_THRESHOLD = 0.021
@@ -575,6 +577,16 @@ export function renderDjtkHuman(opts = {}) {
             ${compact || embedded ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
           </div>
         </header>
+        <section class="djtk-customs-monitor" aria-label="海关公开数据风险监测">
+          <a class="djtk-customs-source" href="#/customs" title="查看海关公开数据与风险信息">
+            <span>海关中心政务公开数据平台</span>
+            <em>风险快照已载入 · 查看 ›</em>
+          </a>
+          <div class="djtk-customs-alert">
+            <p><b>实验前风险预警</b>某海关中心拦截一批出口鸡肉，兽药残留氟苯尼考超标，请对我基地鸡肉进行风险排查。</p>
+            <button type="button" data-customs-assess data-djtk-ask="${esc(CUSTOMS_ASSESSMENT_QUERY)}">发起排查</button>
+          </div>
+        </section>
         ${embedded ? '' : `<p class="djtk-tip">${compact
     ? '围绕当前批次提问：来源、安全、健康、风险与下一步。回答仅引用本地平台记录，可进入全屏研判。'
     : '从来源、安全、健康、风险和下一步开始提问；回答只引用平台证据，不做用药处方。'}</p>`}
@@ -1203,6 +1215,13 @@ export function bindDjtkHuman(root, opts = {}) {
       ask(askText)
       return
     }
+    const customsAssess = t.closest?.('[data-customs-assess]')
+    if (customsAssess && host.contains(customsAssess)) {
+      ev.preventDefault()
+      if (asking) return
+      ask(customsAssess.getAttribute('data-djtk-ask') || CUSTOMS_ASSESSMENT_QUERY)
+      return
+    }
     const stop = t.closest?.('[data-djtk-stop]')
     if (stop && host.contains(stop)) {
       ev.preventDefault()
@@ -1277,8 +1296,11 @@ export function bindDjtkHuman(root, opts = {}) {
 function localFallback(q) {
   const s = String(q || '')
   // 降级简答禁止默认合格/未检出/用药结论；引导看平台只读证据。
+  if (/出口鸡肉安全/.test(s) && /海关中心|政务公开数据平台|大数据平台/.test(s) && /风险排查/.test(s)) {
+    return '对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标问题，相关产品依法退市，造成约 10 万吨订单缺口。'
+  }
   if (/海关|监管|法规|政务公开/.test(s)) {
-    return '风险情报库保存了监管公开信息离线快照，用于确定排查重点。当前批次结论以养殖、检测、评价、报告与追溯记录为准。'
+    return '海关中心政务公开数据平台采用在线更新、本地保留的接入策略，最近一次核验快照可在网络不可用时继续使用。当前批次是否上市，仍以养殖、检测、评价、报告与追溯记录为准。'
   }
   if (/氟苯|兽药|用药|剂量|处方|能不能用|可以用|合规使用|休药/.test(s)) {
     if (/筛查|结果|检出|残留|阴性|阳性/.test(s) && !/怎么用|如何用|剂量|处方|合规使用|能不能用|可以用/.test(s)) {

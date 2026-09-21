@@ -31,9 +31,20 @@ test('AI 在判定未通过时不得输出合格上市结论', () => {
 
 test('监管问答说明离线快照与批次证据边界', () => {
   const reply = buildFastAnswer('当前海关和监管数据状态？', blockedEvidence)
-  assert.match(reply.answer, /监管公开信息离线快照/)
+  assert.match(reply.answer, /海关中心政务公开数据平台/)
+  assert.match(reply.answer, /在线更新.*本地保留|本地保留.*在线更新/)
   assert.match(reply.answer, /当前批次是否上市/)
   assert.equal(/通报称|预警显示|依法退市/.test(reply.answer), false)
+})
+
+test('实验前风险排查入口返回需求中的风险判断', () => {
+  const reply = buildFastAnswer(
+    '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。',
+    passedEvidence,
+  )
+  assert.match(reply.answer, /近一个月出口鸡肉安全信息/)
+  assert.match(reply.answer, /某海关中心/)
+  assert.match(reply.answer, /氟苯尼考兽药残留超标/)
 })
 
 test('指定开场任务返回需求文档中的风险排查话术', () => {

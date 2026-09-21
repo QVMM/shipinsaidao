@@ -382,7 +382,7 @@ test('现场话术由助手按角色输出且不朗读 4 号台词', async ({ pa
 })
 
 test('各页面助手只保留四个不重复的核心快捷入口', async ({ page }) => {
-  const expected = ['出口风险排查', '上市判定依据', '氟苯尼考结果', '待复核与下一步']
+  const expected = ['出口风险排查', '样品结果判定', '安全使命收束', '上市判定依据']
 
   await page.goto('/#/stage')
   const stageAssistant = page.locator('.djtk-human.is-embedded')

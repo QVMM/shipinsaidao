@@ -56,6 +56,14 @@ test('大屏助手明确显示海关公开数据来源与实验前风险预警',
   assert.match(html, /data-customs-assess/)
 })
 
+test('三段比赛话术均有独立快捷入口且总数保持四个', () => {
+  const html = renderDjtkHuman({ embedded: true })
+  const labels = [...html.matchAll(/data-djtk-chip[^>]*>([^<]+)<\/button>/g)].map((match) => match[1])
+  assert.deepEqual(labels, ['出口风险排查', '样品结果判定', '安全使命收束', '上市判定依据'])
+  assert.match(html, /data-djtk-ask="质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。"/)
+  assert.match(html, /data-djtk-ask="大蓟替抗 高品质鸡肉解决方案 技能展示完成"/)
+})
+
 test('产品导航不出现演示性质入口', () => {
   const labels = NAV.flatMap((item) => [item.label, ...(item.children || []).map((child) => child.label)]).join(' ')
   assert.equal(forbidden.test(labels), false)

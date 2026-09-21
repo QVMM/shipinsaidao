@@ -310,7 +310,7 @@
   gap: 16px;
   align-items: start;
 }
-.customs-risk-board { grid-template-columns: 1.18fr .82fr; }
+.customs-risk-board { grid-template-columns: 1.18fr .82fr; align-items: stretch; }
 .page-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .customs-risk-card { grid-column: 1 / -1; }
 .customs-risk-head {
@@ -336,6 +336,135 @@
 .customs-risk-facts dt { margin: 0 0 5px; color: var(--muted); font-size: 11px; }
 .customs-risk-facts dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; line-height: 1.4; }
 .customs-risk-facts dd a { color: var(--forest); text-decoration-color: color-mix(in srgb, var(--forest) 35%, transparent); text-underline-offset: 3px; }
+.customs-strategy-card,
+.customs-evidence-card { height: 100%; }
+.customs-evidence-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(380px 190px at 100% 0%, rgba(40, 120, 90, .09), transparent 68%),
+    var(--card);
+}
+.customs-evidence-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--gold), #52a67d 76%, transparent);
+}
+.customs-evidence-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.customs-evidence-head h3 { margin: 0; line-height: 1.4; }
+.customs-evidence-summary {
+  flex: 0 0 auto;
+  min-height: 27px;
+  padding: 5px 9px;
+  border: 1px solid #d6c48f;
+  border-radius: 999px;
+  background: #f7f0dc;
+  color: #80611f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.customs-evidence-summary.is-ok {
+  border-color: #b7d9c9;
+  background: #eaf5ef;
+  color: #216c4d;
+}
+.customs-evidence-intro { margin: 8px 0 14px; }
+.customs-evidence-chain {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.customs-evidence-step { position: relative; min-width: 0; }
+.customs-evidence-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: calc(100% - 1px);
+  width: 1px;
+  height: 9px;
+  background: #c8d8cf;
+}
+.customs-evidence-step a {
+  display: grid;
+  grid-template-columns: 35px minmax(0, 1fr) auto 16px;
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 7px 10px 7px 7px;
+  border: 1px solid #d9dfd8;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .72);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+.customs-evidence-step a:hover,
+.customs-evidence-step a:focus-visible {
+  transform: translateX(2px);
+  border-color: #7ead96;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(18, 52, 38, .08);
+  outline: none;
+}
+.customs-evidence-index {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #c9d8cf;
+  border-radius: 9px;
+  background: #eef4f0;
+  color: #4f7162;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.customs-evidence-step.is-ok .customs-evidence-index {
+  border-color: #9dcbb6;
+  background: #e3f2ea;
+  color: #176946;
+}
+.customs-evidence-step.is-bad .customs-evidence-index {
+  border-color: #dfb5b1;
+  background: #f9e9e7;
+  color: #9b3c34;
+}
+.customs-evidence-copy { min-width: 0; }
+.customs-evidence-copy b,
+.customs-evidence-copy small { display: block; }
+.customs-evidence-copy b { font-size: 13px; line-height: 1.25; }
+.customs-evidence-copy small {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customs-evidence-state {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #f3eee1;
+  color: #755d24;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.customs-evidence-step.is-ok .customs-evidence-state { background: #e5f3eb; color: #176946; }
+.customs-evidence-step.is-bad .customs-evidence-state { background: #f8e8e6; color: #9b3c34; }
+.customs-evidence-arrow { color: #568775; font-size: 15px; }
 .health-col {
   display: flex;
   flex-direction: column;

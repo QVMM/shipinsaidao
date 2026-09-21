@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import { render as renderCustoms } from '../src/pages/customs.js'
+import { cloneSeed } from '../src/data.js'
 import { renderDjtkHuman } from '../src/lib/djtk-human.js'
 import { NAV } from '../src/lib/journey.js'
 
@@ -42,6 +43,22 @@ test('风险情报页使用离线快照并避免虚构真实地点', () => {
   assert.match(renderCustoms(), /href="https:\/\/online\.customs\.gov\.cn\/"/)
   assert.match(renderCustoms(), /target="_blank"/)
   assert.match(renderCustoms(), /rel="noopener noreferrer"/)
+})
+
+test('海关风险页用四步核验链路呈现当前批次证据闭环', () => {
+  const html = renderCustoms(cloneSeed())
+  const text = visibleText(html)
+  assert.match(text, /4\/4 已核验/)
+  for (const label of ['养殖记录', '安全检测', '健康评价', '报告与追溯']) {
+    assert.match(text, new RegExp(label))
+  }
+  assert.equal((html.match(/class="customs-evidence-step is-/g) || []).length, 4)
+  assert.match(html, /饲用抗生素未使用/)
+  assert.match(html, /氟苯尼考未检出/)
+  assert.match(html, /炎症指标低于对照/)
+  assert.match(html, /THJH-20260812-001/)
+  assert.match(html, /TR-8F2C-0812/)
+  assert.equal(html.includes('djtk-cabin-links'), false)
 })
 
 test('大屏助手明确显示海关公开数据来源与实验前风险预警', () => {

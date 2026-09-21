@@ -501,9 +501,35 @@ test('工作人员页面只有一套 AI 助手并清除非正式文案', async (
   await expect(page.locator('.djtk-human.is-compact')).toHaveCount(1)
 })
 
+test('海关风险页以紧凑证据链展示四项核验状态', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/customs')
+
+  const card = page.locator('.customs-evidence-card')
+  await expect(card).toBeVisible()
+  await expect(card.locator('.customs-evidence-step')).toHaveCount(4)
+  await expect(card.locator('.customs-evidence-summary')).toContainText('4/4 已核验')
+  await expect(card.locator('.customs-evidence-step-title')).toHaveText([
+    '养殖记录',
+    '安全检测',
+    '健康评价',
+    '报告与追溯',
+  ])
+  await expect(card.locator('.customs-evidence-state')).toHaveText(['已核验', '已通过', '已通过', '已出证'])
+
+  const layout = await card.evaluate((node) => ({
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+    clientHeight: node.clientHeight,
+    scrollHeight: node.scrollHeight,
+  }))
+  expect(layout.scrollWidth - layout.clientWidth).toBeLessThanOrEqual(1)
+  expect(layout.scrollHeight - layout.clientHeight).toBeLessThanOrEqual(1)
+})
+
 test('关键页面没有 critical 级可访问性问题', async ({ page }) => {
   await login(page)
-  for (const route of ['dashboard', 'eval']) {
+  for (const route of ['dashboard', 'eval', 'customs']) {
     await page.goto(`/#/${route}`)
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     const critical = result.violations.filter((item) => item.impact === 'critical')

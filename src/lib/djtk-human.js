@@ -580,16 +580,14 @@ export function renderDjtkHuman(opts = {}) {
             ${compact || embedded ? '' : '<button type="button" class="djtk-close" data-djtk-close data-djtk-toggle aria-label="收起">收起</button>'}
           </div>
         </header>
-        <p class="djtk-tip">${embedded
-    ? '只依据平台记录回答，结论均可回到检测、报告和追溯证据。'
-    : compact
-      ? '围绕当前批次提问：来源、安全、健康、风险与下一步。回答仅引用本地平台记录，可进入全屏研判。'
-      : '从来源、安全、健康、风险和下一步开始提问；回答只引用平台证据，不做用药处方。'}</p>
+        ${embedded ? '' : `<p class="djtk-tip">${compact
+    ? '围绕当前批次提问：来源、安全、健康、风险与下一步。回答仅引用本地平台记录，可进入全屏研判。'
+    : '从来源、安全、健康、风险和下一步开始提问；回答只引用平台证据，不做用药处方。'}</p>`}
         ${embedded ? `
           <div class="djtk-proof-list" aria-label="本次结论的主要依据">
-            <a href="#/screen"><b>氟苯尼考检测报告</b><span>检测记录 · 未检出</span></a>
-            <a href="#/farm"><b>养殖过程记录</b><span>基地-A07 · 全周期</span></a>
-            <a href="#/report"><b>产品合规证明</b><span>权威报告 · 可核验</span></a>
+            <a href="#/screen" aria-label="氟苯尼考检测报告，检测记录未检出" title="检测记录 · 未检出"><b>氟苯尼考报告</b></a>
+            <a href="#/farm" aria-label="养殖过程记录，基地-A07全周期" title="基地-A07 · 全周期"><b>养殖记录</b></a>
+            <a href="#/report" aria-label="产品合规证明，权威报告可核验" title="权威报告 · 可核验"><b>合规证明</b></a>
           </div>
         ` : ''}
         <div class="djtk-chips">${starters}</div>

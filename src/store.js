@@ -220,6 +220,7 @@ export function publicStateFromApi(data = {}) {
       valueText: '', valueNum: '', lod: '', unit: '', IL1b: '', IL1bCtrl: '',
       IL6: '', IL6Ctrl: '', TNFa: '', TNFaCtrl: '', CRP: '', CRPCtrl: '',
       moisture: '', tenderness: '', pH: '', waterHolding: '',
+      protein: '', fat: '', minerals: '', vitamins: '', aminoAcids: '', fattyAcids: '', peptides: '',
       ...(data.eval || {}),
     },
     report: { generated: false, no: '', generatedAt: '', ...(data.report || {}) },

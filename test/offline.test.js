@@ -4,12 +4,13 @@ import assert from 'node:assert/strict'
 import { NAV } from '../src/lib/journey.js'
 import { render as renderRegulatoryRisk } from '../src/pages/customs.js'
 
-test('法规风险入口指向本地离线页面且不伪造外部来源', () => {
+test('产品端只包含安全检测与健康评价，风险情报独立导航', () => {
   const product = NAV.find((item) => item.id === 'product')
-  const customs = product.children.find((item) => item.id === 'customs')
+  const customs = NAV.find((item) => item.id === 'customs')
 
+  assert.deepEqual(product.children.map((item) => item.id), ['screen', 'eval'])
   assert.equal(customs.href, '#/customs')
   assert.notEqual(customs.external, true)
   assert.equal(/href=["']https?:\/\//i.test(renderRegulatoryRisk()), false)
-  assert.match(renderRegulatoryRisk(), /未接入实时监管数据/)
+  assert.match(renderRegulatoryRisk(), /监管公开信息离线快照/)
 })

@@ -23,12 +23,34 @@ function show(v) {
   return s === '' ? '—' : s
 }
 
-const QUALITY_METRICS = [
+const MEAT_QUALITY_METRICS = [
   { field: 'moisture', label: '水分', unit: '%', note: '水分含量' },
-  { field: 'tenderness', label: '嫩度', unit: 'N', note: '剪切力，数值越低越嫩' },
+  { field: 'tenderness', label: '剪切力（嫩度）', unit: 'N', note: '数值越低，肉质越嫩' },
   { field: 'pH', label: 'pH 值', unit: '', note: '宰后 24 h' },
-  { field: 'waterHolding', label: '保水性', unit: '%', note: '加压法测定' },
+  { field: 'waterHolding', label: '系水力（保水性）', unit: '%', note: '加压法测定' },
 ]
+
+const NUTRITION_METRICS = [
+  { field: 'protein', label: '蛋白质', unit: 'g/100g', note: '营养组成' },
+  { field: 'fat', label: '脂肪', unit: 'g/100g', note: '营养组成' },
+  { field: 'minerals', label: '矿物质', unit: 'g/100g', note: '灰分计' },
+  { field: 'vitamins', label: '维生素', unit: '', note: '主要维生素记录' },
+  { field: 'aminoAcids', label: '氨基酸', unit: '', note: '必需氨基酸组成' },
+  { field: 'fattyAcids', label: '脂肪酸', unit: '', note: '脂肪酸组成' },
+  { field: 'peptides', label: '多肽', unit: '', note: '活性肽检测' },
+]
+
+const QUALITY_METRICS = [...MEAT_QUALITY_METRICS, ...NUTRITION_METRICS]
+
+function qualityTiles(metrics, e) {
+  return metrics.map((metric) => `
+    <article class="quality-tile">
+      <h4>${metric.label}</h4>
+      <p><b>${show(e[metric.field])}</b>${metric.unit ? `<small>${metric.unit}</small>` : ''}</p>
+      <span>${metric.note}</span>
+    </article>
+  `).join('')
+}
 
 /**
  * @param {object} e
@@ -39,12 +61,12 @@ export function renderQualityBlock(e = {}, { editing = false } = {}) {
     return `
       <section class="health-block health-quality">
         <h3>肉质品质指标</h3>
-        <p class="sub">录入水分、剪切力、宰后 24 h pH 与保水性实测值。</p>
+        <p class="sub">录入肉质核心指标与营养组成检测结果。</p>
         <div class="form two">
           ${QUALITY_METRICS.map((metric) => `
             <div class="field">
               <label>${metric.label}${metric.unit ? `（${metric.unit}）` : ''}</label>
-              <input type="number" step="any" inputmode="decimal" data-field="eval.${metric.field}" value="${val(e[metric.field])}">
+              <input ${MEAT_QUALITY_METRICS.includes(metric) ? 'type="number" step="any" inputmode="decimal"' : 'type="text"'} data-field="eval.${metric.field}" value="${val(e[metric.field])}">
             </div>
           `).join('')}
         </div>
@@ -56,14 +78,13 @@ export function renderQualityBlock(e = {}, { editing = false } = {}) {
     <section class="health-block health-quality">
       <h3>肉质品质指标</h3>
       ${hasQuality ? `
+      <h4 class="quality-group-title">肉质核心指标</h4>
       <div class="quality-grid">
-        ${QUALITY_METRICS.map((metric) => `
-          <article class="quality-tile">
-            <h4>${metric.label}</h4>
-            <p><b>${show(e[metric.field])}</b>${metric.unit ? `<small>${metric.unit}</small>` : ''}</p>
-            <span>${metric.note}</span>
-          </article>
-        `).join('')}
+        ${qualityTiles(MEAT_QUALITY_METRICS, e)}
+      </div>
+      <h4 class="quality-group-title is-nutrition">营养品质指标</h4>
+      <div class="quality-grid quality-grid-nutrition">
+        ${qualityTiles(NUTRITION_METRICS, e)}
       </div>
       <p class="quality-note">以上为当前批次实测值，与炎症、菌群结果共同构成三维评价证据，不单独作为放行结论。</p>
       ` : `<div class="card inflam-empty">

@@ -83,7 +83,7 @@ export function buildFastAnswer(question, evidence) {
   }
 
   if (/海关|监管|法规|政务公开/.test(q)) {
-    return ok('当前离线实例未接入实时外部监管数据。请在“法规与风险”页确认数据源状态；本批判断只依据平台内可核验记录。')
+    return ok('风险情报库保存了经审核的监管公开信息离线快照，用于确定排查重点。当前批次是否上市，仍以养殖记录、安全检测、健康评价、检测报告与追溯记录为准。')
   }
 
   // Medication how-to → refuse (do not invent 合格/用药处方)

@@ -46,6 +46,13 @@ const EMPTY_EVAL = {
   tenderness: '',
   pH: '',
   waterHolding: '',
+  protein: '',
+  fat: '',
+  minerals: '',
+  vitamins: '',
+  aminoAcids: '',
+  fattyAcids: '',
+  peptides: '',
 }
 
 /**
@@ -135,6 +142,13 @@ function goodEval(testDate, tweak = {}) {
     tenderness: 25.1,
     pH: 5.8,
     waterHolding: 78.8,
+    protein: '22.1',
+    fat: '2.8',
+    minerals: '1.1',
+    vitamins: 'B6 0.51 mg/100g',
+    aminoAcids: '必需氨基酸 8.7 g/100g',
+    fattyAcids: '不饱和脂肪酸 66.8%',
+    peptides: '活性肽 1.7 g/100g',
     ...tweak,
   }
 }

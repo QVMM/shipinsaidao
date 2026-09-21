@@ -124,7 +124,9 @@ function migrate(d) {
       il1b REAL, il1b_ctrl REAL, il6 REAL, il6_ctrl REAL,
       tnfa REAL, tnfa_ctrl REAL, crp REAL, crp_ctrl REAL,
       shannon REAL, shannon_ctrl REAL, lacto_change REAL, ecoli_change REAL,
-      moisture REAL, tenderness REAL, ph_value REAL, water_holding REAL
+      moisture REAL, tenderness REAL, ph_value REAL, water_holding REAL,
+      protein TEXT, fat TEXT, minerals TEXT, vitamins TEXT,
+      amino_acids TEXT, fatty_acids TEXT, peptides TEXT
     );
     CREATE TABLE IF NOT EXISTS reports (
       id INTEGER PRIMARY KEY,
@@ -188,6 +190,13 @@ function migrate(d) {
   ensureColumn(d, 'eval_records', 'tenderness', 'REAL')
   ensureColumn(d, 'eval_records', 'ph_value', 'REAL')
   ensureColumn(d, 'eval_records', 'water_holding', 'REAL')
+  ensureColumn(d, 'eval_records', 'protein', 'TEXT')
+  ensureColumn(d, 'eval_records', 'fat', 'TEXT')
+  ensureColumn(d, 'eval_records', 'minerals', 'TEXT')
+  ensureColumn(d, 'eval_records', 'vitamins', 'TEXT')
+  ensureColumn(d, 'eval_records', 'amino_acids', 'TEXT')
+  ensureColumn(d, 'eval_records', 'fatty_acids', 'TEXT')
+  ensureColumn(d, 'eval_records', 'peptides', 'TEXT')
   migrateDose(d)
   seedSpotlightScreenExtra(d)
   migrateDemoCopy(d)
@@ -209,13 +218,27 @@ function migrateSpotlightQuality(d) {
     SET moisture=COALESCE(moisture, ?),
         tenderness=COALESCE(tenderness, ?),
         ph_value=COALESCE(ph_value, ?),
-        water_holding=COALESCE(water_holding, ?)
+        water_holding=COALESCE(water_holding, ?),
+        protein=COALESCE(protein, ?),
+        fat=COALESCE(fat, ?),
+        minerals=COALESCE(minerals, ?),
+        vitamins=COALESCE(vitamins, ?),
+        amino_acids=COALESCE(amino_acids, ?),
+        fatty_acids=COALESCE(fatty_acids, ?),
+        peptides=COALESCE(peptides, ?)
     WHERE batch_id=?
   `).run(
     numOrNull(e.moisture),
     numOrNull(e.tenderness),
     numOrNull(e.pH),
     numOrNull(e.waterHolding),
+    e.protein ?? '',
+    e.fat ?? '',
+    e.minerals ?? '',
+    e.vitamins ?? '',
+    e.aminoAcids ?? '',
+    e.fattyAcids ?? '',
+    e.peptides ?? '',
     DEMO_SEED.batchId,
   )
 }
@@ -681,6 +704,13 @@ export function getPublicTrace(batchId) {
       tenderness: full.eval.tenderness,
       pH: full.eval.pH,
       waterHolding: full.eval.waterHolding,
+      protein: full.eval.protein,
+      fat: full.eval.fat,
+      minerals: full.eval.minerals,
+      vitamins: full.eval.vitamins,
+      aminoAcids: full.eval.aminoAcids,
+      fattyAcids: full.eval.fattyAcids,
+      peptides: full.eval.peptides,
     },
     report: { generated: full.report.generated, no: full.report.no, generatedAt: full.report.generatedAt },
     trace: { generated: full.trace.generated, verifyId: full.trace.verifyId, generatedAt: full.trace.generatedAt },
@@ -758,6 +788,13 @@ export function getPublicStage(batchId) {
       tenderness: ev.tenderness ?? '',
       pH: ev.pH ?? '',
       waterHolding: ev.waterHolding ?? '',
+      protein: ev.protein ?? '',
+      fat: ev.fat ?? '',
+      minerals: ev.minerals ?? '',
+      vitamins: ev.vitamins ?? '',
+      aminoAcids: ev.aminoAcids ?? '',
+      fattyAcids: ev.fattyAcids ?? '',
+      peptides: ev.peptides ?? '',
     },
     report: {
       generated: !!full.report?.generated,
@@ -1135,8 +1172,9 @@ function upsertEval(d, batchId, e) {
       batch_id, test_date, instrument, curve_r, lod, value_text, value_num, unit, operator,
       il1b, il1b_ctrl, il6, il6_ctrl, tnfa, tnfa_ctrl, crp, crp_ctrl,
       shannon, shannon_ctrl, lacto_change, ecoli_change,
-      moisture, tenderness, ph_value, water_holding
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      moisture, tenderness, ph_value, water_holding,
+      protein, fat, minerals, vitamins, amino_acids, fatty_acids, peptides
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(batch_id) DO UPDATE SET
       test_date=excluded.test_date, instrument=excluded.instrument, curve_r=excluded.curve_r,
       lod=excluded.lod, value_text=excluded.value_text, value_num=excluded.value_num,
@@ -1145,7 +1183,10 @@ function upsertEval(d, batchId, e) {
       crp=excluded.crp, crp_ctrl=excluded.crp_ctrl, shannon=excluded.shannon,
       shannon_ctrl=excluded.shannon_ctrl, lacto_change=excluded.lacto_change, ecoli_change=excluded.ecoli_change,
       moisture=excluded.moisture, tenderness=excluded.tenderness,
-      ph_value=excluded.ph_value, water_holding=excluded.water_holding
+      ph_value=excluded.ph_value, water_holding=excluded.water_holding,
+      protein=excluded.protein, fat=excluded.fat, minerals=excluded.minerals,
+      vitamins=excluded.vitamins, amino_acids=excluded.amino_acids,
+      fatty_acids=excluded.fatty_acids, peptides=excluded.peptides
   `).run(
     batchId, e.testDate ?? '', e.instrument ?? '', numOrNull(e.curveR), numOrNull(e.lod),
     e.valueText ?? '', e.valueNum === '' || e.valueNum == null ? '' : String(e.valueNum),
@@ -1154,6 +1195,8 @@ function upsertEval(d, batchId, e) {
     numOrNull(e.TNFa), numOrNull(e.TNFaCtrl), numOrNull(e.CRP), numOrNull(e.CRPCtrl),
     numOrNull(e.shannon), numOrNull(e.shannonCtrl), numOrNull(e.lactoChange), numOrNull(e.ecoliChange),
     numOrNull(e.moisture), numOrNull(e.tenderness), numOrNull(e.pH), numOrNull(e.waterHolding),
+    e.protein ?? '', e.fat ?? '', e.minerals ?? '', e.vitamins ?? '',
+    e.aminoAcids ?? '', e.fattyAcids ?? '', e.peptides ?? '',
   )
 }
 
@@ -1337,6 +1380,13 @@ function rowToEval(row) {
     tenderness: numOrEmpty(row.tenderness),
     pH: numOrEmpty(row.ph_value),
     waterHolding: numOrEmpty(row.water_holding),
+    protein: row.protein ?? '',
+    fat: row.fat ?? '',
+    minerals: row.minerals ?? '',
+    vitamins: row.vitamins ?? '',
+    aminoAcids: row.amino_acids ?? '',
+    fattyAcids: row.fatty_acids ?? '',
+    peptides: row.peptides ?? '',
   }
 }
 

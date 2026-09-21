@@ -9,15 +9,15 @@ export const NAV = [
     children: [
       { href: '#/screen', id: 'screen', label: '安全检测' },
       { href: '#/eval', id: 'eval', label: '健康评价' },
-      { href: '#/customs', id: 'customs', label: '法规与风险' },
     ],
   },
+  { href: '#/customs', id: 'customs', label: '风险情报' },
   { href: '#/report', id: 'report', label: '检测报告' },
   { href: '#/qr', id: 'qr', label: '追溯码' },
   { href: '#/consumer', id: 'consumer', label: '客户端显示' },
 ]
 
-export const PRODUCT_NAV_IDS = ['screen', 'eval', 'customs']
+export const PRODUCT_NAV_IDS = ['screen', 'eval']
 
 /** 顶栏故事步进：产品路径，避免和侧栏抢注意力。 */
 export const STEPS = [

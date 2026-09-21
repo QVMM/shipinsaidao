@@ -188,9 +188,12 @@ export function slideNav(root, routeId) {
     nav.classList.remove('has-indicator')
     return
   }
+  const navRect = nav.getBoundingClientRect()
+  const activeRect = active.getBoundingClientRect()
+  const activeTop = activeRect.top - navRect.top + nav.scrollTop
   ind.style.opacity = '1'
-  ind.style.transform = `translateY(${active.offsetTop}px)`
-  ind.style.height = `${active.offsetHeight}px`
+  ind.style.transform = `translateY(${activeTop}px)`
+  ind.style.height = `${activeRect.height}px`
   nav.classList.add('has-indicator')
 }
 

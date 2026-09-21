@@ -1,7 +1,7 @@
 /**
  * MiMo is an optional online speech layer only. Batch answers and verdicts stay
  * inside local-assistant.js; if MiMo is unavailable the client falls back to
- * browser speech, while the Windows package uses its bundled local engines.
+ * browser speech.
  */
 
 const DEFAULT_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
@@ -9,7 +9,7 @@ const ASR_MODEL = 'mimo-v2.5-asr'
 const TTS_MODEL = 'mimo-v2.5-tts'
 const DEFAULT_TTS_VOICE = '茉莉'
 const TTS_VOICE_GENDER = 'female'
-const VOICE_TIMEOUT_MS = 10_000
+const VOICE_TIMEOUT_MS = 6_000
 
 function apiKey() {
   return String(process.env.MIMO_API_KEY || '').trim()

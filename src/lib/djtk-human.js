@@ -224,11 +224,12 @@ function isBrowserSpeechOk() {
 const FEMALE_CHINESE_VOICE = /(?:female|woman|girl|xiaoxiao|xiaoyi|xiaohan|xiaomeng|xiaomo|xiaoqiu|xiaorui|xiaoshuang|xiaoxuan|xiaoyan|xiaoyou|xiaozhen|yunxia|huihui|yaoyao|hanhan|ting[- ]?ting|mei[- ]?jia|sin[- ]?ji|晓晓|晓伊|晓涵|晓梦|晓墨|晓秋|晓睿|晓双|晓萱|晓颜|晓悠|晓甄|云霞|慧慧|瑶瑶|涵涵|婷婷|美佳|善怡|女声)/i
 const GOOGLE_CHINESE_VOICE = /google.*(?:普通话|中文|mandarin|chinese)/i
 
-/** Never silently fall back to a Chinese male system voice. */
+/** Prefer a Chinese female voice, but always keep a Chinese system fallback. */
 export function selectFemaleChineseVoice(voices = []) {
   const chinese = Array.from(voices).filter((voice) => /^zh(?:[-_]|$)/i.test(String(voice?.lang || '')))
   return chinese.find((voice) => FEMALE_CHINESE_VOICE.test(String(voice?.name || '')))
     || chinese.find((voice) => GOOGLE_CHINESE_VOICE.test(String(voice?.name || '')))
+    || chinese[0]
     || null
 }
 
@@ -419,8 +420,7 @@ export function speakPreview(text, maxChars = 120) {
 }
 
 /**
- * Prefer MiMo female TTS online, then fall back to a Chinese female device
- * voice. The Windows package replaces the endpoint with its local voice engine.
+ * Prefer MiMo female TTS online, then fall back to a Chinese device voice.
  * @param {string} text
  * @param {{ onStart?: () => void, onEnd?: () => void, signal?: AbortSignal, onFallback?: () => void }} [opts]
  * @returns {Promise<{ ok: boolean, via: 'mimo' | 'browser' | 'none' }>}

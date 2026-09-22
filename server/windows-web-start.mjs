@@ -118,6 +118,7 @@ if (await useExistingInstance()) process.exit(0)
 process.env.OFFLINE_MODE = '1'
 process.env.HOST = '127.0.0.1'
 process.env.DATABASE_PATH = join(dataRoot, 'tihua.db')
+process.env.MIMO_PROXY_URL ||= 'https://tihua-trace.onrender.com'
 process.env.OFFLINE_MODEL_DIR ||= join(bundleRoot, 'models', 'offline')
 process.env.SESSION_SECRET ||= randomBytes(32).toString('hex')
 

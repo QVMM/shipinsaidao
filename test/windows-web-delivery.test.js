@@ -73,6 +73,8 @@ test('Windows Web 启动不再加载本地语音合成模型', () => {
   assert.doesNotMatch(launcher, /await warmOfflineVoice\(/)
   assert.doesNotMatch(launcher, /warmOfflineVoiceIsolated/)
   assert.match(launcher, /speechSynthesis/)
+  assert.match(launcher, /MIMO_PROXY_URL/)
+  assert.match(launcher, /https:\/\/tihua-trace\.onrender\.com/)
 })
 
 test('Windows 后台服务使用可验证的 Start-Process，不再依赖 cmd start 解析', () => {

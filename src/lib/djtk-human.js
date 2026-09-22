@@ -363,12 +363,7 @@ export function speakBrowser(text, hooks = {}) {
     u.pitch = 1
     const list = window.speechSynthesis.getVoices?.() || []
     const voice = selectFemaleChineseVoice(list)
-    if (!voice) {
-      hooks.onEnd?.()
-      resolve(false)
-      return
-    }
-    u.voice = voice
+    if (voice) u.voice = voice
     let active = true
     let startTimer = 0
     const finish = (ok) => {

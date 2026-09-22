@@ -33,6 +33,44 @@ test('浏览器播报优先中文女声，没有女声时仍使用电脑自带�
   assert.equal(selectFemaleChineseVoice([voices[0]])?.name, 'Microsoft Yunxi Online')
 })
 
+test('Edge 首次进入时声库列表尚未加载，也仍然让系统按中文播报', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  const originalUtterance = globalThis.SpeechSynthesisUtterance
+  const originalDocument = globalThis.document
+  let spoken = null
+  globalThis.fetch = async () => { throw new Error('模拟联网女声不可用') }
+  globalThis.SpeechSynthesisUtterance = class {
+    constructor(text) { this.text = text }
+  }
+  globalThis.window = {
+    setTimeout,
+    SpeechSynthesisUtterance: globalThis.SpeechSynthesisUtterance,
+    speechSynthesis: {
+      cancel() {},
+      getVoices() { return [] },
+      speak(utterance) {
+        spoken = utterance
+        utterance.onstart?.()
+        utterance.onend?.()
+      },
+    },
+  }
+  globalThis.document = { querySelectorAll: () => [] }
+
+  try {
+    const result = await speakWithPreferredVoice('首次进入也要播报。')
+    assert.equal(result.via, 'browser')
+    assert.equal(spoken?.lang, 'zh-CN')
+    assert.equal(spoken?.voice ?? null, null)
+  } finally {
+    globalThis.fetch = originalFetch
+    globalThis.window = originalWindow
+    globalThis.SpeechSynthesisUtterance = originalUtterance
+    globalThis.document = originalDocument
+  }
+})
+
 test('联网女声失败时自动回退设备声音且不影响文字回答', async () => {
   const originalFetch = globalThis.fetch
   const originalWindow = globalThis.window

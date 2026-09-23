@@ -30,7 +30,7 @@ const CUSTOMS_ASSESSMENT_QUERY = '请结合海关中心政务公开数据平台�
 const SS_KEY = 'djtk_stage_token'
 const MOUTH_RMS_OPEN_THRESHOLD = 0.021
 const MOUTH_RMS_CLOSE_THRESHOLD = 0.012
-const CLOSING_SPEECH = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
+const CLOSING_SPEECH = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟划团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 const CLOSING_SPEECH_START = '屏幕之外可能是素未谋面的陌生人'
 const CLOSING_SPEECH_END = '护航中国高品质鸡肉走向世界餐桌'
 
@@ -563,7 +563,7 @@ export function renderDjtkHuman(opts = {}) {
           <div class="djtk-avatar" data-djtk-avatar>${avatarHtml('panel')}</div>
           <div class="djtk-hd-copy">
             <b>DJTK智控助手</b>
-            <span>${embedded ? '您的食品安全 AI 搭档' : '替抗蓟化 · 质控溯源'}</span>
+            <span>${embedded ? '您的食品安全 AI 搭档' : '替抗蓟划 · 质控溯源'}</span>
             ${embedded ? '<em class="djtk-stage-state" data-djtk-stage-state>待命 · 当前批次已载入</em>' : ''}
           </div>
           <div class="djtk-hd-actions">

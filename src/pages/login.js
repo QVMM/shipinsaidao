@@ -10,7 +10,7 @@ export function render() {
         <div class="login-brand">
           <div class="brand-mark">${markSvg}</div>
           <div>
-            <h1>替抗蓟化</h1>
+            <h1>替抗蓟划</h1>
             <p>减抗鸡肉 · 全链条质控</p>
           </div>
         </div>

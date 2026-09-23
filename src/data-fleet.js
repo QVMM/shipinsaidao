@@ -1,6 +1,6 @@
 /**
- * 指挥舱体系批次。焦点 蓟化-2026-0812 仍走 DEMO_SEED，这里是另外 11 批。
- * 批次号只许 蓟化-YYYY-MMDD。药材只写大蓟。
+ * 指挥舱体系批次。焦点 蓟划-2026-0812 仍走 DEMO_SEED，这里是另外 11 批。
+ * 批次号只许 蓟划-YYYY-MMDD。药材只写大蓟。
  */
 import { DEMO_SEED } from './data.js'
 import { makeDemoHouseEnv } from './lib/house-env.js'
@@ -73,7 +73,7 @@ function addDays(iso, days) {
  * @returns {string}
  */
 function slaughterOf(batchId) {
-  const m = /^蓟化-(\d{4})-(\d{2})(\d{2})$/.exec(batchId)
+  const m = /^蓟划-(\d{4})-(\d{2})(\d{2})$/.exec(batchId)
   if (!m) return '2026-08-12'
   return `${m[1]}-${m[2]}-${m[3]}`
 }
@@ -183,9 +183,9 @@ function batch(spec) {
     hatchDate: hatch,
     stockDate: stock,
     plannedSlaughter: slaughter,
-    flockId: `FL-${id.replace('蓟化-', '')}`,
+    flockId: `FL-${id.replace('蓟划-', '')}`,
     density: '10 只/m²',
-    feedBrand: '替抗蓟化定制日粮',
+    feedBrand: '替抗蓟划定制日粮',
     additive: '大蓟粗提物',
     dose: '5000 mg/kg 饲料（0.5%）',
     doseStartDay: 1,
@@ -219,7 +219,7 @@ function batch(spec) {
 /** 11 批体系鸡，和焦点 0812 一起铺满六站。 */
 export const FLEET_SEEDS = [
   batch({
-    batchId: '蓟化-2026-0828',
+    batchId: '蓟划-2026-0828',
     stage: 'farming',
     farm: {
       name: '某某基地（基地-B12）',
@@ -232,7 +232,7 @@ export const FLEET_SEEDS = [
     },
   }),
   batch({
-    batchId: '蓟化-2026-0826',
+    batchId: '蓟划-2026-0826',
     stage: 'farming',
     farm: {
       name: '某某基地（基地-C05）',
@@ -245,7 +245,7 @@ export const FLEET_SEEDS = [
     },
   }),
   batch({
-    batchId: '蓟化-2026-0824',
+    batchId: '蓟划-2026-0824',
     stage: 'farming',
     farm: {
       name: '某某基地（基地-D01）',
@@ -258,7 +258,7 @@ export const FLEET_SEEDS = [
     },
   }),
   batch({
-    batchId: '蓟化-2026-0820',
+    batchId: '蓟划-2026-0820',
     stage: 'screening',
     farm: {
       name: '某某基地（基地-E06）',
@@ -283,7 +283,7 @@ export const FLEET_SEEDS = [
     },
   }),
   batch({
-    batchId: '蓟化-2026-0818',
+    batchId: '蓟划-2026-0818',
     stage: 'evaluating',
     farm: {
       name: '某某基地（基地-A02）',
@@ -299,7 +299,7 @@ export const FLEET_SEEDS = [
     eval: goodEval('2026-08-18 15:20', { curveR: 0.9988, IL6: 25.4, IL1b: 20.1 }),
   }),
   batch({
-    batchId: '蓟化-2026-0816',
+    batchId: '蓟划-2026-0816',
     stage: 'reporting',
     farm: {
       name: '某某基地（基地-F04）',
@@ -315,7 +315,7 @@ export const FLEET_SEEDS = [
     eval: goodEval('2026-08-16 14:50', { curveR: 0.9991, IL6: 23.6 }),
   }),
   batch({
-    batchId: '蓟化-2026-0814',
+    batchId: '蓟划-2026-0814',
     stage: 'tracing',
     farm: {
       name: '某某基地（基地-G07）',
@@ -329,12 +329,12 @@ export const FLEET_SEEDS = [
     },
     screen: clearScreen('2026-08-14 08:50', 'QC-0814-04'),
     eval: goodEval('2026-08-14 15:10', { curveR: 0.9989, IL6: 26.1, IL1b: 21 }),
-    report: doneReport('蓟化-2026-0814', '2026-08-14 16:20'),
-    trace: doneTrace('蓟化-2026-0814', '2026-08-14 16:40'),
+    report: doneReport('蓟划-2026-0814', '2026-08-14 16:20'),
+    trace: doneTrace('蓟划-2026-0814', '2026-08-14 16:40'),
     program: { pipelineStage: 'tracing', listed: false },
   }),
   batch({
-    batchId: '蓟化-2026-0808',
+    batchId: '蓟划-2026-0808',
     stage: 'market',
     farm: {
       name: '某某基地（基地-H08）',
@@ -348,11 +348,11 @@ export const FLEET_SEEDS = [
     },
     screen: clearScreen('2026-08-08 09:30', 'QC-0808-02'),
     eval: goodEval('2026-08-08 15:00', { curveR: 0.9993, IL6: 21.8, IL1b: 17.9 }),
-    report: doneReport('蓟化-2026-0808', '2026-08-08 16:10'),
-    trace: doneTrace('蓟化-2026-0808', '2026-08-08 16:30'),
+    report: doneReport('蓟划-2026-0808', '2026-08-08 16:10'),
+    trace: doneTrace('蓟划-2026-0808', '2026-08-08 16:30'),
   }),
   batch({
-    batchId: '蓟化-2026-0802',
+    batchId: '蓟划-2026-0802',
     stage: 'market',
     farm: {
       name: '某某基地（基地-I09）',
@@ -366,11 +366,11 @@ export const FLEET_SEEDS = [
     },
     screen: clearScreen('2026-08-02 09:15', 'QC-0802-01'),
     eval: goodEval('2026-08-02 14:40', { curveR: 0.9987, IL6: 27.2, IL1b: 22.4 }),
-    report: doneReport('蓟化-2026-0802', '2026-08-02 16:00'),
-    trace: doneTrace('蓟化-2026-0802', '2026-08-02 16:20'),
+    report: doneReport('蓟划-2026-0802', '2026-08-02 16:00'),
+    trace: doneTrace('蓟划-2026-0802', '2026-08-02 16:20'),
   }),
   batch({
-    batchId: '蓟化-2026-0810',
+    batchId: '蓟划-2026-0810',
     stage: 'alert',
     farm: {
       name: '某某基地（基地-J11）',
@@ -398,7 +398,7 @@ export const FLEET_SEEDS = [
     }),
   }),
   batch({
-    batchId: '蓟化-2026-0806',
+    batchId: '蓟划-2026-0806',
     stage: 'alert',
     farm: {
       name: '某某基地（基地-K10）',

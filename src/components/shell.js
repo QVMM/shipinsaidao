@@ -55,7 +55,7 @@ export function renderShell(state, route, inner) {
         <div class="brand">
           <div class="brand-mark">${markSvg}</div>
           <div>
-            <h1>替抗蓟化</h1>
+            <h1>替抗蓟划</h1>
             <p>减抗鸡肉 · 全链条质控</p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export function renderShell(state, route, inner) {
         <header class="topbar">
           <div class="top-context">
             <span class="local-badge"><i></i>全过程数据可追溯</span>
-            <div class="crumb">替抗蓟化 / <b data-crumb-title>${route.title}</b></div>
+            <div class="crumb">替抗蓟划 / <b data-crumb-title>${route.title}</b></div>
           </div>
           <div class="top-actions">
             <button type="button" class="batch-pill" data-batch-pill title="更换批次">${esc(state.batchId || '选择批次')}</button>
@@ -111,7 +111,7 @@ export function renderPublicShell(inner) {
       <header class="public-bar">
         <div class="brand-mark">${markSvg}</div>
         <div>
-          <strong>替抗蓟化</strong>
+          <strong>替抗蓟划</strong>
           <span>扫码可查 · 不用登录</span>
         </div>
       </header>
@@ -201,7 +201,7 @@ export function bindShell(root, onLogout) {
   const reset = root.querySelector('[data-action="reset"]')
   if (reset) {
     reset.addEventListener('click', () => {
-      if (confirm('恢复为预填批次「蓟化-2026-0812」？当前改动会清除。')) resetState()
+      if (confirm('恢复为预填批次「蓟划-2026-0812」？当前改动会清除。')) resetState()
     })
   }
   const stageBtn = root.querySelector('[data-action="open-stage"]')

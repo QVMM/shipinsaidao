@@ -5,7 +5,7 @@ import { computeVerdict, issuanceGate } from '../src/lib/verdict.js'
 
 const REQUIRED_OPENING_REPLY = '对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标问题，相关产品依法退市，造成约 10 万吨订单缺口。'
 const REQUIRED_RESULT_REPLY = '已完成结果审核，并对标高品质鸡肉三维评价体系做出判定，大蓟替抗鸡肉抽检样品全部合格。'
-const REQUIRED_CLOSING_REPLY = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
+const REQUIRED_CLOSING_REPLY = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟划团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 
 const DJTK_RX_BAN =
   /可以合规使用|可以使用氟苯|推荐使用兽药|休药期后(?:可用|用药)?|推荐用药|可以用药|氟苯尼考可以|剂量建议|开具处方|兽药处方|用药剂量/

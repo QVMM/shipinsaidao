@@ -41,7 +41,7 @@ test('问答只使用本地证据且不发起外部模型请求', async () => {
       headers: { 'x-stage-token': 'local-voice-test-token' },
       payload: {
         question: '请概括这个平台怎样帮助质量工程师协同工作。',
-        batchId: '蓟化-2026-0812',
+        batchId: '蓟划-2026-0812',
       },
     })
     const payload = response.json()

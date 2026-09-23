@@ -14,7 +14,7 @@ export const PIPELINE = [
 
 export const ALERT_META = { stage: 'alert', label: '预警', short: '预警', kpi: 'alerts' }
 
-export const SPOTLIGHT_ID = '蓟化-2026-0812'
+export const SPOTLIGHT_ID = '蓟划-2026-0812'
 
 /**
  * @param {unknown} v

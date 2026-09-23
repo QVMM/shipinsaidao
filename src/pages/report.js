@@ -32,7 +32,7 @@ export function render(state) {
     ? '血清促炎因子低于常规有抗对照，肠道菌群多样性优于对照。'
     : '血清促炎因子尚未低于对照阈值，炎症评价未过关。'
   const close = v.pass
-    ? '符合「替抗蓟化」减抗鸡肉内控要求，合格准予上市。'
+    ? '符合「替抗蓟划」减抗鸡肉内控要求，合格准予上市。'
     : '尚未达到出证条件，请复核后再签发。'
   return `
     <div class="page-head no-print">
@@ -47,7 +47,7 @@ export function render(state) {
         <div class="report-seal ${v.stamp === '检验检测专用章' ? '' : 'hold'}">${renderInkStamp({ variant: stampVariant(v.stamp) })}</div>
         <header class="report-head">
           <div>
-            <div class="report-org">「替抗蓟化」食品安全创新团队</div>
+            <div class="report-org">「替抗蓟划」食品安全创新团队</div>
             <h2>替抗肉鸡产品质量检测报告</h2>
             <div class="report-sub">氟苯尼考残留 · 血清炎症因子评价 · 综合结论</div>
           </div>

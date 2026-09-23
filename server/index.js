@@ -9,4 +9,4 @@ const host = process.env.HOST || '0.0.0.0'
 
 const app = await buildApp()
 await app.listen({ port, host })
-app.log.info(`替抗蓟化 listening on http://${host}:${port}/`)
+app.log.info(`替抗蓟划 listening on http://${host}:${port}/`)

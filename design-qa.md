@@ -10,7 +10,7 @@
 - Detection-card correction capture: `/Users/liuyixing/.codex/visualizations/2026/09/16/01a0aaf9-80e8-7063-a3dc-33c8302357c4/tihua-build-qa/process-after-fix.png`
 - Final normalized comparison: `/Users/liuyixing/.codex/visualizations/2026/09/16/01a0aaf9-80e8-7063-a3dc-33c8302357c4/tihua-build-qa/stage-reference-vs-final.png`
 - CSS viewport: `1512 × 829`; browser capture backing pixels: `1890 × 1035`; the implementation region was cropped to `945 × 518` and compared against a same-size normalized source crop.
-- State: local offline runtime; focus batch `蓟化-2026-0812`; the broken evidence seal correctly keeps the verdict at `证据封存待核验` instead of copying the mock's qualified state.
+- State: local offline runtime; focus batch `蓟划-2026-0812`; the broken evidence seal correctly keeps the verdict at `证据封存待核验` instead of copying the mock's qualified state.
 
 ## Findings and fixes
 

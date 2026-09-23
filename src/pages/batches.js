@@ -30,7 +30,7 @@ export function render() {
       <form class="form two" data-batch-form>
         <div class="field span2">
           <label for="batch-typed">批次号</label>
-          <input id="batch-typed" name="batchId" value="${val(chosenBatchId())}" placeholder="例如 蓟化-2026-0812" required>
+          <input id="batch-typed" name="batchId" value="${val(chosenBatchId())}" placeholder="例如 蓟划-2026-0812" required>
         </div>
         <div class="field">
           <button type="submit" class="btn gold">确认打开</button>

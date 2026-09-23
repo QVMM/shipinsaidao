@@ -1,4 +1,4 @@
-/** 蓟化之路六幕插画。原作 SVG，大色块，五米外能认。 */
+/** 蓟划之路六幕插画。原作 SVG，大色块，五米外能认。 */
 
 function art(body) {
   return `<svg class="scene-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`
@@ -64,7 +64,7 @@ export const artEval = art(`
   <rect class="eval-now" x="70" y="58" width="18" height="40" rx="3" fill="rgba(43,107,76,.55)" stroke="#e8d5a8" stroke-width="1.8"/>
   <path class="eval-arrow" d="M79 52v-16m0 0-5 6m5-6 5 6" stroke="#e8d5a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="45" y="16" text-anchor="middle" fill="#c9b48a" font-size="9">对照</text>
-  <text x="79" y="16" text-anchor="middle" fill="#e8d5a8" font-size="9">蓟化</text>
+  <text x="79" y="16" text-anchor="middle" fill="#e8d5a8" font-size="9">蓟划</text>
 `)
 
 /** 合格印落下。实拍橡胶印 PNG。 */

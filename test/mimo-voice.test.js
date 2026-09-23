@@ -51,7 +51,7 @@ test('联网时 MiMo 负责语音识别和女声合成，但不参与批次判�
       method: 'POST',
       url: '/api/djtk/ask',
       headers,
-      payload: { question: '请概括平台能力。', batchId: '蓟化-2026-0812' },
+      payload: { question: '请概括平台能力。', batchId: '蓟划-2026-0812' },
     })
     assert.equal(ask.statusCode, 200)
     assert.equal(ask.json().model, 'local-evidence')

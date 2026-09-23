@@ -266,7 +266,7 @@ function trendOption(trend) {
 }
 
 function shortId(id) {
-  return String(id || '').replace('蓟化-2026-', '蓟化-')
+  return String(id || '').replace('蓟划-2026-', '蓟划-')
 }
 
 function birdsOfFunnel(funnel, keys) {
@@ -321,7 +321,7 @@ export function render() {
           </div>
           <div class="hd-title">
             <p class="hd-kicker">FOOD SAFETY · LIVESTOCK TRACEABILITY</p>
-            <h1>替抗蓟化 全链条质控与溯源指挥舱</h1>
+            <h1>替抗蓟划 全链条质控与溯源指挥舱</h1>
           </div>
           <div class="hd-wing hd-right">
             <time class="hd-clock dig" data-clock></time>
@@ -339,7 +339,7 @@ export function render() {
             <img src="/evidence/thistle.jpg" alt="大蓟花">
             <div>
               <p>以东方草本 · 守护国人餐桌</p>
-              <h1>替抗蓟化 <span>全链条质控与溯源指挥舱</span></h1>
+              <h1>替抗蓟划 <span>全链条质控与溯源指挥舱</span></h1>
             </div>
           </div>
           <div class="hd-trust" aria-label="系统运行状态">
@@ -508,7 +508,7 @@ export async function bind(root) {
   teardown()
   rootEl = root
   lastSig = ''
-  document.title = '替抗蓟化 全链条质控与溯源指挥舱'
+  document.title = '替抗蓟划 全链条质控与溯源指挥舱'
   applyScale()
   if (isLegacyView()) {
     if (!echartsMod) echartsMod = await import('echarts')

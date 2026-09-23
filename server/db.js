@@ -197,6 +197,7 @@ function migrate(d) {
   ensureColumn(d, 'eval_records', 'amino_acids', 'TEXT')
   ensureColumn(d, 'eval_records', 'fatty_acids', 'TEXT')
   ensureColumn(d, 'eval_records', 'peptides', 'TEXT')
+  migrateLegacyNaming(d)
   migrateDose(d)
   seedSpotlightScreenExtra(d)
   migrateDemoCopy(d)
@@ -209,6 +210,73 @@ function migrate(d) {
   migrateFarmIdentity(d)
   migrateSpotlightQuality(d)
   rebuildUnissuedFleetSeals(d)
+}
+
+function migrateLegacyNaming(d) {
+  const legacy = String.fromCodePoint(0x84df, 0x5316)
+  const current = '蓟划'
+  const moved = []
+  const childTables = [
+    'farm_records',
+    'med_logs',
+    'screen_records',
+    'eval_records',
+    'reports',
+    'traces',
+    'reviews',
+    'seal_events',
+  ]
+  const textTables = [
+    'batches',
+    'farm_records',
+    'med_logs',
+    'screen_records',
+    'eval_records',
+    'reports',
+    'traces',
+    'reviews',
+    'seal_events',
+    'audit_logs',
+  ]
+  const tx = d.transaction(() => {
+    const rows = d.prepare('SELECT batch_id FROM batches WHERE instr(batch_id, ?) > 0').all(legacy)
+    for (const row of rows) {
+      const previous = row.batch_id
+      const next = previous.replaceAll(legacy, current)
+      if (d.prepare('SELECT 1 FROM batches WHERE batch_id = ?').get(next)) continue
+      d.prepare(`
+        INSERT INTO batches (
+          batch_id, product_name, brand, platform, team, program_json,
+          created_by, created_at, updated_at
+        )
+        SELECT ?, product_name, brand, platform, team, program_json,
+               created_by, created_at, updated_at
+        FROM batches WHERE batch_id = ?
+      `).run(next, previous)
+      for (const table of childTables) {
+        d.prepare(`UPDATE ${table} SET batch_id = ? WHERE batch_id = ?`).run(next, previous)
+      }
+      d.prepare('UPDATE audit_logs SET entity_id = ? WHERE entity_id = ?').run(next, previous)
+      d.prepare('DELETE FROM batches WHERE batch_id = ?').run(previous)
+      moved.push(next)
+    }
+
+    for (const table of textTables) {
+      const columns = d.prepare(`PRAGMA table_info(${table})`).all()
+        .filter((column) => String(column.type || '').toUpperCase().includes('TEXT'))
+        .map((column) => column.name)
+        .filter((name) => name !== 'batch_id')
+      for (const column of columns) {
+        d.prepare(`
+          UPDATE ${table}
+          SET "${column}" = replace("${column}", ?, ?)
+          WHERE instr("${column}", ?) > 0
+        `).run(legacy, current, legacy)
+      }
+    }
+  })
+  tx()
+  for (const batchId of moved) rebuildSeal(batchId)
 }
 
 function migrateSpotlightQuality(d) {
@@ -324,7 +392,7 @@ function migrateHouseEnv(d) {
 }
 
 function smoothHouseEnvDay(batchId, stockDate, env) {
-  if (batchId === DEMO_SEED.batchId || batchId === '蓟化-2026-0812') return '2026-08-11'
+  if (batchId === DEMO_SEED.batchId || batchId === '蓟划-2026-0812') return '2026-08-11'
   const fromAt = String(env?.series?.[0]?.at || '').slice(0, 10)
   if (/^\d{4}-\d{2}-\d{2}$/.test(fromAt)) return fromAt
   const stock = String(stockDate || '').slice(0, 10)
@@ -391,12 +459,12 @@ function restoreSpotlightFarm(d) {
 }
 
 /**
- * 现场新建批 蓟化-2026-0901：进苗/入孵用当天，出栏 +50 天，用药本只留「饲用抗生素 未使用」。
+ * 现场新建批 蓟划-2026-0901：进苗/入孵用当天，出栏 +50 天，用药本只留「饲用抗生素 未使用」。
  * 保留基地名与大蓟日粮。不出证、不出码。
  * @param {import('better-sqlite3').Database} d
  */
 function migrateLiveBlankBatch(d) {
-  const id = '蓟化-2026-0901'
+  const id = '蓟划-2026-0901'
   const row = d.prepare(
     'SELECT stock_date, hatch_date, planned_slaughter FROM farm_records WHERE batch_id = ?',
   ).get(id)
@@ -428,7 +496,7 @@ function rebuildUnissuedFleetSeals(d) {
     LEFT JOIN reports r ON r.batch_id = b.batch_id
     WHERE (r.generated IS NULL OR r.generated = 0)
       AND b.batch_id != ?
-      AND b.batch_id != '蓟化-2026-0901'
+      AND b.batch_id != '蓟划-2026-0901'
   `).all(DEMO_SEED.batchId)
   for (const r of rows) {
     const last = d.prepare(
@@ -481,9 +549,9 @@ function migrateDemoCopy(d) {
     WHERE batch_id = ? AND hatch_date = '2026-06-21'
   `).run(id)
   const slaughters = [
-    ['蓟化-2026-0824', '2026-09-05'],
-    ['蓟化-2026-0826', '2026-09-08'],
-    ['蓟化-2026-0828', '2026-09-12'],
+    ['蓟划-2026-0824', '2026-09-05'],
+    ['蓟划-2026-0826', '2026-09-08'],
+    ['蓟划-2026-0828', '2026-09-12'],
   ]
   const updS = d.prepare(`
     UPDATE farm_records SET planned_slaughter = ?
@@ -593,12 +661,12 @@ export function listBatches() {
 }
 
 /**
- * 蓟化-YYYY-MMDD，上海日历。撞号则 -2、-3…
+ * 蓟划-YYYY-MMDD，上海日历。撞号则 -2、-3…
  * @returns {string}
  */
 export function nextBatchId() {
   const { year, month, day } = shanghaiYmd()
-  const base = `蓟化-${year}-${month}${day}`
+  const base = `蓟划-${year}-${month}${day}`
   const d = getDb()
   const exists = (id) => d.prepare('SELECT 1 AS n FROM batches WHERE batch_id = ?').get(id)
   if (!exists(base)) return base

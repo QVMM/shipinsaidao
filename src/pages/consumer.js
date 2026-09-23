@@ -50,7 +50,7 @@ export function render(state, opts = {}) {
       <div class="phone">
         <div class="phone-screen">
           <div class="phone-top">
-            <div class="brand-mini">替抗蓟化 · 扫码可查</div>
+            <div class="brand-mini">替抗蓟划 · 扫码可查</div>
             <h3>${humanHeadline(v, state)}</h3>
             <p class="phone-batch">${val(state.batchId)}</p>
           </div>

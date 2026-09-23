@@ -90,7 +90,7 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   await expect(page.getByRole('button', { name: '指标分析' })).toHaveCount(0)
   await expect(page.locator('.wall-right')).toHaveCount(0)
   const currentBatch = await page.locator('[data-callout]').innerText()
-  expect(currentBatch).toContain('蓟化-2026-0812')
+  expect(currentBatch).toContain('蓟划-2026-0812')
 
   await page.getByRole('link', { name: '经典可视化' }).click()
   await expect(page).toHaveURL(/view=classic.*#\/stage/)
@@ -100,7 +100,7 @@ test('新版与经典可视化共用同一焦点批次并可互相切换', async
   await expect(page.locator('.stage-evidence-grid')).toHaveCount(0)
   await expect(page.locator('.wall-right')).toBeVisible()
   await expect(page.locator('.wall-right [data-chart]')).toHaveCount(5)
-  await expect(page.locator('[data-callout]')).toContainText('蓟化-2026-0812')
+  await expect(page.locator('[data-callout]')).toContainText('蓟划-2026-0812')
 
   const bodyText = await page.locator('body').innerText()
   expect(bodyText).not.toMatch(forbiddenCopy)
@@ -438,6 +438,11 @@ test('各页面助手只保留四个不重复的核心快捷入口', async ({ pa
 
 test('健康评价展示水分、嫩度、pH 与保水性实测指标', async ({ page }) => {
   await login(page)
+  await page.goto('/#/batches')
+  await page.locator('tr', { hasText: '蓟划-2026-0812' })
+    .getByRole('button', { name: '打开', exact: true })
+    .click()
+  await expect(page).toHaveURL(/#\/dashboard/)
   await page.goto('/#/eval')
   const quality = page.locator('[data-evidence-view] .health-quality')
   await expect(quality).toBeVisible()

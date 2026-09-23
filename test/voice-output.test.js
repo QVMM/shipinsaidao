@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { selectFemaleChineseVoice, speakPreview, speakWithPreferredVoice } from '../src/lib/djtk-human.js'
 
-const requiredClosing = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟化团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
+const requiredClosing = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟划团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
 
 test('收束播报只保留指定的安全承诺段落', () => {
   const extra = '给孩子一块鸡排，只留香，不留忧；给父母一碗鸡汤，只暖心，不担心；“产地中国”，成为世界放心。'

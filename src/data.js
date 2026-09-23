@@ -2,11 +2,11 @@
 import { makeDemoHouseEnv, shanghaiYmd } from './lib/house-env.js'
 
 export const DEMO_SEED = {
-  batchId: '蓟化-2026-0812',
-  productName: '替抗蓟化 减抗鸡肉',
-  brand: '替抗蓟化',
+  batchId: '蓟划-2026-0812',
+  productName: '替抗蓟划 减抗鸡肉',
+  brand: '替抗蓟划',
   platform: '减抗鸡肉全链条质控与溯源平台',
-  team: '「替抗蓟化」食品安全创新团队',
+  team: '「替抗蓟划」食品安全创新团队',
   farm: {
     name: '某某基地（基地-A07）',
     partners: '合作单位-01、合作单位-02',
@@ -19,7 +19,7 @@ export const DEMO_SEED = {
     plannedSlaughter: '2026-08-12',
     count: 8000,
     density: '10 只/m²',
-    feedBrand: '替抗蓟化定制日粮',
+    feedBrand: '替抗蓟划定制日粮',
     additive: '大蓟粗提物',
     dose: '5000 mg/kg 饲料（0.5%）',
     doseStartDay: 1,
@@ -34,7 +34,7 @@ export const DEMO_SEED = {
       { date: '2026-07-05', item: '球虫疫苗', dose: '按规程', purpose: '球虫防控（非抗菌药）', result: '已执行' },
       { date: '2026-07-18', item: '饲用抗生素', dose: '—', purpose: '—', result: '未使用' },
     ],
-    houseEnv: makeDemoHouseEnv('2026-08-11', '蓟化-2026-0812'),
+    houseEnv: makeDemoHouseEnv('2026-08-11', '蓟划-2026-0812'),
   },
   screen: {
     sampleId: 'DJ-0812',
@@ -196,7 +196,7 @@ export function blankBatchFromSpotlight(batchId) {
     batchId,
     farm: {
       ...seed.farm,
-      flockId: `FL-${String(batchId).replace(/^蓟化-/, '')}`,
+      flockId: `FL-${String(batchId).replace(/^蓟划-/, '')}`,
       hatchDate: day,
       stockDate: day,
       plannedSlaughter: addDaysIso(day, 50),

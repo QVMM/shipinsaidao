@@ -6,11 +6,52 @@ import { computeVerdict, issuanceGate } from '../src/lib/verdict.js'
 const REQUIRED_OPENING_REPLY = '对近一个月出口鸡肉安全信息搜集分析，发现某海关中心查验多批次出口鸡肉氟苯尼考兽药残留超标问题，相关产品依法退市，造成约 10 万吨订单缺口。'
 const REQUIRED_RESULT_REPLY = '已完成结果审核，并对标高品质鸡肉三维评价体系做出判定，大蓟替抗鸡肉抽检样品全部合格。'
 const REQUIRED_CLOSING_REPLY = '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟划团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。'
+const OPENING_QUERY = '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。'
+const RESULT_QUERY = '质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。'
+const CLOSING_QUERY = '大蓟替抗 高品质鸡肉解决方案 技能展示完成'
+const MARKET_QUERY = '请说明当前焦点批次能否上市，以及判定依据。'
 
 const DJTK_RX_BAN =
   /可以合规使用|可以使用氟苯|推荐使用兽药|休药期后(?:可用|用药)?|推荐用药|可以用药|氟苯尼考可以|剂量建议|开具处方|兽药处方|用药剂量/
 const DJTK_SAFE_REFUSE =
   '本助手不做用药处方，只根据平台检测与批次记录说明本批情况。请打开检测或焦点档案查看平台记录。'
+
+/**
+ * Convert equivalent button labels, typed questions and ASR wording into the
+ * same canonical request. Intent depends on the words, never on the input
+ * channel, so the same request always reaches the same answer path.
+ * @param {string} question
+ */
+export function normalizeDjtkQuestion(question) {
+  const raw = String(question || '').trim()
+  const compact = raw
+    .replace(/[\s，。！？、；：,.!?;:'"“”‘’（）()《》【】\-_]/g, '')
+    .replace(/出口肌肉/g, '出口鸡肉')
+
+  const exportRisk =
+    compact.includes('出口风险排查') ||
+    (/出口鸡肉/.test(compact) && /风险排查|安全排查|排查.*风险|风险.*排查/.test(compact))
+  if (exportRisk) return OPENING_QUERY
+
+  const sampleResult =
+    compact.includes('样品结果判定') ||
+    (/(?:质检|检测)结果/.test(compact) && /样品|抽检/.test(compact) && /判定|判断|研判/.test(compact))
+  if (sampleResult) return RESULT_QUERY
+
+  const missionClosing =
+    compact.includes('安全使命收束') ||
+    (/(?:大蓟替抗|替抗蓟划)/.test(compact) &&
+      /高品质鸡肉/.test(compact) &&
+      /(?:展示|演示).*(?:完成|完毕|结束)/.test(compact))
+  if (missionClosing) return CLOSING_QUERY
+
+  const marketDecision =
+    compact.includes('上市判定依据') ||
+    /(?:能否|能不能|是否|可以|可不可以)上市/.test(compact)
+  if (marketDecision) return MARKET_QUERY
+
+  return raw
+}
 
 /**
  * Post-filter: strip prescription-style / banned medication phrasing.
@@ -51,7 +92,7 @@ export function sanitizeDjtkAnswer(answer, evidence) {
  * @returns {{ answer: string, fast: true } | null}
  */
 export function buildFastAnswer(question, evidence) {
-  const q = String(question || '').trim()
+  const q = normalizeDjtkQuestion(question)
   if (!q) return null
 
   const ev = evidence && typeof evidence === 'object' ? evidence : {}

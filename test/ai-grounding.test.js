@@ -70,3 +70,45 @@ test('指定收束口令返回正式安全承诺话术', () => {
   const reply = buildFastAnswer('大蓟替抗 高品质鸡肉解决方案 技能展示完成', passedEvidence)
   assert.equal(reply.answer, '屏幕之外可能是素未谋面的陌生人，也可能是我们的家人；感谢替抗蓟划团队，以技能筑牢安全防线，护航中国高品质鸡肉走向世界餐桌。')
 })
+
+test('快捷按钮、键盘和语音口语变体命中同一比赛话术', () => {
+  const cases = [
+    {
+      canonical: '请结合海关中心政务公开数据平台，对近期我国出口鸡肉安全进行风险排查。',
+      variants: [
+        '出口风险排查',
+        '请帮我排查近期出口鸡肉的安全风险',
+        '结合海关公开数据，做出口鸡肉风险排查',
+      ],
+    },
+    {
+      canonical: '质检结果已出，请DJTK智控助手结合实时数据进行样品结果判定。',
+      variants: [
+        '样品结果判定',
+        '质检结果出来了，请结合实时数据判断样品结果',
+      ],
+    },
+    {
+      canonical: '大蓟替抗 高品质鸡肉解决方案 技能展示完成',
+      variants: [
+        '安全使命收束',
+        '大蓟替抗高品质鸡肉解决方案技能展示完毕',
+      ],
+    },
+    {
+      canonical: '请说明当前焦点批次能否上市，以及判定依据。',
+      variants: [
+        '上市判定依据',
+        '这批鸡能不能上市，依据是什么',
+      ],
+    },
+  ]
+
+  for (const item of cases) {
+    const expected = buildFastAnswer(item.canonical, passedEvidence)?.answer
+    assert.ok(expected)
+    for (const variant of item.variants) {
+      assert.equal(buildFastAnswer(variant, passedEvidence)?.answer, expected, variant)
+    }
+  }
+})

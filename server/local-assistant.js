@@ -28,9 +28,13 @@ export function normalizeDjtkQuestion(question) {
     .replace(/[\s，。！？、；：,.!?;:'"“”‘’（）()《》【】\-_]/g, '')
     .replace(/出口肌肉/g, '出口鸡肉')
 
+  const riskInvestigation = /风险排查|安全排查|排查.*风险|风险.*排查/.test(compact)
+  const customsDataContext = /海关中心|海关公开数据|政务公开数据平台|大数据平台/.test(compact)
+  const exportMeatContext = /出口.{0,4}肉/.test(compact)
   const exportRisk =
     compact.includes('出口风险排查') ||
-    (/出口鸡肉/.test(compact) && /风险排查|安全排查|排查.*风险|风险.*排查/.test(compact))
+    (/出口鸡肉/.test(compact) && riskInvestigation) ||
+    (customsDataContext && exportMeatContext && /安全/.test(compact) && riskInvestigation)
   if (exportRisk) return OPENING_QUERY
 
   const sampleResult =

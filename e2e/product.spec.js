@@ -375,7 +375,7 @@ test('语音说出快捷入口名称时返回与按钮相同的研判话术', as
         window.__djtkRecognitionConfig = { lang: this.lang, processLocally: this.processLocally }
         this.onstart?.()
         setTimeout(() => {
-          const result = [{ transcript: '出口风险排查' }]
+          const result = [{ transcript: '请结合海关中心政务公开数据平台，对近期我国出口接肉安全进行风险排查。' }]
           result.isFinal = true
           this.onresult?.({ resultIndex: 0, results: [result] })
         }, 0)
@@ -395,7 +395,7 @@ test('语音说出快捷入口名称时返回与按钮相同的研判话术', as
   await expect(mic).toBeEnabled()
   await mic.click()
 
-  await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('出口风险排查')
+  await expect(assistant.locator('.djtk-bubble.is-user').last()).toContainText('出口接肉安全')
   await expect(assistant.locator('.djtk-bubble.is-bot').last()).toContainText('对近一个月出口鸡肉安全信息搜集分析')
   await expect.poll(() => page.evaluate(() => window.__djtkSpokenText)).toContain('对近一个月出口鸡肉安全信息搜集分析')
   expect(await page.evaluate(() => window.__djtkSelectedVoice)).toBe('Microsoft Xiaoxiao Online')
